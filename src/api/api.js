@@ -3,7 +3,7 @@ import api from './index';
 // Auth APIs
 export const loginUser = (data) => api.post('/auth/login', data);
 export const registerUser = (data) => api.post('/auth/register', data);
-
+export const sidebarMenus = (data) => api.get('/auth/sidebar-menus', data);
 // School APIs
 export const getAllSchools = () => api.get('/admin/schools');
 export const createSchool = (data) => api.post('/admin/school/create', data);

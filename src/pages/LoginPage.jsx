@@ -16,9 +16,10 @@ const LoginPage = () => {
         setLoading(true);
         try {
             const { data } = await loginUser({ email: values.username, password: values.password });
+            console.log(data);
 
             if (data.token) {
-                login(data.user || { name: 'Admin', email: values.username }, data.token);
+                login(data.data.user || { name: 'Admin', email: values.username }, data.token);
                 message.success('Welcome back!');
                 navigate('/');
             } else {

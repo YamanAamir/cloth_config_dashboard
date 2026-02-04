@@ -7,14 +7,19 @@ import DashboardPage from './pages/DashboardPage';
 import SchoolsPage from './pages/SchoolsPage';
 import ClassRepsPage from './pages/ClassRepsPage';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { Role } from './utils/constants';
 
-const ProtectedRoute = ({ children }) => {
+const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
 
   if (loading) return null; // Or a loading spinner
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (allowedRoles && !allowedRoles.includes(user.role)) {
+    return <Navigate to="/" replace />;
   }
 
   return children;
@@ -31,8 +36,22 @@ const AppRoutes = () => {
         </ProtectedRoute>
       }>
         <Route index element={<DashboardPage />} />
-        <Route path="schools" element={<SchoolsPage />} />
-        <Route path="class-reps" element={<ClassRepsPage />} />
+        <Route
+          path="schools"
+          element={
+            <ProtectedRoute allowedRoles={[Role.ADMIN]}>
+              <SchoolsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="class-reps"
+          element={
+            <ProtectedRoute allowedRoles={[Role.ADMIN]}>
+              <ClassRepsPage />
+            </ProtectedRoute>
+          }
+        />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
