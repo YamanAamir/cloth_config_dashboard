@@ -1,0 +1,95 @@
+:root {
+  --primary-color: #00b96b;
+  --secondary-color: #006d75;
+  --bg-color: #f6ffed;
+  --sidebar-bg: #ffffff;
+  --card-shadow: 0 8px 16px rgba(0, 0, 0, 0.04);
+  --border-radius: 16px;
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-blur: 16px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background-color: var(--bg-color);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.ant-layout {
+  background: #f5f7fa !important;
+}
+
+.ant-layout-sider {
+  background: #ffffff !important;
+  border-right: 1px solid #f0f0f0;
+}
+
+.ant-layout-sider-trigger {
+  background: #ffffff !important;
+  color: #333 !important;
+  border-top: 1px solid #f0f0f0;
+}
+
+.ant-menu {
+  border-inline-end: none !important;
+}
+
+/* Glassmorphism effects */
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: var(--border-radius);
+  box-shadow: var(--card-shadow);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+/* Customizing Ant Design */
+.ant-btn-primary {
+  background: linear-gradient(135deg, #00b96b 0%, #006d75 100%) !important;
+  border: none !important;
+  box-shadow: 0 4px 12px rgba(0, 185, 107, 0.25) !important;
+}
+
+.ant-btn-primary:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.ant-card {
+  border-radius: var(--border-radius) !important;
+  overflow: hidden;
+}
+
+.ant-table {
+  background: transparent !important;
+}
+
+.ant-table-thead>tr>th {
+  background: #f0f2f5 !important;
+  font-weight: 600 !important;
+}
