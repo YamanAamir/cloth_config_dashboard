@@ -54,6 +54,12 @@ const ClassRepsPage = () => {
         try {
             // New logic: 0 = active, 1 = inactive
             const payload = { ...values, status: values.status ? 0 : 1 };
+
+            // Don't send empty password during update
+            if (editingRep && !payload.password) {
+                delete payload.password;
+            }
+
             if (editingRep) {
                 await updateClassRep(editingRep.id, payload);
                 message.success('Class representative updated');
@@ -245,6 +251,16 @@ const ClassRepsPage = () => {
                                 <Option key={school.id} value={school.id}>{school.name}</Option>
                             ))}
                         </Select>
+                    </Form.Item>
+
+                    <Form.Item
+                        name="password"
+                        label={editingRep ? "New Password (optional)" : "Password"}
+                        rules={[
+                            { required: !editingRep, message: 'Please enter password' }
+                        ]}
+                    >
+                        <Input.Password placeholder={editingRep ? "Leave blank to keep current" : "Enter password"} />
                     </Form.Item>
 
                     <Form.Item name="status" label="Status" valuePropName="checked">
