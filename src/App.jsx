@@ -8,6 +8,9 @@ import SchoolsPage from './pages/SchoolsPage';
 import ClassRepsPage from './pages/ClassRepsPage';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Role } from './utils/constants';
+import ClassesPage from './pages/ClassesPage';
+import ReviewUploadsPage from './pages/ReviewUploadsPage';
+import MyClassPage from './pages/MyClassPage';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
@@ -26,6 +29,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 };
 
 const AppRoutes = () => {
+  const { user } = useAuth();
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
@@ -35,7 +39,11 @@ const AppRoutes = () => {
           <MainLayout />
         </ProtectedRoute>
       }>
-        <Route index element={<DashboardPage />} />
+        <Route index element={
+          user?.role === Role.CLASS_REPRESENTATIVE ?
+            <Navigate to="/my-class" replace /> :
+            <DashboardPage />
+        } />
         <Route
           path="schools"
           element={
@@ -49,6 +57,30 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={[Role.ADMIN]}>
               <ClassRepsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="all-classes"
+          element={
+            <ProtectedRoute allowedRoles={[Role.ADMIN]}>
+              <ClassesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="review-uploads"
+          element={
+            <ProtectedRoute allowedRoles={[Role.ADMIN]}>
+              <ReviewUploadsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="my-class"
+          element={
+            <ProtectedRoute allowedRoles={[Role.CLASS_REPRESENTATIVE]}>
+              <MyClassPage />
             </ProtectedRoute>
           }
         />

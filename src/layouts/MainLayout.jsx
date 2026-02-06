@@ -12,6 +12,7 @@ import {
     SolutionOutlined,
     AppstoreOutlined,
     PictureOutlined,
+    FileImageOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -34,6 +35,7 @@ const iconMap = {
     'UserOutlined': <UserOutlined />,
     'TeamOutlined': <TeamOutlined />,
     'SolutionOutlined': <SolutionOutlined />,
+    'ReviewIcon': <FileImageOutlined />,
 };
 
 const MainLayout = () => {
@@ -53,7 +55,7 @@ const MainLayout = () => {
             key: '/',
             icon: <DashboardOutlined />,
             label: 'Dashboard',
-            roles: [Role.ADMIN, Role.CLASS_REPRESENTATIVE, Role.STUDENT],
+            roles: [Role.ADMIN, Role.STUDENT],
         },
         {
             key: '/schools',
@@ -66,6 +68,24 @@ const MainLayout = () => {
             icon: <UserOutlined />,
             label: 'Class Representatives',
             roles: [Role.ADMIN],
+        },
+        {
+            key: '/all-classes',
+            icon: <AppstoreOutlined />,
+            label: 'All Classes',
+            roles: [Role.ADMIN],
+        },
+        {
+            key: '/review-uploads',
+            icon: <FileImageOutlined />,
+            label: 'Review Uploads',
+            roles: [Role.ADMIN],
+        },
+        {
+            key: '/my-class',
+            icon: <SolutionOutlined />,
+            label: 'My Class',
+            roles: [Role.CLASS_REPRESENTATIVE],
         },
     ];
 

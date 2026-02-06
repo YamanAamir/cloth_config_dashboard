@@ -19,9 +19,15 @@ const LoginPage = () => {
             console.log(data);
 
             if (data.token) {
-                login(data.data.user || { name: 'Admin', email: values.username }, data.token);
+                const userObj = data.data.user || { name: 'Admin', email: values.username };
+                login(userObj, data.token);
                 message.success('Welcome back!');
-                navigate('/');
+
+                if (userObj.role === 'class_representative') {
+                    navigate('/my-class');
+                } else {
+                    navigate('/');
+                }
             } else {
                 message.error('Invalid credentials');
             }
@@ -50,14 +56,14 @@ const LoginPage = () => {
                             name="username"
                             rules={[{ required: true, message: 'Please input your email!' }]}
                         >
-                            <Input prefix={<UserOutlined />} placeholder="Email" defaultValue="admin@admin.com" />
+                            <Input prefix={<UserOutlined />} placeholder="Email" defaultValue="" />
                         </Form.Item>
 
                         <Form.Item
                             name="password"
                             rules={[{ required: true, message: 'Please input your password!' }]}
                         >
-                            <Input.Password prefix={<LockOutlined />} placeholder="Password" defaultValue="123123" />
+                            <Input.Password prefix={<LockOutlined />} placeholder="Password" defaultValue="" />
                         </Form.Item>
 
                         <Form.Item>
