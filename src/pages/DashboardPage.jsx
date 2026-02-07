@@ -28,7 +28,7 @@ const DashboardPage = () => {
     return (
         <div>
             <div style={{ marginBottom: 24 }}>
-                <Title level={2}>Welcome to ClothConfig Admin</Title>
+                <Title level={2}>Welcome to Dashboard</Title>
                 <Text type="secondary">Here's what's happening today in your dashboard.</Text>
             </div>
 

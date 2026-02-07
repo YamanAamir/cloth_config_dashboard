@@ -13,6 +13,7 @@ import {
     AppstoreOutlined,
     PictureOutlined,
     FileImageOutlined,
+    CloudUploadOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -85,6 +86,12 @@ const MainLayout = () => {
             key: '/my-class',
             icon: <SolutionOutlined />,
             label: 'My Class',
+            roles: [Role.CLASS_REPRESENTATIVE],
+        },
+        {
+            key: '/upload-files',
+            icon: <CloudUploadOutlined />,
+            label: 'Upload Files',
             roles: [Role.CLASS_REPRESENTATIVE],
         },
     ];

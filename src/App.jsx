@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { ConfigProvider } from 'antd';
 import MainLayout from './layouts/MainLayout';
 import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import SchoolsPage from './pages/SchoolsPage';
 import ClassRepsPage from './pages/ClassRepsPage';
@@ -11,6 +12,7 @@ import { Role } from './utils/constants';
 import ClassesPage from './pages/ClassesPage';
 import ReviewUploadsPage from './pages/ReviewUploadsPage';
 import MyClassPage from './pages/MyClassPage';
+import UploadFilesPage from './pages/UploadFilesPage';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
@@ -33,6 +35,7 @@ const AppRoutes = () => {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
 
       <Route path="/" element={
         <ProtectedRoute>
@@ -81,6 +84,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={[Role.CLASS_REPRESENTATIVE]}>
               <MyClassPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="upload-files"
+          element={
+            <ProtectedRoute allowedRoles={[Role.CLASS_REPRESENTATIVE]}>
+              <UploadFilesPage />
             </ProtectedRoute>
           }
         />

@@ -44,3 +44,11 @@ export const Status = {
     INACTIVE: 1,
     DELETED: 2
 };
+
+/** Base URL for API (without /api). Used to build uploads URL. */
+export const getApiBase = () =>
+    (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace(/\/api\/?$/, '');
+
+/** Full URL for an uploaded file path (e.g. uploads/school_logo/xxx.jpg). */
+export const getUploadsUrl = (filePath) =>
+    filePath ? `${getApiBase()}/${filePath.replace(/^\/+/, '')}` : '';

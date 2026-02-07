@@ -10,121 +10,183 @@ import {
     message,
     Image,
     Popconfirm,
-    Tooltip
+    Tooltip,
+    Input,
+    Select
 } from 'antd';
 import {
     CheckCircleOutlined,
     CloseCircleOutlined,
     EyeOutlined,
     FileImageOutlined,
-    ClockCircleOutlined,
-    SyncOutlined
+    ClockCircleOutlined
 } from '@ant-design/icons';
 import {
     getAllLogos,
-    updateLogoStatus,
+    approveLogo,
+    rejectLogo,
     getAllBackDesigns,
-    updateBackDesignStatus
+    approveBackDesign,
+    rejectBackDesign
 } from '../api/api';
-import { LogoStatus, DesignStatus } from '../utils/constants';
+import { Status, getUploadsUrl } from '../utils/constants';
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
+
+const STATUS_FILTER_OPTIONS = [
+    { value: '', label: 'All' },
+    { value: '0', label: 'Approved' },
+    { value: '2', label: 'Rejected' },
+];
 
 const ReviewUploadsPage = () => {
     const [logos, setLogos] = useState([]);
     const [backDesigns, setBackDesigns] = useState([]);
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState('1');
+    const [logoPagination, setLogoPagination] = useState({
+        current: 1,
+        limit: 10,
+        total: 0,
+        totalPages: 1,
+        search: '',
+        status: '',
+    });
+    const [designPagination, setDesignPagination] = useState({
+        current: 1,
+        limit: 10,
+        total: 0,
+        totalPages: 1,
+        search: '',
+        status: '',
+    });
 
-    const fetchData = async () => {
+    const fetchLogos = async () => {
         setLoading(true);
         try {
-            if (activeTab === '1') {
-                const response = await getAllLogos();
-                setLogos(response.data.data || []);
-            } else {
-                const response = await getAllBackDesigns();
-                setBackDesigns(response.data.data || []);
-            }
+            const response = await getAllLogos({
+                page: logoPagination.current,
+                limit: logoPagination.limit,
+                search: logoPagination.search,
+                ...(logoPagination.status !== '' && { status: logoPagination.status }),
+            });
+            const { limit, page, total, totalPages } = response.data.pagination || {};
+            setLogos(response.data.data || []);
+            setLogoPagination(prev => ({
+                ...prev,
+                limit: limit ?? prev.limit,
+                current: page ?? prev.current,
+                total: total ?? 0,
+                totalPages: totalPages ?? 1,
+            }));
         } catch (error) {
-            message.error('Failed to fetch data');
+            message.error('Failed to fetch logos');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchBackDesigns = async () => {
+        setLoading(true);
+        try {
+            const response = await getAllBackDesigns({
+                page: designPagination.current,
+                limit: designPagination.limit,
+                search: designPagination.search,
+                ...(designPagination.status !== '' && { status: designPagination.status }),
+            });
+            const { limit, page, total, totalPages } = response.data.pagination || {};
+            setBackDesigns(response.data.data || []);
+            setDesignPagination(prev => ({
+                ...prev,
+                limit: limit ?? prev.limit,
+                current: page ?? prev.current,
+                total: total ?? 0,
+                totalPages: totalPages ?? 1,
+            }));
+        } catch (error) {
+            message.error('Failed to fetch back designs');
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchData();
-    }, [activeTab]);
+        if (activeTab === '1') fetchLogos();
+    }, [activeTab, logoPagination.current, logoPagination.limit, logoPagination.search, logoPagination.status]);
 
-    const handleStatusUpdate = async (id, status, type) => {
+    useEffect(() => {
+        if (activeTab === '2') fetchBackDesigns();
+    }, [activeTab, designPagination.current, designPagination.limit, designPagination.search, designPagination.status]);
+
+    const handleApprove = async (id, type) => {
         try {
             if (type === 'logo') {
-                await updateLogoStatus(id, { status });
-                message.success(`Logo ${status} successfully`);
+                await approveLogo(id);
+                message.success('Logo approved');
+                fetchLogos();
             } else {
-                await updateBackDesignStatus(id, { status });
-                message.success(`Back design ${status} successfully`);
+                await approveBackDesign(id);
+                message.success('Back design approved');
+                fetchBackDesigns();
             }
-            fetchData();
         } catch (error) {
-            message.error('Operation failed');
+            message.error(error.response?.data?.error || 'Operation failed');
+        }
+    };
+
+    const handleReject = async (id, type) => {
+        try {
+            if (type === 'logo') {
+                await rejectLogo(id);
+                message.success('Logo rejected');
+                fetchLogos();
+            } else {
+                await rejectBackDesign(id);
+                message.success('Back design rejected');
+                fetchBackDesigns();
+            }
+        } catch (error) {
+            message.error(error.response?.data?.error || 'Operation failed');
         }
     };
 
     const getStatusTag = (status) => {
-        switch (status) {
-            case LogoStatus.APPROVED:
-            case DesignStatus.APPROVED:
-                return <Tag color="success" icon={<CheckCircleOutlined />}>Approved</Tag>;
-            case LogoStatus.REJECTED:
-            case DesignStatus.REJECTED:
-                return <Tag color="error" icon={<CloseCircleOutlined />}>Rejected</Tag>;
-            case LogoStatus.PENDING:
-            case DesignStatus.PENDING:
-                return <Tag color="processing" icon={<ClockCircleOutlined />}>Pending</Tag>;
-            case LogoStatus.UPLOADED:
-            case DesignStatus.UPLOADED:
-                return <Tag color="default" icon={<SyncOutlined spin />}>Uploaded</Tag>;
-            default:
-                return <Tag>{status}</Tag>;
-        }
+        if (status === Status.ACTIVE) return <Tag color="success" icon={<CheckCircleOutlined />}>Approved</Tag>;
+        if (status === Status.INACTIVE) return <Tag color="warning" icon={<CheckCircleOutlined />}>Pending</Tag>;
+        if (status === Status.DELETED) return <Tag color="error" icon={<CloseCircleOutlined />}>Rejected</Tag>;
+        return <Tag color="default" icon={<ClockCircleOutlined />}>Pending</Tag>;
     };
 
     const logoColumns = [
         {
-            title: 'Logo preview',
+            title: 'Preview',
             dataIndex: 'file_path',
             key: 'file_path',
             render: (path) => (
                 <Image
                     width={80}
                     height={80}
-                    src={path}
+                    src={getUploadsUrl(path)}
                     fallback="https://via.placeholder.com/80?text=No+Logo"
                     style={{ borderRadius: 8, objectFit: 'contain', border: '1px solid #f0f0f0' }}
                 />
             ),
         },
+        { title: 'Name', dataIndex: 'name', key: 'name', render: (t) => <Text strong>{t || '—'}</Text> },
         {
-            title: 'Class / School',
-            key: 'classInfo',
-            render: (_, record) => (
-                <Space direction="vertical" size={0}>
-                    <Text strong>{record.class?.name || 'N/A'}</Text>
-                    <Text type="secondary" style={{ fontSize: 12 }}>{record.school?.name || 'N/A'}</Text>
-                </Space>
-            ),
+            title: 'School',
+            key: 'school',
+            render: (_, record) => <Text>{record.school?.name || '—'}</Text>,
         },
         {
             title: 'Uploaded By',
-            dataIndex: 'user',
             key: 'user',
-            render: (user) => (
+            render: (_, record) => (
                 <Space direction="vertical" size={0}>
-                    <Text>{user?.name || 'Unknown'}</Text>
-                    <Text type="secondary" style={{ fontSize: 12 }}>{user?.email}</Text>
+                    <Text>{record.user?.name || '—'}</Text>
+                    {record.user?.email && <Text type="secondary" style={{ fontSize: 12 }}>{record.user.email}</Text>}
                 </Space>
             ),
         },
@@ -142,7 +204,7 @@ const ReviewUploadsPage = () => {
                     <Tooltip title="Approve">
                         <Popconfirm
                             title="Approve this logo?"
-                            onConfirm={() => handleStatusUpdate(record.id, LogoStatus.APPROVED, 'logo')}
+                            onConfirm={() => handleApprove(record.id, 'logo')}
                             okText="Yes"
                             cancelText="No"
                         >
@@ -150,14 +212,14 @@ const ReviewUploadsPage = () => {
                                 type="text"
                                 shape="circle"
                                 icon={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
-                                disabled={record.status === LogoStatus.APPROVED}
+                                disabled={record.status === Status.ACTIVE}
                             />
                         </Popconfirm>
                     </Tooltip>
                     <Tooltip title="Reject">
                         <Popconfirm
                             title="Reject this logo?"
-                            onConfirm={() => handleStatusUpdate(record.id, LogoStatus.REJECTED, 'logo')}
+                            onConfirm={() => handleReject(record.id, 'logo')}
                             okText="Yes"
                             cancelText="No"
                             okType="danger"
@@ -166,7 +228,7 @@ const ReviewUploadsPage = () => {
                                 type="text"
                                 shape="circle"
                                 icon={<CloseCircleOutlined style={{ color: '#ff4d4f' }} />}
-                                disabled={record.status === LogoStatus.REJECTED}
+                                disabled={record.status === Status.DELETED}
                             />
                         </Popconfirm>
                     </Tooltip>
@@ -176,7 +238,32 @@ const ReviewUploadsPage = () => {
     ];
 
     const designColumns = [
-        ...logoColumns.slice(0, 4),
+        {
+            title: 'Preview',
+            dataIndex: 'file_path',
+            key: 'file_path',
+            render: (path) => (
+                <Image
+                    width={80}
+                    height={80}
+                    src={getUploadsUrl(path)}
+                    fallback="https://via.placeholder.com/80?text=No+Design"
+                    style={{ borderRadius: 8, objectFit: 'contain', border: '1px solid #f0f0f0' }}
+                />
+            ),
+        },
+        { title: 'Name', dataIndex: 'name', key: 'name', render: (t) => <Text strong>{t || '—'}</Text> },
+        {
+            title: 'Class',
+            key: 'class',
+            render: (_, record) => <Text>{record.class?.name || '—'}</Text>,
+        },
+        {
+            title: 'Status',
+            dataIndex: 'status',
+            key: 'status',
+            render: (status) => getStatusTag(status),
+        },
         {
             title: 'Action',
             key: 'action',
@@ -185,7 +272,7 @@ const ReviewUploadsPage = () => {
                     <Tooltip title="Approve">
                         <Popconfirm
                             title="Approve this design?"
-                            onConfirm={() => handleStatusUpdate(record.id, DesignStatus.APPROVED, 'design')}
+                            onConfirm={() => handleApprove(record.id, 'design')}
                             okText="Yes"
                             cancelText="No"
                         >
@@ -193,14 +280,14 @@ const ReviewUploadsPage = () => {
                                 type="text"
                                 shape="circle"
                                 icon={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
-                                disabled={record.status === DesignStatus.APPROVED}
+                                disabled={record.status === Status.ACTIVE}
                             />
                         </Popconfirm>
                     </Tooltip>
                     <Tooltip title="Reject">
                         <Popconfirm
                             title="Reject this design?"
-                            onConfirm={() => handleStatusUpdate(record.id, DesignStatus.REJECTED, 'design')}
+                            onConfirm={() => handleReject(record.id, 'design')}
                             okText="Yes"
                             cancelText="No"
                             okType="danger"
@@ -209,7 +296,7 @@ const ReviewUploadsPage = () => {
                                 type="text"
                                 shape="circle"
                                 icon={<CloseCircleOutlined style={{ color: '#ff4d4f' }} />}
-                                disabled={record.status === DesignStatus.REJECTED}
+                                disabled={record.status === Status.DELETED}
                             />
                         </Popconfirm>
                     </Tooltip>
@@ -231,17 +318,48 @@ const ReviewUploadsPage = () => {
                         tab={
                             <span>
                                 <FileImageOutlined />
-                                Class Logos
+                                Logos
                             </span>
                         }
                         key="1"
                     >
+                        <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+                            <Select
+                                placeholder="Status"
+                                allowClear
+                                style={{ width: 140 }}
+                                options={STATUS_FILTER_OPTIONS}
+                                value={logoPagination.status || undefined}
+                                onChange={(v) => setLogoPagination(prev => ({ ...prev, status: v ?? '', current: 1 }))}
+                            />
+                            <Input.Search
+                                placeholder="Search by name"
+                                allowClear
+                                enterButton
+                                style={{ width: 260 }}
+                                onSearch={(v) => setLogoPagination(prev => ({ ...prev, search: v ?? '', current: 1 }))}
+                            />
+                        </div>
                         <Table
                             columns={logoColumns}
                             dataSource={logos}
                             rowKey="id"
                             loading={loading}
-                            pagination={{ pageSize: 10 }}
+                            pagination={{
+                                current: logoPagination.current,
+                                pageSize: logoPagination.limit,
+                                total: logoPagination.total,
+                                showSizeChanger: true,
+                                showTotal: (total, range) =>
+                                    `Showing ${range[0]}-${range[1]} of ${total} (Page ${logoPagination.current} of ${logoPagination.totalPages})`,
+                                onChange: (page, pageSize) => {
+                                    setLogoPagination(prev => ({
+                                        ...prev,
+                                        current: page,
+                                        limit: pageSize,
+                                    }));
+                                },
+                            }}
                         />
                     </TabPane>
                     <TabPane
@@ -253,12 +371,43 @@ const ReviewUploadsPage = () => {
                         }
                         key="2"
                     >
+                        <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+                            <Select
+                                placeholder="Status"
+                                allowClear
+                                style={{ width: 140 }}
+                                options={STATUS_FILTER_OPTIONS}
+                                value={designPagination.status || undefined}
+                                onChange={(v) => setDesignPagination(prev => ({ ...prev, status: v ?? '', current: 1 }))}
+                            />
+                            <Input.Search
+                                placeholder="Search by name"
+                                allowClear
+                                enterButton
+                                style={{ width: 260 }}
+                                onSearch={(v) => setDesignPagination(prev => ({ ...prev, search: v ?? '', current: 1 }))}
+                            />
+                        </div>
                         <Table
                             columns={designColumns}
                             dataSource={backDesigns}
                             rowKey="id"
                             loading={loading}
-                            pagination={{ pageSize: 10 }}
+                            pagination={{
+                                current: designPagination.current,
+                                pageSize: designPagination.limit,
+                                total: designPagination.total,
+                                showSizeChanger: true,
+                                showTotal: (total, range) =>
+                                    `Showing ${range[0]}-${range[1]} of ${total} (Page ${designPagination.current} of ${designPagination.totalPages})`,
+                                onChange: (page, pageSize) => {
+                                    setDesignPagination(prev => ({
+                                        ...prev,
+                                        current: page,
+                                        limit: pageSize,
+                                    }));
+                                },
+                            }}
                         />
                     </TabPane>
                 </Tabs>

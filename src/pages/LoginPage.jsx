@@ -42,7 +42,7 @@ const LoginPage = () => {
         <Layout style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #00b96b 0%, #006d75 100%)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
             <div className="fade-in" style={{ width: '100%', maxWidth: 400, padding: '0 20px' }}>
                 <Card className="glass-card" style={{ border: 'none', textAlign: 'center' }}>
-                    <Title level={2} style={{ marginBottom: 8, color: '#006d75' }}>ClothConfig Admin</Title>
+                    <Title level={2} style={{ marginBottom: 8, color: '#006d75' }}>Login</Title>
                     <Text type="secondary" style={{ display: 'block', marginBottom: 24 }}>Sign in to manage your dashboard</Text>
 
                     <Form

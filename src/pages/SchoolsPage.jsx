@@ -27,13 +27,32 @@ const SchoolsPage = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingSchool, setEditingSchool] = useState(null);
     const [form] = Form.useForm();
+    const [pagination, setPagination] = useState({
+        current: 1,
+        limit: 10,
+        total: 0,
+        search: '',
+    });
+
 
     const fetchSchools = async () => {
         setLoading(true);
         try {
-            const response = await getAllSchools();
+            const response = await getAllSchools({
+                page: pagination.current,
+                limit: pagination.limit,
+                search: pagination.search
+            });
+            const { limit, page, total, totalPages } = response.data.pagination || {};
             // Based on response: { success: true, data: [...] }
             setSchools(response.data.data || []);
+            setPagination(prev => ({
+                ...prev,
+                limit: limit,
+                current: page,
+                total: total,
+                totalPages: totalPages
+            }));
         } catch (error) {
             message.error('Failed to fetch schools');
         } finally {
@@ -43,7 +62,7 @@ const SchoolsPage = () => {
 
     useEffect(() => {
         fetchSchools();
-    }, []);
+    }, [pagination.current, pagination.limit, pagination.search]);
 
     const handleAddEdit = async (values) => {
         try {
@@ -88,6 +107,11 @@ const SchoolsPage = () => {
     };
 
     const columns = [
+        {
+            title: 'S/N',
+            key: 'serial',
+            render: (_, record, index) => index + 1,
+        },
         {
             title: 'School Name',
             dataIndex: 'name',
@@ -179,14 +203,55 @@ const SchoolsPage = () => {
             </div>
 
             <Card className="glass-card" style={{ border: 'none' }}>
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'flex-end',
+                    marginBottom: 16
+                }}>
+                    <Input.Search
+                        placeholder="Search school name"
+                        allowClear
+                        enterButton
+                        style={{ width: 300 }}
+                        onChange={(e) => {
+                            const value = e.target.value;
+                            clearTimeout(window.searchTimer);
+                            window.searchTimer = setTimeout(() => {
+                                setPagination(prev => ({
+                                    ...prev,
+                                    current: 1,
+                                    search: value
+                                }));
+                            }, 500);
+                        }}
+
+                    />
+                </div>
+
                 <Table
                     columns={columns}
                     dataSource={schools}
                     rowKey="id"
                     loading={loading}
-                    pagination={{ pageSize: 10 }}
+                    pagination={{
+                        current: pagination.current,
+                        pageSize: pagination.limit,
+                        total: pagination.total,
+                        showSizeChanger: true,
+                        showTotal: (total, range) =>
+                            `Showing ${range[0]}-${range[1]} of ${total} (Page ${pagination.current} of ${pagination.totalPages})`,
+                        onChange: (page, pageSize) => {
+                            setPagination(prev => ({
+                                ...prev,
+                                current: page,
+                                limit: pageSize
+                            }));
+                        }
+                    }}
                 />
+
             </Card>
+
 
             <Modal
                 title={editingSchool ? "Edit School" : "Add New School"}

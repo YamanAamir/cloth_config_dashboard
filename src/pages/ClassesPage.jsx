@@ -41,27 +41,57 @@ const ClassesPage = () => {
     const [selectedClass, setSelectedClass] = useState(null);
     const [form] = Form.useForm();
     const [assignForm] = Form.useForm();
+    const [pagination, setPagination] = useState({
+        current: 1,
+        limit: 10,
+        total: 0,
+        totalPages: 1,
+        search: '',
+    });
 
-    const fetchData = async () => {
+    const fetchClasses = async () => {
         setLoading(true);
         try {
-            const [classesRes, schoolsRes, repsRes] = await Promise.all([
-                getAllClasses(),
-                getAllSchools(),
-                getAllClassReps()
-            ]);
-            setClasses(classesRes.data.data || []);
-            setSchools(schoolsRes.data.data || []);
-            setClassReps(repsRes.data.data || []);
+            const response = await getAllClasses({
+                page: pagination.current,
+                limit: pagination.limit,
+                search: pagination.search,
+            });
+            const { limit, page, total, totalPages } = response.data.pagination || {};
+            setClasses(response.data.data || []);
+            setPagination(prev => ({
+                ...prev,
+                limit: limit ?? prev.limit,
+                current: page ?? prev.current,
+                total: total ?? (response.data.data?.length || 0),
+                totalPages: totalPages ?? 1,
+            }));
         } catch (error) {
-            message.error('Failed to fetch data');
+            message.error('Failed to fetch classes');
         } finally {
             setLoading(false);
         }
     };
 
+    const fetchDropdowns = async () => {
+        try {
+            const [schoolsRes, repsRes] = await Promise.all([
+                getAllSchools({ limit: 1000 }),
+                getAllClassReps({ limit: 1000 })
+            ]);
+            setSchools(schoolsRes.data.data || []);
+            setClassReps(repsRes.data.data || []);
+        } catch (error) {
+            message.error('Failed to fetch dropdown data');
+        }
+    };
+
     useEffect(() => {
-        fetchData();
+        fetchClasses();
+    }, [pagination.current, pagination.limit, pagination.search]);
+
+    useEffect(() => {
+        fetchDropdowns();
     }, []);
 
     const handleAddEdit = async (values) => {
@@ -81,7 +111,7 @@ const ClassesPage = () => {
             setIsModalOpen(false);
             form.resetFields();
             setEditingClass(null);
-            fetchData();
+            fetchClasses();
         } catch (error) {
             message.error(error.response?.data?.message || 'Operation failed');
         }
@@ -97,7 +127,7 @@ const ClassesPage = () => {
             message.success('Representative assigned successfully');
             setIsAssignModalOpen(false);
             assignForm.resetFields();
-            fetchData();
+            fetchClasses();
         } catch (error) {
             message.error(error.response?.data?.message || 'Assignment failed');
         }
@@ -107,7 +137,7 @@ const ClassesPage = () => {
         try {
             await deleteClass(id);
             message.success('Class deleted successfully');
-            fetchData();
+            fetchClasses();
         } catch (error) {
             message.error('Delete failed');
         }
@@ -118,7 +148,7 @@ const ClassesPage = () => {
             const newStatus = record.status === Status.ACTIVE ? Status.INACTIVE : Status.ACTIVE;
             await toggleClassStatus(record.id, { status: newStatus });
             message.success(`Status updated for ${record.name}`);
-            fetchData();
+            fetchClasses();
         } catch (error) {
             message.error('Status update failed');
         }
@@ -281,12 +311,41 @@ const ClassesPage = () => {
             </div>
 
             <Card className="glass-card" style={{ border: 'none' }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+                    <Input.Search
+                        placeholder="Search class or school name"
+                        allowClear
+                        enterButton
+                        style={{ width: 300 }}
+                        onChange={(e) => {
+                            const value = e.target.value;
+                            clearTimeout(window.searchTimerClasses);
+                            window.searchTimerClasses = setTimeout(() => {
+                                setPagination(prev => ({ ...prev, current: 1, search: value }));
+                            }, 500);
+                        }}
+                    />
+                </div>
                 <Table
                     columns={columns}
                     dataSource={classes}
                     rowKey="id"
                     loading={loading}
-                    pagination={{ pageSize: 10 }}
+                    pagination={{
+                        current: pagination.current,
+                        pageSize: pagination.limit,
+                        total: pagination.total,
+                        showSizeChanger: true,
+                        showTotal: (total, range) =>
+                            `Showing ${range[0]}-${range[1]} of ${total} (Page ${pagination.current} of ${pagination.totalPages})`,
+                        onChange: (page, pageSize) => {
+                            setPagination(prev => ({
+                                ...prev,
+                                current: page,
+                                limit: pageSize,
+                            }));
+                        },
+                    }}
                 />
             </Card>
 

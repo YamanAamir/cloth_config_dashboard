@@ -28,26 +28,53 @@ const ClassRepsPage = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingRep, setEditingRep] = useState(null);
     const [form] = Form.useForm();
+    const [pagination, setPagination] = useState({
+        current: 1,
+        limit: 10,
+        total: 0,
+        totalPages: 1,
+        search: '',
+    });
 
-    const fetchData = async () => {
+    const fetchReps = async () => {
         setLoading(true);
         try {
-            const [repsRes, schoolsRes] = await Promise.all([
-                getAllClassReps(),
-                getAllSchools()
-            ]);
-            // Based on expected structure: { success: true, data: [...] }
-            setReps(repsRes.data.data || []);
-            setSchools(schoolsRes.data.data || []);
+            const response = await getAllClassReps({
+                page: pagination.current,
+                limit: pagination.limit,
+                search: pagination.search,
+            });
+            const { limit, page, total, totalPages } = response.data.pagination || {};
+            setReps(response.data.data || []);
+            setPagination(prev => ({
+                ...prev,
+                limit: limit ?? prev.limit,
+                current: page ?? prev.current,
+                total: total ?? (response.data.data?.length || 0),
+                totalPages: totalPages ?? 1,
+            }));
         } catch (error) {
-            message.error('Failed to fetch data');
+            message.error('Failed to fetch representatives');
         } finally {
             setLoading(false);
         }
     };
 
+    const fetchSchools = async () => {
+        try {
+            const schoolsRes = await getAllSchools({ limit: 1000 });
+            setSchools(schoolsRes.data.data || []);
+        } catch (error) {
+            message.error('Failed to fetch schools');
+        }
+    };
+
     useEffect(() => {
-        fetchData();
+        fetchReps();
+    }, [pagination.current, pagination.limit, pagination.search]);
+
+    useEffect(() => {
+        fetchSchools();
     }, []);
 
     const handleAddEdit = async (values) => {
@@ -70,7 +97,7 @@ const ClassRepsPage = () => {
             setIsModalOpen(false);
             form.resetFields();
             setEditingRep(null);
-            fetchData();
+            fetchReps();
         } catch (error) {
             message.error(error.response?.data?.message || 'Operation failed');
         }
@@ -80,7 +107,7 @@ const ClassRepsPage = () => {
         try {
             await deleteClassRep(id);
             message.success('Representative removed');
-            fetchData();
+            fetchReps();
         } catch (error) {
             message.error('Delete failed');
         }
@@ -92,7 +119,7 @@ const ClassRepsPage = () => {
             const newStatus = record.status === 0 ? 1 : 0;
             await toggleClassRepStatus(record.id, { status: newStatus });
             message.success(`Status updated for ${record.name}`);
-            fetchData();
+            fetchReps();
         } catch (error) {
             message.error('Status update failed');
         }
@@ -200,11 +227,41 @@ const ClassRepsPage = () => {
             </div>
 
             <Card className="glass-card" style={{ border: 'none' }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+                    <Input.Search
+                        placeholder="Search by name or email"
+                        allowClear
+                        enterButton
+                        style={{ width: 300 }}
+                        onChange={(e) => {
+                            const value = e.target.value;
+                            clearTimeout(window.searchTimerReps);
+                            window.searchTimerReps = setTimeout(() => {
+                                setPagination(prev => ({ ...prev, current: 1, search: value }));
+                            }, 500);
+                        }}
+                    />
+                </div>
                 <Table
                     columns={columns}
                     dataSource={reps}
                     rowKey="id"
                     loading={loading}
+                    pagination={{
+                        current: pagination.current,
+                        pageSize: pagination.limit,
+                        total: pagination.total,
+                        showSizeChanger: true,
+                        showTotal: (total, range) =>
+                            `Showing ${range[0]}-${range[1]} of ${total} (Page ${pagination.current} of ${pagination.totalPages})`,
+                        onChange: (page, pageSize) => {
+                            setPagination(prev => ({
+                                ...prev,
+                                current: page,
+                                limit: pageSize,
+                            }));
+                        },
+                    }}
                 />
             </Card>
 

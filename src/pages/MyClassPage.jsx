@@ -12,66 +12,90 @@ import {
     message,
     Popconfirm,
     Tabs,
-    Upload,
-    Divider,
-    Descriptions,
     Empty,
     Statistic,
     Row,
     Col
 } from 'antd';
 import {
-    PlusOutlined,
-    EditOutlined,
-    DeleteOutlined,
-    UserOutlined,
-    MailOutlined,
-    UploadOutlined,
     TeamOutlined,
-    FileImageOutlined,
     BankOutlined,
-    CalendarOutlined
+    CalendarOutlined,
+    LinkOutlined,
+    UploadOutlined
 } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import {
     getMyClass,
     getStudents,
     createStudent,
     updateStudent,
     deleteStudent,
-    uploadLogo,
-    uploadBackDesign
+    generateRegistrationLink
 } from '../api/api';
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
 
 const MyClassPage = () => {
+    const navigate = useNavigate();
     const [myClass, setMyClass] = useState(null);
     const [students, setStudents] = useState([]);
     const [loading, setLoading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingStudent, setEditingStudent] = useState(null);
     const [form] = Form.useForm();
+    const [registrationLinkModalOpen, setRegistrationLinkModalOpen] = useState(false);
+    const [registrationLink, setRegistrationLink] = useState('');
+    const [linkLoading, setLinkLoading] = useState(false);
+    const [pagination, setPagination] = useState({
+        current: 1,
+        limit: 10,
+        total: 0,
+        totalPages: 1,
+        search: '',
+    });
 
-    const fetchData = async () => {
-        setLoading(true);
+    const fetchMyClass = async () => {
         try {
-            const [classRes, studentsRes] = await Promise.all([
-                getMyClass(),
-                getStudents()
-            ]);
+            const classRes = await getMyClass();
             setMyClass(classRes.data.data?.[0]);
-            setStudents(studentsRes.data.data || []);
         } catch (error) {
             message.error('Failed to fetch class details');
+        }
+    };
+
+    const fetchStudents = async () => {
+        setLoading(true);
+        try {
+            const response = await getStudents({
+                page: pagination.current,
+                limit: pagination.limit,
+                search: pagination.search,
+            });
+            const { limit, page, total, totalPages } = response.data.pagination || {};
+            setStudents(response.data.data || []);
+            setPagination(prev => ({
+                ...prev,
+                limit: limit ?? prev.limit,
+                current: page ?? prev.current,
+                total: total ?? (response.data.data?.length || 0),
+                totalPages: totalPages ?? 1,
+            }));
+        } catch (error) {
+            message.error('Failed to fetch students');
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchData();
+        fetchMyClass();
     }, []);
+
+    useEffect(() => {
+        if (myClass) fetchStudents();
+    }, [pagination.current, pagination.limit, pagination.search, myClass?.id]);
 
     const handleAddEdit = async (values) => {
         try {
@@ -84,7 +108,7 @@ const MyClassPage = () => {
             }
             setIsModalOpen(false);
             form.resetFields();
-            fetchData();
+            fetchStudents();
         } catch (error) {
             message.error(error.response?.data?.message || 'Operation failed');
         }
@@ -94,34 +118,41 @@ const MyClassPage = () => {
         try {
             await deleteStudent(id);
             message.success('Student removed from class');
-            fetchData();
+            fetchStudents();
         } catch (error) {
             message.error('Delete failed');
         }
     };
 
-    const handleFileUpload = async (file, type) => {
-        const formData = new FormData();
-        formData.append('file', file);
-
+    const handleGenerateRegistrationLink = async () => {
+        setLinkLoading(true);
         try {
-            if (type === 'logo') {
-                await uploadLogo(formData);
-                message.success('Logo uploaded successfully');
-            } else {
-                await uploadBackDesign(formData);
-                message.success('Back design uploaded successfully');
-            }
-            fetchData(); // Refresh to show uploaded status
-            return false; // Prevent default upload behavior
+            const { data } = await generateRegistrationLink();
+            const link = data?.data?.registrationLink || data?.registrationLink || '';
+            setRegistrationLink(link);
+            setRegistrationLinkModalOpen(true);
+            if (link) message.success('Registration link generated');
+            else message.warning('No link returned from server');
         } catch (error) {
-            message.error('Upload failed');
-            return false;
+            message.error(error.response?.data?.message || 'Failed to generate link');
+        } finally {
+            setLinkLoading(false);
         }
     };
 
+    const copyRegistrationLink = () => {
+        if (!registrationLink) return;
+        navigator.clipboard.writeText(registrationLink).then(() => {
+            message.success('Link copied to clipboard');
+        }).catch(() => message.error('Failed to copy'));
+    };
 
     const columns = [
+        {
+            title: 'S/N',
+            key: 'serial',
+            render: (_, record, index) => index + 1,
+        },
         {
             title: 'Student Name',
             dataIndex: 'name',
@@ -129,34 +160,34 @@ const MyClassPage = () => {
             render: (text) => <span style={{ fontWeight: 600 }}>{text}</span>,
         },
         {
-            title: 'Email',
-            dataIndex: 'email',
-            key: 'email',
+            title: 'Status',
+            dataIndex: 'status',
+            key: 'status',
         },
-        {
-            title: 'Actions',
-            key: 'action',
-            render: (_, record) => (
-                <Space>
-                    <Button
-                        type="text"
-                        icon={<EditOutlined style={{ color: '#00b96b' }} />}
-                        onClick={() => {
-                            setEditingStudent(record);
-                            form.setFieldsValue(record);
-                            setIsModalOpen(true);
-                        }}
-                    />
-                    <Popconfirm
-                        title="Delete Student"
-                        description="Are you sure you want to remove this student?"
-                        onConfirm={() => handleDelete(record.id)}
-                    >
-                        <Button type="text" danger icon={<DeleteOutlined />} />
-                    </Popconfirm>
-                </Space>
-            ),
-        },
+        // {
+        //     title: 'Actions',
+        //     key: 'action',
+        //     render: (_, record) => (
+        //         <Space>
+        //             <Button
+        //                 type="text"
+        //                 icon={<EditOutlined style={{ color: '#00b96b' }} />}
+        //                 onClick={() => {
+        //                     setEditingStudent(record);
+        //                     form.setFieldsValue(record);
+        //                     setIsModalOpen(true);
+        //                 }}
+        //             />
+        //             <Popconfirm
+        //                 title="Delete Student"
+        //                 description="Are you sure you want to remove this student?"
+        //                 onConfirm={() => handleDelete(record.id)}
+        //             >
+        //                 <Button type="text" danger icon={<DeleteOutlined />} />
+        //             </Popconfirm>
+        //         </Space>
+        //     ),
+        // },
     ];
 
     if (!myClass && !loading) {
@@ -169,9 +200,28 @@ const MyClassPage = () => {
 
     return (
         <div className="fade-in">
-            <div style={{ marginBottom: 24 }}>
-                <Title level={4} style={{ margin: 0 }}>My Class: {myClass?.name}</Title>
-                <Text type="secondary">Manage students and upload class design resources</Text>
+            <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+                <div>
+                    <Title level={4} style={{ margin: 0 }}>My Class: {myClass?.name}</Title>
+                    <Text type="secondary">Manage students and upload class design resources</Text>
+                </div>
+                <Space>
+                    {/* <Button
+                        type="default"
+                        icon={<UploadOutlined />}
+                        onClick={() => navigate('/upload-files')}
+                    >
+                        Upload Files
+                    </Button> */}
+                    <Button
+                        type="default"
+                        icon={<LinkOutlined />}
+                        loading={linkLoading}
+                        onClick={handleGenerateRegistrationLink}
+                    >
+                        Generate registration link
+                    </Button>
+                </Space>
             </div>
 
             <Row gutter={[24, 24]} style={{ marginBottom: 24 }}>
@@ -249,83 +299,40 @@ const MyClassPage = () => {
                         tab={<span><TeamOutlined /> Student Management</span>}
                         key="1"
                     >
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-                            <Button
-                                type="primary"
-                                icon={<PlusOutlined />}
-                                onClick={() => {
-                                    setEditingStudent(null);
-                                    form.resetFields();
-                                    setIsModalOpen(true);
-                                }}
-                            >
-                                Add Student
-                            </Button>
+                        <div style={{ display: 'flex', justifyContent: 'end ', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
+                            <Input.Search
+                                placeholder="Search student name"
+                                allowClear
+                                enterButton
+                                style={{ width: 280 }}
+                                onSearch={(v) => setPagination(prev => ({ ...prev, current: 1, search: v ?? '' }))}
+                            />
                         </div>
                         <Table
                             columns={columns}
                             dataSource={students}
                             rowKey="id"
                             loading={loading}
-                            pagination={{ pageSize: 10 }}
+                            pagination={{
+                                current: pagination.current,
+                                pageSize: pagination.limit,
+                                total: pagination.total,
+                                showSizeChanger: true,
+                                showTotal: (total, range) =>
+                                    `Showing ${range[0]}-${range[1]} of ${total} (Page ${pagination.current} of ${pagination.totalPages})`,
+                                onChange: (page, pageSize) => {
+                                    setPagination(prev => ({
+                                        ...prev,
+                                        current: page,
+                                        limit: pageSize,
+                                    }));
+                                },
+                            }}
                         />
-                    </TabPane>
-
-                    <TabPane
-                        tab={<span><FileImageOutlined /> Class Resources</span>}
-                        key="2"
-                    >
-                        <div style={{ padding: '20px 0' }}>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
-                                <div>
-                                    <Title level={5}>Class Logo</Title>
-                                    <Text type="secondary">Upload your class specific logo (e.g., JPEG, PNG)</Text>
-                                    <Divider />
-                                    <Upload
-                                        beforeUpload={(file) => handleFileUpload(file, 'logo')}
-                                        showUploadList={false}
-                                    >
-                                        <Button icon={<UploadOutlined />} style={{ width: '100%', height: '120px', borderStyle: 'dashed' }}>
-                                            Click to Upload Logo
-                                        </Button>
-                                    </Upload>
-                                    {myClass?.logo_path && (
-                                        <div style={{ marginTop: 16, textAlign: 'center' }}>
-                                            <Tag color="success">Logo Uploaded</Tag>
-                                            <div style={{ marginTop: 8 }}>
-                                                <img src={myClass.logo_path} alt="Class Logo" style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: '8px' }} />
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div>
-                                    <Title level={5}>Back Design</Title>
-                                    <Text type="secondary">Upload the collective design for the back of the clothes</Text>
-                                    <Divider />
-                                    <Upload
-                                        beforeUpload={(file) => handleFileUpload(file, 'design')}
-                                        showUploadList={false}
-                                    >
-                                        <Button icon={<UploadOutlined />} style={{ width: '100%', height: '120px', borderStyle: 'dashed' }}>
-                                            Click to Upload Back Design
-                                        </Button>
-                                    </Upload>
-                                    {myClass?.back_design_path && (
-                                        <div style={{ marginTop: 16, textAlign: 'center' }}>
-                                            <Tag color="success">Design Uploaded</Tag>
-                                            <div style={{ marginTop: 8 }}>
-                                                <img src={myClass.back_design_path} alt="Back Design" style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: '8px' }} />
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
                     </TabPane>
                 </Tabs>
             </Card>
-
+{/* 
             <Modal
                 title={editingStudent ? "Edit Student" : "Add New Student"}
                 open={isModalOpen}
@@ -374,6 +381,29 @@ const MyClassPage = () => {
                         </Space>
                     </Form.Item>
                 </Form>
+            </Modal> */}
+
+            <Modal
+                title="Registration link for students"
+                open={registrationLinkModalOpen}
+                onCancel={() => setRegistrationLinkModalOpen(false)}
+                footer={[
+                    <Button key="close" onClick={() => setRegistrationLinkModalOpen(false)}>Close</Button>,
+                    <Button key="copy" type="primary" onClick={copyRegistrationLink} disabled={!registrationLink}>
+                        Copy link
+                    </Button>,
+                ]}
+                destroyOnClose
+            >
+                <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
+                    Share this link with students so they can register and join your class.
+                </Text>
+                <Input.TextArea
+                    readOnly
+                    value={registrationLink}
+                    rows={3}
+                    style={{ fontFamily: 'monospace', fontSize: 12 }}
+                />
             </Modal>
         </div>
     );
