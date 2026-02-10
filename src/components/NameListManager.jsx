@@ -213,7 +213,7 @@ const NameListManager = ({ classId, isAdmin = false }) => {
     const canEdit = !isLocked && !isAdmin;
 
     return (
-        <div style={{ maxWidth: 800, margin: '0 auto' }}>
+        <div style={{ maxWidth: "100%", margin: '0 auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                 <Space>
                     <Title level={4} style={{ margin: 0 }}>Class Name List</Title>

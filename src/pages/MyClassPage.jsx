@@ -202,7 +202,7 @@ const MyClassPage = () => {
 
     return (
         <div className="fade-in">
-            <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+            <div style={{ marginBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
                 <div>
                     {/* <Title level={4} style={{ margin: 0 }}>My Class: {myClass?.name}</Title> */}
                     <Text type="secondary">Manage students and upload class design resources</Text>
