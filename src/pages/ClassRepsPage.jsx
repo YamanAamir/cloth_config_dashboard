@@ -310,16 +310,6 @@ const ClassRepsPage = () => {
                         </Select>
                     </Form.Item>
 
-                    <Form.Item
-                        name="password"
-                        label={editingRep ? "New Password (optional)" : "Password"}
-                        rules={[
-                            { required: !editingRep, message: 'Please enter password' }
-                        ]}
-                    >
-                        <Input.Password placeholder={editingRep ? "Leave blank to keep current" : "Enter password"} />
-                    </Form.Item>
-
                     <Form.Item name="status" label="Status" valuePropName="checked">
                         <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
                     </Form.Item>

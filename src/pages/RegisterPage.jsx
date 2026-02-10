@@ -15,9 +15,38 @@ const RegisterPage = () => {
     const [form] = Form.useForm();
 
     // Extract and decode token from URL
+    // useEffect(() => {
+    //     const queryParams = new URLSearchParams(location.search);
+    //     const token = queryParams.get('token');
+
+    //     if (!token) {
+    //         setTokenError(true);
+    //         setDecodedData(null);
+    //         return;
+    //     }
+
+    //     try {
+    //         const jsonString = atob(token);
+    //         const data = JSON.parse(jsonString);
+    //         if (data.school_id != null && data.class_id != null) {
+    //             setDecodedData({ ...data, token });
+    //             setTokenError(false);
+    //         } else {
+    //             setTokenError(true);
+    //             setDecodedData(null);
+    //         }
+    //     } catch (error) {
+    //         console.error('Failed to decode token', error);
+    //         setTokenError(true);
+    //         setDecodedData(null);
+    //     }
+    // }, [location.search]);
     useEffect(() => {
         const queryParams = new URLSearchParams(location.search);
-        const token = queryParams.get('token');
+
+        // support both ?token=xxx and ?xxx
+        const rawQuery = location.search.replace(/^\?/, '');
+        const token = queryParams.get('token') || rawQuery;
 
         if (!token) {
             setTokenError(true);
@@ -28,6 +57,7 @@ const RegisterPage = () => {
         try {
             const jsonString = atob(token);
             const data = JSON.parse(jsonString);
+
             if (data.school_id != null && data.class_id != null) {
                 setDecodedData({ ...data, token });
                 setTokenError(false);

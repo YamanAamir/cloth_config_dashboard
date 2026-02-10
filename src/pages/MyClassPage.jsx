@@ -33,6 +33,8 @@ import {
     deleteStudent,
     generateRegistrationLink
 } from '../api/api';
+import { EditOutlined } from '@ant-design/icons';
+import NameListManager from '../components/NameListManager';
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
@@ -202,7 +204,7 @@ const MyClassPage = () => {
         <div className="fade-in">
             <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
                 <div>
-                    <Title level={4} style={{ margin: 0 }}>My Class: {myClass?.name}</Title>
+                    {/* <Title level={4} style={{ margin: 0 }}>My Class: {myClass?.name}</Title> */}
                     <Text type="secondary">Manage students and upload class design resources</Text>
                 </div>
                 <Space>
@@ -228,6 +230,28 @@ const MyClassPage = () => {
                 <Col xs={24} sm={12} md={8}>
                     <Card className="glass-card" style={{ border: 'none' }}>
                         <Statistic
+                            title={<span style={{ fontWeight: 500, color: '#666' }}>Class</span>}
+                            value={myClass?.name}
+                            prefix={
+                                <div style={{
+                                    background: `#00b96b15`,
+                                    padding: '8px',
+                                    borderRadius: '12px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    marginRight: '12px'
+                                }}>
+                                    <TeamOutlined style={{ color: '#00b96b', fontSize: '30px' }} />
+                                </div>
+                            }
+                            valueStyle={{ color: '#006d75', fontWeight: '500', textDecoration: 'capitalize', fontSize: '30px' }}
+                        />
+                    </Card>
+                </Col>
+                <Col xs={24} sm={12} md={8}>
+                    <Card className="glass-card" style={{ border: 'none' }}>
+                        <Statistic
                             title={<span style={{ fontWeight: 500, color: '#666' }}>School</span>}
                             value={myClass?.school?.name}
                             prefix={
@@ -240,10 +264,10 @@ const MyClassPage = () => {
                                     justifyContent: 'center',
                                     marginRight: '12px'
                                 }}>
-                                    <BankOutlined style={{ color: '#1890ff', fontSize: '24px' }} />
+                                    <BankOutlined style={{ color: '#1890ff', fontSize: '30px' }} />
                                 </div>
                             }
-                            valueStyle={{ color: '#006d75', fontWeight: '800', fontSize: '24px' }}
+                            valueStyle={{ color: '#006d75', fontWeight: '500',textDecoration: 'capitalize' , fontSize: '30px' }}
                         />
                     </Card>
                 </Col>
@@ -252,6 +276,7 @@ const MyClassPage = () => {
                         <Statistic
                             title={<span style={{ fontWeight: 500, color: '#666' }}>Graduation Year</span>}
                             value={myClass?.graduation_year}
+                            formatter={(value) => value}
                             prefix={
                                 <div style={{
                                     background: `#722ed115`,
@@ -262,35 +287,14 @@ const MyClassPage = () => {
                                     justifyContent: 'center',
                                     marginRight: '12px'
                                 }}>
-                                    <CalendarOutlined style={{ color: '#722ed1', fontSize: '24px' }} />
+                                    <CalendarOutlined style={{ color: '#722ed1', fontSize: '30px' }} />
                                 </div>
                             }
-                            valueStyle={{ color: '#006d75', fontWeight: '800', fontSize: '24px' }}
+                            valueStyle={{ color: '#006d75', fontWeight: '500',textDecoration: 'capitalize', fontSize: '30px' }}
                         />
                     </Card>
                 </Col>
-                <Col xs={24} sm={12} md={8}>
-                    <Card className="glass-card" style={{ border: 'none' }}>
-                        <Statistic
-                            title={<span style={{ fontWeight: 500, color: '#666' }}>Education Type</span>}
-                            value={myClass?.education_type}
-                            prefix={
-                                <div style={{
-                                    background: `#00b96b15`,
-                                    padding: '8px',
-                                    borderRadius: '12px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    marginRight: '12px'
-                                }}>
-                                    <TeamOutlined style={{ color: '#00b96b', fontSize: '24px' }} />
-                                </div>
-                            }
-                            valueStyle={{ color: '#006d75', fontWeight: '800', fontSize: '24px' }}
-                        />
-                    </Card>
-                </Col>
+
             </Row>
 
             <Card className="glass-card" style={{ border: 'none' }}>
@@ -330,9 +334,15 @@ const MyClassPage = () => {
                             }}
                         />
                     </TabPane>
+                    <TabPane
+                        tab={<span><EditOutlined /> Name List</span>}
+                        key="2"
+                    >
+                        {myClass && <NameListManager classId={myClass.id} isAdmin={false} />}
+                    </TabPane>
                 </Tabs>
             </Card>
-{/* 
+            {/* 
             <Modal
                 title={editingStudent ? "Edit Student" : "Add New Student"}
                 open={isModalOpen}

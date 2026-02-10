@@ -11,8 +11,11 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { Role } from './utils/constants';
 import ClassesPage from './pages/ClassesPage';
 import ReviewUploadsPage from './pages/ReviewUploadsPage';
+
 import MyClassPage from './pages/MyClassPage';
 import UploadFilesPage from './pages/UploadFilesPage';
+import NameListReviewPage from './pages/NameListReviewPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
@@ -36,6 +39,7 @@ const AppRoutes = () => {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/set-password" element={<ResetPasswordPage />} />
 
       <Route path="/" element={
         <ProtectedRoute>
@@ -76,6 +80,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={[Role.ADMIN]}>
               <ReviewUploadsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="name-list"
+          element={
+            <ProtectedRoute allowedRoles={[Role.ADMIN]}>
+              <NameListReviewPage />
             </ProtectedRoute>
           }
         />

@@ -14,6 +14,8 @@ import {
     PictureOutlined,
     FileImageOutlined,
     CloudUploadOutlined,
+    OrderedListOutlined,
+    FileZipOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -37,6 +39,8 @@ const iconMap = {
     'TeamOutlined': <TeamOutlined />,
     'SolutionOutlined': <SolutionOutlined />,
     'ReviewIcon': <FileImageOutlined />,
+    'FormatListBulletedIcon': <OrderedListOutlined />,
+    'FolderZipIcon': <FileZipOutlined />,
 };
 
 const MainLayout = () => {

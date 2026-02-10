@@ -4,6 +4,7 @@ import { api, apiFormdata } from './index';
 export const loginUser = (data) => api.post('/auth/login', data);
 export const registerUser = (data) => api.post('/auth/register', data);
 export const sidebarMenus = (data) => api.get('/auth/sidebar-menus', data);
+export const setUserPassword = (data) => api.post('/auth/set-password', data);
 
 // School APIs
 export const getAllSchools = (params = {}) => api.post('/admin/schools', params);
@@ -35,6 +36,12 @@ export const getAllBackDesigns = (params = {}) => api.post('/admin/back-designs'
 export const approveBackDesign = (id) => api.put(`/admin/approve-back-design/${id}`);
 export const rejectBackDesign = (id) => api.put(`/admin/reject-back-design/${id}`);
 
+// Name List APIs (Admin)
+export const getAllNameLists = (params = {}) => api.get('/admin/namelist/list', { params });
+export const getClassNameListAdmin = (classId, params = {}) => api.get(`/admin/namelist/${classId}/class`, { params });
+export const approveNameList = (id) => api.put(`/admin/namelist/${id}/approve`);
+export const rejectNameList = (id) => api.put(`/admin/namelist/${id}/reject`);
+
 // Class Rep Specific APIs
 export const getMyClass = () => api.get('/class-rep/get-class');
 export const getStudents = (params = {}) => api.post('/class-rep/students', params);
@@ -46,3 +53,12 @@ export const uploadLogo = (formData) => apiFormdata.post('/class-rep/upload-logo
 export const uploadBackDesign = (formData) => apiFormdata.post('/class-rep/upload-back-design', formData);
 export const getMyLogos = (params = {}) => api.post('/class-rep/my-logos', params);
 export const getMyBackDesigns = (params = {}) => api.post('/class-rep/my-back-designs', params);
+
+// Name List APIs (Class Rep)
+export const getNameList = () => api.get('/class-rep/name-list');
+export const createNameList = (data) => api.post('/class-rep/namelist/create', data);
+export const addNameListItem = (nameListId, data) => api.post(`/class-rep/namelist/${nameListId}/item`, data);
+export const updateNameListItem = (itemId, data) => api.put(`/class-rep/namelist/item/${itemId}`, data);
+export const reorderNameListItems = (nameListId, items) => api.put(`/class-rep/namelist/reorder/${nameListId}`, { items });
+export const markNameListReady = (nameListId) => api.put(`/class-rep/namelist/${nameListId}/ready`);
+export const deleteNameListItem = (itemId) => api.delete(`/class-rep/namelist/item/${itemId}`);
