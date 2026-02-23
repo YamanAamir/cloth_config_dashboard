@@ -36,6 +36,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 const AppRoutes = () => {
   const { user } = useAuth();
   return (
+
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
@@ -111,6 +112,7 @@ const AppRoutes = () => {
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+
   );
 };
 
@@ -135,9 +137,7 @@ const App = () => {
       }}
     >
       <AuthProvider>
-        <Router>
-          <AppRoutes />
-        </Router>
+        <AppRoutes />
       </AuthProvider>
     </ConfigProvider>
   );
