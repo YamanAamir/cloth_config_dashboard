@@ -15,7 +15,8 @@ import {
     Empty,
     Statistic,
     Row,
-    Col
+    Col,
+    Spin
 } from 'antd';
 import {
     TeamOutlined,
@@ -59,11 +60,14 @@ const MyClassPage = () => {
     });
 
     const fetchMyClass = async () => {
+        setLoading(true);
         try {
             const classRes = await getMyClass();
             setMyClass(classRes.data.data?.[0]);
         } catch (error) {
             message.error('Failed to fetch class details');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -199,6 +203,7 @@ const MyClassPage = () => {
             </Card>
         );
     }
+    if (loading) return <Spin className="fade-in" style={{ display: 'block', margin: '24px auto' }} />; // or a spinner
 
     return (
         <div className="fade-in">
@@ -267,7 +272,7 @@ const MyClassPage = () => {
                                     <BankOutlined style={{ color: '#1890ff', fontSize: '30px' }} />
                                 </div>
                             }
-                            valueStyle={{ color: '#006d75', fontWeight: '500',textDecoration: 'capitalize' , fontSize: '30px' }}
+                            valueStyle={{ color: '#006d75', fontWeight: '500', textDecoration: 'capitalize', fontSize: '30px' }}
                         />
                     </Card>
                 </Col>
@@ -290,7 +295,7 @@ const MyClassPage = () => {
                                     <CalendarOutlined style={{ color: '#722ed1', fontSize: '30px' }} />
                                 </div>
                             }
-                            valueStyle={{ color: '#006d75', fontWeight: '500',textDecoration: 'capitalize', fontSize: '30px' }}
+                            valueStyle={{ color: '#006d75', fontWeight: '500', textDecoration: 'capitalize', fontSize: '30px' }}
                         />
                     </Card>
                 </Col>

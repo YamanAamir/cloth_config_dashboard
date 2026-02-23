@@ -1,17 +1,26 @@
 import React from 'react';
-import { Row, Col, Card, Statistic, Typography, List, Avatar, Tag, Space } from 'antd';
+import { Row, Col, Card, Statistic, Typography, List, Avatar, Tag, Space, Spin } from 'antd';
 import {
     BankOutlined,
     UserOutlined,
     ShoppingOutlined,
     ArrowUpOutlined,
     CheckCircleOutlined,
-    ClockCircleOutlined
+    ClockCircleOutlined,
+    AppstoreOutlined,
+    PictureOutlined,
+    ShoppingCartOutlined
 } from '@ant-design/icons';
+import { useEffect } from 'react';
+import { adminDashboard } from '../api/api';
+import { useState } from 'react';
 
 const { Title, Text } = Typography;
 
 const DashboardPage = () => {
+    const [dashboard, setDashboard] = useState(null);
+    const [loading, setLoading] = useState(true);
+
     const stats = [
         { title: 'Total Schools', value: 12, icon: <BankOutlined />, color: '#00b96b', trend: '+2 this month' },
         { title: 'Active Class Reps', value: 45, icon: <UserOutlined />, color: '#006d75', trend: '+5 this month' },
@@ -24,6 +33,125 @@ const DashboardPage = () => {
         { id: 3, action: 'School status updated', item: 'Riverdale Academy', time: '1 day ago', status: 'warning' },
         { id: 4, action: 'New order placed', item: 'Order #1234', time: '2 days ago', status: 'success' },
     ];
+    // const fetchStats = async () => {
+    //     try {
+    //         const res = await getDashboardStats();
+    //         const data = res.data?.data;
+
+    //         const updatedStats = [
+    //             {
+    //                 title: "Total Schools",
+    //                 value: data.schoolCount,
+    //                 icon: <BankOutlined />,
+    //                 color: "#00b96b",
+    //             },
+    //             {
+    //                 title: "Total Classes",
+    //                 value: data.classCount,
+    //                 icon: <AppstoreOutlined />,
+    //                 color: "#006d75",
+    //             },
+    //             {
+    //                 title: "Total Users",
+    //                 value: data.userCount,
+    //                 icon: <UserOutlined />,
+    //                 color: "#237804",
+    //             },
+    //             {
+    //                 title: "Logos",
+    //                 value: data.logoCount,
+    //                 icon: <PictureOutlined />,
+    //                 color: "#722ed1",
+    //             },
+    //             {
+    //                 title: "Back Designs",
+    //                 value: data.backDesignCount,
+    //                 icon: <PictureOutlined />,
+    //                 color: "#d46b08",
+    //             },
+    //         ];
+
+    //         setStats(updatedStats);
+
+    //     } catch (error) {
+    //         console.error("Failed to fetch dashboard stats:", error);
+    //     }
+    // };
+
+    useEffect(() => {
+        const fetchDashboard = async () => {
+            try {
+                const response = await adminDashboard();
+                const { data } = response.data || {};
+                console.log('Dashboard response:', data);
+                if (response.data.success) {
+                    const updatedStats = [
+                        {
+                            title: "Total Schools",
+                            value: data.schoolCount,
+                            icon: <BankOutlined />,
+                            color: "#a38a00",
+                        },
+                        {
+                            title: "Total Classes",
+                            value: data.classCount,
+                            icon: <AppstoreOutlined />,
+                            color: "#7f00a3",
+                        },
+                        {
+                            title: "Total Users",
+                            value: data.userCount,
+                            icon: <UserOutlined />,
+                            color: "#008aa5",
+                        },
+                        {
+                            title: "Orders",
+                            value: data.ordersCount,
+                            icon: <ShoppingCartOutlined />,
+                            color: "#22d1f4",
+                        },
+                        // {
+                        //     title: "Logos",
+                        //     value: data.logoCount,
+                        //     icon: <PictureOutlined />,
+                        //     color: "#722ed1",
+                        // },
+                        // {
+                        //     title: "Back Designs",
+                        //     value: data.backDesignCount,
+                        //     icon: <PictureOutlined />,
+                        //     color: "#d46b08",
+                        // },
+                    ];
+                    setDashboard(updatedStats)
+                }
+
+            } catch (error) {
+                console.error('Failed to fetch dashboard stats:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchDashboard();
+    }, []);
+
+    if (loading) {
+        return (
+            <div style={{ textAlign: 'center', padding: '50px' }}>
+                <Spin size="normal" />
+            </div>
+        )
+    };
+
+    if (!dashboard) {
+        return (
+            <div style={{ textAlign: 'center', padding: '50px' }}>
+                <Text type="danger">Failed to load dashboard data.</Text>
+            </div>
+        )
+    };
+    console.log("dashboard", dashboard);
+    console.log("stats  ", stats);
 
     return (
         <div>
@@ -33,8 +161,8 @@ const DashboardPage = () => {
             </div>
 
             <Row gutter={[24, 24]}>
-                {stats.map((stat, index) => (
-                    <Col xs={24} sm={8} key={index}>
+                {dashboard.map((stat, index) => (
+                    <Col xs={24} sm={6} key={index}>
                         <Card
                             className="glass-card fade-in"
                             style={{
@@ -62,12 +190,12 @@ const DashboardPage = () => {
                                 }
                                 valueStyle={{ color: '#006d75', fontWeight: '800', fontSize: '28px' }}
                             />
-                            <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            {/* <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: '4px' }}>
                                 <Tag color="success" style={{ border: 'none', borderRadius: '4px' }}>
-                                    <ArrowUpOutlined /> {stat.trend.split(' ')[0]}
+                                    <ArrowUpOutlined />
                                 </Tag>
                                 <Text type="secondary" style={{ fontSize: '12px' }}>{stat.trend.split(' ').slice(1).join(' ')}</Text>
-                            </div>
+                            </div> */}
                         </Card>
                     </Col>
                 ))}

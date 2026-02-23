@@ -19,8 +19,9 @@ import {
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { sidebarMenus } from '../api/api';
+import { adminDashboard, sidebarMenus } from '../api/api';
 import { Role } from '../utils/constants';
+import { use } from 'react';
 
 const { Header, Sider, Content } = Layout;
 
@@ -99,6 +100,7 @@ const MainLayout = () => {
             roles: [Role.CLASS_REPRESENTATIVE],
         },
     ];
+
 
     useEffect(() => {
         const fetchMenus = async () => {

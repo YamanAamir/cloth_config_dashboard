@@ -51,6 +51,7 @@ const UploadFilesPage = () => {
     const [myLogos, setMyLogos] = useState([]);
     const [myDesigns, setMyDesigns] = useState([]);
     const [libraryLoading, setLibraryLoading] = useState(false);
+    const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState('upload');
     const [selectedLogoFile, setSelectedLogoFile] = useState(null);
     const [selectedLogoPreview, setSelectedLogoPreview] = useState(null);
@@ -58,11 +59,14 @@ const UploadFilesPage = () => {
     const [selectedDesignPreview, setSelectedDesignPreview] = useState(null);
 
     const fetchMyClass = async () => {
+        setLoading(true);
         try {
             const classRes = await getMyClass();
             setMyClass(classRes.data.data?.[0]);
         } catch (error) {
             message.error('Failed to fetch class details');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -160,6 +164,9 @@ const UploadFilesPage = () => {
             </Card>
         );
     }
+
+    if (loading) return <Spin className="fade-in" style={{ display: 'block', margin: '24px auto' }} />; // or a spinner
+
 
     return (
         <div className="fade-in">

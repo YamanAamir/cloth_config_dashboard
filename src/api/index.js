@@ -14,31 +14,45 @@ const apiFormdata = axios.create({
     },
 });
 
-// Add a request interceptor to add the auth token to headers
-api.interceptors.request.use(
-    (config) => {
-        const token = localStorage.getItem('token');
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
-        }
-        return config;
-    },
-    (error) => {
-        return Promise.reject(error);
+const addAuthToken = (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
     }
+    return config;
+};
+
+api.interceptors.request.use(addAuthToken, (error) =>
+    Promise.reject(error)
 );
 
-apiFormdata.interceptors.request.use(
-    (config) => {
-        const token = localStorage.getItem('token');
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
-        }
-        return config;
-    },
-    (error) => {
-        return Promise.reject(error);
+apiFormdata.interceptors.request.use(addAuthToken, (error) =>
+    Promise.reject(error)
+);
+
+const handleUnauthorized = (error) => {
+    if (error?.response?.status === 401) {
+        console.log("Session expired. Logging out...");
+
+        // Clear storage
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+
+        // Redirect to login
+        window.location.href = "/login";
     }
+
+    return Promise.reject(error);
+};
+
+api.interceptors.response.use(
+    (response) => response,
+    handleUnauthorized
+);
+
+apiFormdata.interceptors.response.use(
+    (response) => response,
+    handleUnauthorized
 );
 
 export { api, apiFormdata };

@@ -5,6 +5,7 @@ export const loginUser = (data) => api.post('/auth/login', data);
 export const registerUser = (data) => api.post('/auth/register', data);
 export const sidebarMenus = (data) => api.get('/auth/sidebar-menus', data);
 export const setUserPassword = (data) => api.post('/auth/set-password', data);
+export const adminDashboard = (data) => api.post('/admin/dashboard', data);
 
 // School APIs
 export const getAllSchools = (params = {}) => api.post('/admin/schools', params);
