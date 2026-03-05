@@ -88,6 +88,12 @@ const MainLayout = () => {
             roles: [Role.ADMIN],
         },
         {
+            key: '/name-list',
+            icon: <OrderedListOutlined />,
+            label: 'Name List',
+            roles: [Role.ADMIN],
+        },
+        {
             key: '/my-class',
             icon: <SolutionOutlined />,
             label: 'My Class',
@@ -97,6 +103,18 @@ const MainLayout = () => {
             key: '/upload-files',
             icon: <CloudUploadOutlined />,
             label: 'Upload Files',
+            roles: [Role.CLASS_REPRESENTATIVE],
+        },
+        {
+            key: '/namelist',
+            icon: <OrderedListOutlined />,
+            label: 'Name List',
+            roles: [Role.CLASS_REPRESENTATIVE],
+        },
+        {
+            key: '/back-design-configurator',
+            icon: <PictureOutlined />,
+            label: 'Back Design Configurator',
             roles: [Role.CLASS_REPRESENTATIVE],
         },
     ];

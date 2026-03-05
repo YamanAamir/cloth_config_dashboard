@@ -1,63 +1,83 @@
 import React, { useState, useEffect } from 'react';
 import {
-    Table,
     Button,
     Card,
     Typography,
     Space,
     Tag,
     Modal,
-    Form,
-    Input,
     message,
-    Popconfirm,
-    Tabs,
-    Empty,
     Statistic,
     Row,
     Col,
-    Spin
+    Spin,
+    Drawer,
+    Empty,
+    Image,
+    Upload,
+    Tooltip,
+    Input
 } from 'antd';
 import {
     TeamOutlined,
     BankOutlined,
     CalendarOutlined,
     LinkOutlined,
-    UploadOutlined
+    PlusOutlined,
+    UnorderedListOutlined,
+    InboxOutlined,
+    CheckCircleOutlined,
+    ClockCircleOutlined,
+    CloseCircleOutlined
 } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
 import {
     getMyClass,
-    getStudents,
-    createStudent,
-    updateStudent,
-    deleteStudent,
-    generateRegistrationLink
+    generateRegistrationLink,
+    getMyLogos,
+    uploadLogo,
+    getAllBackDesignTemplates,
+    selectBackDesignForClass,
+    getClassBackDesign
 } from '../api/api';
-import { EditOutlined } from '@ant-design/icons';
 import NameListManager from '../components/NameListManager';
+import { getUploadsUrl, Status } from '../utils/constants';
 
 const { Title, Text } = Typography;
-const { TabPane } = Tabs;
+
+const STATUS_MAP = {
+    [Status.ACTIVE]: { label: 'Approved', color: 'success', icon: <CheckCircleOutlined /> },
+    [Status.INACTIVE]: { label: 'Pending', color: 'processing', icon: <ClockCircleOutlined /> },
+    [Status.DELETED]: { label: 'Rejected', color: 'error', icon: <CloseCircleOutlined /> },
+};
+
+const getStatusTag = (status) => {
+    const s = STATUS_MAP[status] ?? STATUS_MAP[Status.INACTIVE];
+    return <Tag color={s.color} icon={s.icon}>{s.label}</Tag>;
+};
 
 const MyClassPage = () => {
-    const navigate = useNavigate();
     const [myClass, setMyClass] = useState(null);
-    const [students, setStudents] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingStudent, setEditingStudent] = useState(null);
-    const [form] = Form.useForm();
     const [registrationLinkModalOpen, setRegistrationLinkModalOpen] = useState(false);
     const [registrationLink, setRegistrationLink] = useState('');
     const [linkLoading, setLinkLoading] = useState(false);
-    const [pagination, setPagination] = useState({
-        current: 1,
-        limit: 10,
-        total: 0,
-        totalPages: 1,
-        search: '',
-    });
+    
+    // Logo Gallery
+    const [logos, setLogos] = useState([]);
+    const [logosLoading, setLogosLoading] = useState(false);
+    const [uploadModalOpen, setUploadModalOpen] = useState(false);
+    const [selectedLogoFile, setSelectedLogoFile] = useState(null);
+    const [selectedLogoPreview, setSelectedLogoPreview] = useState(null);
+    const [uploading, setUploading] = useState(false);
+
+    // Back Design Selection
+    const [backDesignModalOpen, setBackDesignModalOpen] = useState(false);
+    const [templates, setTemplates] = useState([]);
+    const [templatesLoading, setTemplatesLoading] = useState(false);
+    const [selectedTemplate, setSelectedTemplate] = useState(null);
+    const [selectingDesign, setSelectingDesign] = useState(false);
+    const [currentBackDesign, setCurrentBackDesign] = useState(null);
+    const [loadingCurrentDesign, setLoadingCurrentDesign] = useState(false);
 
     const fetchMyClass = async () => {
         setLoading(true);
@@ -71,27 +91,41 @@ const MyClassPage = () => {
         }
     };
 
-    const fetchStudents = async () => {
-        setLoading(true);
+    const fetchLogos = async () => {
+        setLogosLoading(true);
         try {
-            const response = await getStudents({
-                page: pagination.current,
-                limit: pagination.limit,
-                search: pagination.search,
-            });
-            const { limit, page, total, totalPages } = response.data.pagination || {};
-            setStudents(response.data.data || []);
-            setPagination(prev => ({
-                ...prev,
-                limit: limit ?? prev.limit,
-                current: page ?? prev.current,
-                total: total ?? (response.data.data?.length || 0),
-                totalPages: totalPages ?? 1,
-            }));
+            const response = await getMyLogos({ page: 1, limit: 50 });
+            setLogos(response.data?.data ?? []);
         } catch (error) {
-            message.error('Failed to fetch students');
+            message.error('Failed to load logos');
         } finally {
-            setLoading(false);
+            setLogosLoading(false);
+        }
+    };
+
+    const fetchTemplates = async () => {
+        setTemplatesLoading(true);
+        try {
+            const response = await getAllBackDesignTemplates({ page: 1, limit: 100 });
+            setTemplates(response.data?.data ?? []);
+        } catch (error) {
+            message.error('Failed to load templates');
+        } finally {
+            setTemplatesLoading(false);
+        }
+    };
+
+    const fetchCurrentBackDesign = async () => {
+        if (!myClass?.id) return;
+        
+        setLoadingCurrentDesign(true);
+        try {
+            const response = await getClassBackDesign(myClass.id);
+            setCurrentBackDesign(response.data?.data);
+        } catch (error) {
+            console.error('Failed to load current back design');
+        } finally {
+            setLoadingCurrentDesign(false);
         }
     };
 
@@ -100,35 +134,17 @@ const MyClassPage = () => {
     }, []);
 
     useEffect(() => {
-        if (myClass) fetchStudents();
-    }, [pagination.current, pagination.limit, pagination.search, myClass?.id]);
-
-    const handleAddEdit = async (values) => {
-        try {
-            if (editingStudent) {
-                await updateStudent(editingStudent.id, values);
-                message.success('Student updated successfully');
-            } else {
-                await createStudent(values);
-                message.success('Student added successfully');
-            }
-            setIsModalOpen(false);
-            form.resetFields();
-            fetchStudents();
-        } catch (error) {
-            message.error(error.response?.data?.message || 'Operation failed');
+        if (myClass) {
+            fetchLogos();
+            fetchCurrentBackDesign();
         }
-    };
+    }, [myClass]);
 
-    const handleDelete = async (id) => {
-        try {
-            await deleteStudent(id);
-            message.success('Student removed from class');
-            fetchStudents();
-        } catch (error) {
-            message.error('Delete failed');
-        }
-    };
+    useEffect(() => {
+        return () => {
+            if (selectedLogoPreview) URL.revokeObjectURL(selectedLogoPreview);
+        };
+    }, [selectedLogoPreview]);
 
     const handleGenerateRegistrationLink = async () => {
         setLinkLoading(true);
@@ -153,48 +169,74 @@ const MyClassPage = () => {
         }).catch(() => message.error('Failed to copy'));
     };
 
-    const columns = [
-        {
-            title: 'S/N',
-            key: 'serial',
-            render: (_, record, index) => index + 1,
-        },
-        {
-            title: 'Student Name',
-            dataIndex: 'name',
-            key: 'name',
-            render: (text) => <span style={{ fontWeight: 600 }}>{text}</span>,
-        },
-        {
-            title: 'Status',
-            dataIndex: 'status',
-            key: 'status',
-        },
-        // {
-        //     title: 'Actions',
-        //     key: 'action',
-        //     render: (_, record) => (
-        //         <Space>
-        //             <Button
-        //                 type="text"
-        //                 icon={<EditOutlined style={{ color: '#00b96b' }} />}
-        //                 onClick={() => {
-        //                     setEditingStudent(record);
-        //                     form.setFieldsValue(record);
-        //                     setIsModalOpen(true);
-        //                 }}
-        //             />
-        //             <Popconfirm
-        //                 title="Delete Student"
-        //                 description="Are you sure you want to remove this student?"
-        //                 onConfirm={() => handleDelete(record.id)}
-        //             >
-        //                 <Button type="text" danger icon={<DeleteOutlined />} />
-        //             </Popconfirm>
-        //         </Space>
-        //     ),
-        // },
-    ];
+    const handleLogoFileSelect = (file) => {
+        const isImage = file.type.startsWith('image/');
+        if (!isImage) {
+            message.error('Please select an image file');
+            return false;
+        }
+
+        const isLt2M = file.size / 1024 / 1024 < 2;
+        if (!isLt2M) {
+            message.error('Image must be smaller than 2MB');
+            return false;
+        }
+
+        if (selectedLogoPreview) URL.revokeObjectURL(selectedLogoPreview);
+        setSelectedLogoFile(file);
+        setSelectedLogoPreview(URL.createObjectURL(file));
+        return false;
+    };
+
+    const handleLogoUpload = async () => {
+        if (!selectedLogoFile) {
+            message.error('Please select a logo file');
+            return;
+        }
+
+        setUploading(true);
+        try {
+            const formData = new FormData();
+            const name = selectedLogoFile.name ? selectedLogoFile.name.replace(/\.[^/.]+$/, '') : 'logo';
+            formData.append('name', name);
+            formData.append('logo', selectedLogoFile);
+
+            await uploadLogo(formData);
+            message.success('Logo uploaded successfully');
+            
+            // Reset and refresh
+            if (selectedLogoPreview) URL.revokeObjectURL(selectedLogoPreview);
+            setSelectedLogoFile(null);
+            setSelectedLogoPreview(null);
+            setUploadModalOpen(false);
+            fetchLogos();
+        } catch (error) {
+            message.error(error.response?.data?.message || 'Upload failed');
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const handleSelectBackDesign = async () => {
+        if (!selectedTemplate) {
+            message.error('Please select a template');
+            return;
+        }
+
+        setSelectingDesign(true);
+        try {
+            await selectBackDesignForClass({ template_id: selectedTemplate });
+            message.success('Back design selected successfully');
+            setBackDesignModalOpen(false);
+            setSelectedTemplate(null);
+            fetchMyClass();
+            fetchCurrentBackDesign();
+        } catch (error) {
+            message.error(error.response?.data?.message || 'Selection failed');
+        } finally {
+            setSelectingDesign(false);
+        }
+    };
 
     if (!myClass && !loading) {
         return (
@@ -203,34 +245,41 @@ const MyClassPage = () => {
             </Card>
         );
     }
-    if (loading) return <Spin className="fade-in" style={{ display: 'block', margin: '24px auto' }} />; // or a spinner
+
+    if (loading) {
+        return <Spin className="fade-in" style={{ display: 'block', margin: '24px auto' }} />;
+    }
 
     return (
         <div className="fade-in">
-            <div style={{ marginBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+            {/* Header */}
+            <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
                 <div>
-                    {/* <Title level={4} style={{ margin: 0 }}>My Class: {myClass?.name}</Title> */}
-                    <Text type="secondary">Manage students and upload class design resources</Text>
+                    <Title level={4} style={{ margin: 0 }}>My Class</Title>
+                    <Text type="secondary">Manage class logos and student name list</Text>
                 </div>
                 <Space>
-                    {/* <Button
-                        type="default"
-                        icon={<UploadOutlined />}
-                        onClick={() => navigate('/upload-files')}
-                    >
-                        Upload Files
-                    </Button> */}
                     <Button
                         type="default"
                         icon={<LinkOutlined />}
                         loading={linkLoading}
                         onClick={handleGenerateRegistrationLink}
                     >
-                        Generate registration link
+                        Registration Link
+                    </Button>
+                    <Button
+                        type="primary"
+                        onClick={() => {
+                            setBackDesignModalOpen(true);
+                            fetchTemplates();
+                        }}
+                    >
+                        Select Design Template
                     </Button>
                 </Space>
             </div>
 
+            {/* Class Info Cards */}
             <Row gutter={[24, 24]} style={{ marginBottom: 24 }}>
                 <Col xs={24} sm={12} md={8}>
                     <Card className="glass-card" style={{ border: 'none' }}>
@@ -239,7 +288,7 @@ const MyClassPage = () => {
                             value={myClass?.name}
                             prefix={
                                 <div style={{
-                                    background: `#00b96b15`,
+                                    background: '#00b96b15',
                                     padding: '8px',
                                     borderRadius: '12px',
                                     display: 'flex',
@@ -250,7 +299,7 @@ const MyClassPage = () => {
                                     <TeamOutlined style={{ color: '#00b96b', fontSize: '30px' }} />
                                 </div>
                             }
-                            valueStyle={{ color: '#006d75', fontWeight: '500', textDecoration: 'capitalize', fontSize: '30px' }}
+                            valueStyle={{ color: '#006d75', fontWeight: '500', fontSize: '30px' }}
                         />
                     </Card>
                 </Col>
@@ -261,7 +310,7 @@ const MyClassPage = () => {
                             value={myClass?.school?.name}
                             prefix={
                                 <div style={{
-                                    background: `#1890ff15`,
+                                    background: '#1890ff15',
                                     padding: '8px',
                                     borderRadius: '12px',
                                     display: 'flex',
@@ -272,7 +321,7 @@ const MyClassPage = () => {
                                     <BankOutlined style={{ color: '#1890ff', fontSize: '30px' }} />
                                 </div>
                             }
-                            valueStyle={{ color: '#006d75', fontWeight: '500', textDecoration: 'capitalize', fontSize: '30px' }}
+                            valueStyle={{ color: '#006d75', fontWeight: '500', fontSize: '30px' }}
                         />
                     </Card>
                 </Col>
@@ -281,10 +330,9 @@ const MyClassPage = () => {
                         <Statistic
                             title={<span style={{ fontWeight: 500, color: '#666' }}>Graduation Year</span>}
                             value={myClass?.graduation_year}
-                            formatter={(value) => value}
                             prefix={
                                 <div style={{
-                                    background: `#722ed115`,
+                                    background: '#722ed115',
                                     padding: '8px',
                                     borderRadius: '12px',
                                     display: 'flex',
@@ -295,117 +343,280 @@ const MyClassPage = () => {
                                     <CalendarOutlined style={{ color: '#722ed1', fontSize: '30px' }} />
                                 </div>
                             }
-                            valueStyle={{ color: '#006d75', fontWeight: '500', textDecoration: 'capitalize', fontSize: '30px' }}
+                            valueStyle={{ color: '#006d75', fontWeight: '500', fontSize: '30px' }}
                         />
                     </Card>
                 </Col>
-
             </Row>
 
-            <Card className="glass-card" style={{ border: 'none' }}>
-                <Tabs defaultActiveKey="1" animated={{ inkBar: true, tabPane: true }}>
-                    <TabPane
-                        tab={<span><TeamOutlined /> Student Management</span>}
-                        key="1"
+            {/* Logo Gallery */}
+            <Card 
+                className="glass-card" 
+                style={{ border: 'none', marginBottom: 24 }}
+                title={
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>Current Back Design</span>
+                    </div>
+                }
+            >
+                {loadingCurrentDesign ? (
+                    <div style={{ textAlign: 'center', padding: 48 }}>
+                        <Spin size="large" />
+                    </div>
+                ) : !currentBackDesign ? (
+                    <Empty 
+                        description="No back design selected yet" 
+                        style={{ padding: 48 }}
+                        image={Empty.PRESENTED_IMAGE_SIMPLE}
                     >
-                        <div style={{ display: 'flex', justifyContent: 'end ', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
-                            <Input.Search
-                                placeholder="Search student name"
-                                allowClear
-                                enterButton
-                                style={{ width: 280 }}
-                                onSearch={(v) => setPagination(prev => ({ ...prev, current: 1, search: v ?? '' }))}
-                            />
-                        </div>
-                        <Table
-                            columns={columns}
-                            dataSource={students}
-                            rowKey="id"
-                            loading={loading}
-                            pagination={{
-                                current: pagination.current,
-                                pageSize: pagination.limit,
-                                total: pagination.total,
-                                showSizeChanger: true,
-                                showTotal: (total, range) =>
-                                    `Showing ${range[0]}-${range[1]} of ${total} (Page ${pagination.current} of ${pagination.totalPages})`,
-                                onChange: (page, pageSize) => {
-                                    setPagination(prev => ({
-                                        ...prev,
-                                        current: page,
-                                        limit: pageSize,
-                                    }));
-                                },
+                        <Button 
+                            type="primary"
+                            onClick={() => {
+                                setBackDesignModalOpen(true);
+                                fetchTemplates();
                             }}
-                        />
-                    </TabPane>
-                    <TabPane
-                        tab={<span><EditOutlined /> Name List</span>}
-                        key="2"
-                    >
-                        {myClass && <NameListManager classId={myClass.id} isAdmin={false} />}
-                    </TabPane>
-                </Tabs>
+                        >
+                            Select Design Template
+                        </Button>
+                    </Empty>
+                ) : (
+                    <Row gutter={[16, 16]}>
+                        <Col xs={24} md={12}>
+                            <div style={{ 
+                                padding: 16, 
+                                background: '#fafafa', 
+                                borderRadius: 8,
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center',
+                                minHeight: 300
+                            }}>
+                                <Image
+                                    src={getUploadsUrl(currentBackDesign.file_path)}
+                                    alt={currentBackDesign.name}
+                                    style={{ maxWidth: '100%', maxHeight: 400, objectFit: 'contain' }}
+                                    preview={{
+                                        mask: 'View Full Size'
+                                    }}
+                                />
+                            </div>
+                        </Col>
+                        <Col xs={24} md={12}>
+                            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                                <div>
+                                    <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>Design Name</Text>
+                                    <Text strong style={{ fontSize: 16 }}>{currentBackDesign.name}</Text>
+                                </div>
+                                <div>
+                                    <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>Type</Text>
+                                    <Tag color={currentBackDesign.is_library ? 'blue' : 'green'}>
+                                        {currentBackDesign.is_library ? 'Design Template' : 'Custom Back Design'}
+                                    </Tag>
+                                </div>
+                                <div>
+                                    <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>Status</Text>
+                                    {getStatusTag(currentBackDesign.status)}
+                                </div>
+                                <div>
+                                    <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>Created</Text>
+                                    <Text>{new Date(currentBackDesign.created_at).toLocaleDateString()}</Text>
+                                </div>
+                                <Button 
+                                    type="default"
+                                    onClick={() => {
+                                        setBackDesignModalOpen(true);
+                                        fetchTemplates();
+                                    }}
+                                    block
+                                >
+                                    Change Design Template
+                                </Button>
+                            </Space>
+                        </Col>
+                    </Row>
+                )}
             </Card>
-            {/* 
+
+            {/* Logo Gallery */}
+            <Card 
+                className="glass-card" 
+                style={{ border: 'none' }}
+                title={
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>Class Logo Gallery</span>
+                        {/* <Button
+                            type="primary"
+                            icon={<PlusOutlined />}
+                            onClick={() => setUploadModalOpen(true)}
+                        >
+                            Add Logo
+                        </Button> */}
+                    </div>
+                }
+            >
+                {logosLoading ? (
+                    <div style={{ textAlign: 'center', padding: 48 }}>
+                        <Spin size="large" />
+                    </div>
+                ) : logos.length === 0 ? (
+                    <Empty 
+                        description="No logos uploaded yet" 
+                        style={{ padding: 48 }}
+                        image={Empty.PRESENTED_IMAGE_SIMPLE}
+                    >
+                        <Button 
+                            type="primary" 
+                            icon={<PlusOutlined />}
+                            onClick={() => setUploadModalOpen(true)}
+                        >
+                            Upload First Logo
+                        </Button>
+                    </Empty>
+                ) : (
+                    <Row gutter={[16, 16]}>
+                        {logos.map((logo) => (
+                            <Col xs={12} sm={8} md={6} lg={4} key={logo.id}>
+                                <Card
+                                    hoverable
+                                    cover={
+                                        <div style={{ 
+                                            padding: 16, 
+                                            background: '#fafafa', 
+                                            height: 150, 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            justifyContent: 'center' 
+                                        }}>
+                                            <Image
+                                                src={getUploadsUrl(logo.file_path)}
+                                                alt={logo.name}
+                                                style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                                                preview={{
+                                                    mask: 'View'
+                                                }}
+                                            />
+                                        </div>
+                                    }
+                                    style={{ borderRadius: 8 }}
+                                    bodyStyle={{ padding: 12 }}
+                                >
+                                    <Tooltip title={logo.name}>
+                                        <Text strong ellipsis style={{ display: 'block', marginBottom: 8 }}>
+                                            {logo.name}
+                                        </Text>
+                                    </Tooltip>
+                                    {getStatusTag(logo.status)}
+                                </Card>
+                            </Col>
+                        ))}
+                    </Row>
+                )}
+            </Card>
+
+            {/* Upload Logo Modal */}
             <Modal
-                title={editingStudent ? "Edit Student" : "Add New Student"}
-                open={isModalOpen}
-                onCancel={() => setIsModalOpen(false)}
-                footer={null}
+                title="Upload Class Logo"
+                open={uploadModalOpen}
+                onCancel={() => {
+                    setUploadModalOpen(false);
+                    if (selectedLogoPreview) URL.revokeObjectURL(selectedLogoPreview);
+                    setSelectedLogoFile(null);
+                    setSelectedLogoPreview(null);
+                }}
+                footer={[
+                    <Button 
+                        key="cancel" 
+                        onClick={() => {
+                            setUploadModalOpen(false);
+                            if (selectedLogoPreview) URL.revokeObjectURL(selectedLogoPreview);
+                            setSelectedLogoFile(null);
+                            setSelectedLogoPreview(null);
+                        }}
+                    >
+                        Cancel
+                    </Button>,
+                    <Button
+                        key="upload"
+                        type="primary"
+                        loading={uploading}
+                        onClick={handleLogoUpload}
+                        disabled={!selectedLogoFile}
+                    >
+                        Upload Logo
+                    </Button>
+                ]}
                 destroyOnClose
             >
-                <Form
-                    form={form}
-                    layout="vertical"
-                    onFinish={handleAddEdit}
-                    style={{ marginTop: 20 }}
-                >
-                    <Form.Item
-                        name="name"
-                        label="Student Name"
-                        rules={[{ required: true, message: 'Please enter student name' }]}
-                    >
-                        <Input prefix={<UserOutlined />} placeholder="Full Name" />
-                    </Form.Item>
-                    <Form.Item
-                        name="email"
-                        label="Email"
-                        rules={[
-                            { required: true, message: 'Please enter email' },
-                            { type: 'email', message: 'Invalid email format' }
-                        ]}
-                    >
-                        <Input prefix={<MailOutlined />} placeholder="email@example.com" />
-                    </Form.Item>
-                    {!editingStudent && (
-                        <Form.Item
-                            name="password"
-                            label="Initial Password"
-                            rules={[{ required: true, message: 'Please set a password' }]}
+                <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                    <div>
+                        <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
+                            Select logo file (PNG, JPG up to 2MB)
+                        </Text>
+                        <Upload
+                            beforeUpload={handleLogoFileSelect}
+                            showUploadList={false}
+                            accept="image/*"
+                            disabled={uploading}
                         >
-                            <Input.Password placeholder="Password" />
-                        </Form.Item>
-                    )}
-                    <Form.Item style={{ textAlign: 'right', marginBottom: 0 }}>
-                        <Space>
-                            <Button onClick={() => setIsModalOpen(false)}>Cancel</Button>
-                            <Button type="primary" htmlType="submit">
-                                {editingStudent ? 'Update' : 'Create'}
+                            <Button
+                                type="dashed"
+                                icon={<InboxOutlined />}
+                                block
+                                size="large"
+                                style={{
+                                    height: 100,
+                                    borderStyle: 'dashed',
+                                    borderWidth: 2,
+                                    borderColor: selectedLogoFile ? '#00b96b' : '#d9d9d9'
+                                }}
+                            >
+                                {selectedLogoFile ? '✓ Logo Selected - Click to Change' : 'Click to Select Logo'}
                             </Button>
-                        </Space>
-                    </Form.Item>
-                </Form>
-            </Modal> */}
+                        </Upload>
+                    </div>
 
+                    {selectedLogoPreview && (
+                        <div>
+                            <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
+                                Preview
+                            </Text>
+                            <div style={{ 
+                                padding: 16, 
+                                background: '#fafafa', 
+                                borderRadius: 8, 
+                                textAlign: 'center',
+                                border: '1px solid #f0f0f0'
+                            }}>
+                                <img
+                                    src={selectedLogoPreview}
+                                    alt="Preview"
+                                    style={{ maxWidth: '100%', maxHeight: 200, objectFit: 'contain' }}
+                                />
+                            </div>
+                            <Text type="success" style={{ display: 'block', marginTop: 8, fontSize: 12 }}>
+                                ✓ {selectedLogoFile.name}
+                            </Text>
+                        </div>
+                    )}
+                </Space>
+            </Modal>
+
+            {/* Registration Link Modal */}
             <Modal
-                title="Registration link for students"
+                title="Registration Link for Students"
                 open={registrationLinkModalOpen}
                 onCancel={() => setRegistrationLinkModalOpen(false)}
                 footer={[
-                    <Button key="close" onClick={() => setRegistrationLinkModalOpen(false)}>Close</Button>,
-                    <Button key="copy" type="primary" onClick={copyRegistrationLink} disabled={!registrationLink}>
-                        Copy link
+                    <Button key="close" onClick={() => setRegistrationLinkModalOpen(false)}>
+                        Close
+                    </Button>,
+                    <Button 
+                        key="copy" 
+                        type="primary" 
+                        onClick={copyRegistrationLink} 
+                        disabled={!registrationLink}
+                    >
+                        Copy Link
                     </Button>,
                 ]}
                 destroyOnClose
@@ -419,6 +630,95 @@ const MyClassPage = () => {
                     rows={3}
                     style={{ fontFamily: 'monospace', fontSize: 12 }}
                 />
+            </Modal>
+
+            {/* Back Design Selection Modal */}
+            <Modal
+                title="Select Design Template"
+                open={backDesignModalOpen}
+                onCancel={() => {
+                    setBackDesignModalOpen(false);
+                    setSelectedTemplate(null);
+                }}
+                footer={[
+                    <Button 
+                        key="cancel" 
+                        onClick={() => {
+                            setBackDesignModalOpen(false);
+                            setSelectedTemplate(null);
+                        }}
+                    >
+                        Cancel
+                    </Button>,
+                    <Button
+                        key="select"
+                        type="primary"
+                        loading={selectingDesign}
+                        onClick={handleSelectBackDesign}
+                        disabled={!selectedTemplate}
+                    >
+                        Select Design
+                    </Button>
+                ]}
+                width={800}
+                destroyOnClose
+            >
+                {templatesLoading ? (
+                    <div style={{ textAlign: 'center', padding: 48 }}>
+                        <Spin size="large" />
+                    </div>
+                ) : templates.length === 0 ? (
+                    <Empty 
+                        description="No templates available" 
+                        style={{ padding: 48 }}
+                        image={Empty.PRESENTED_IMAGE_SIMPLE}
+                    />
+                ) : (
+                    <Row gutter={[16, 16]}>
+                        {templates.map((template) => (
+                            <Col xs={12} sm={8} md={6} key={template.id}>
+                                <Card
+                                    hoverable
+                                    onClick={() => setSelectedTemplate(template.id)}
+                                    style={{
+                                        borderRadius: 8,
+                                        border: selectedTemplate === template.id ? '2px solid #00b96b' : '1px solid #f0f0f0',
+                                        cursor: 'pointer'
+                                    }}
+                                    cover={
+                                        <div style={{ 
+                                            padding: 16, 
+                                            background: '#fafafa', 
+                                            height: 150, 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            justifyContent: 'center' 
+                                        }}>
+                                            <Image
+                                                src={getUploadsUrl(template.file_path)}
+                                                alt={template.name}
+                                                style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                                                preview={{
+                                                    mask: 'View'
+                                                }}
+                                            />
+                                        </div>
+                                    }
+                                    bodyStyle={{ padding: 12 }}
+                                >
+                                    <Tooltip title={template.name}>
+                                        <Text strong ellipsis style={{ display: 'block' }}>
+                                            {template.name}
+                                        </Text>
+                                    </Tooltip>
+                                    {selectedTemplate === template.id && (
+                                        <CheckCircleOutlined style={{ color: '#00b96b', fontSize: 20, position: 'absolute', top: 8, right: 8 }} />
+                                    )}
+                                </Card>
+                            </Col>
+                        ))}
+                    </Row>
+                )}
             </Modal>
         </div>
     );

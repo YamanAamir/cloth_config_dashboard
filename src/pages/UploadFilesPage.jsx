@@ -11,7 +11,8 @@ import {
     Row,
     Col,
     Spin,
-    Space
+    Space,
+    Modal
 } from 'antd';
 import {
     UploadOutlined,
@@ -52,7 +53,9 @@ const UploadFilesPage = () => {
     const [myDesigns, setMyDesigns] = useState([]);
     const [libraryLoading, setLibraryLoading] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [activeTab, setActiveTab] = useState('upload');
+    const [activeTab, setActiveTab] = useState('logos');
+    const [uploadModalOpen, setUploadModalOpen] = useState(false);
+    const [uploadType, setUploadType] = useState('logo'); // 'logo' or 'design'
     const [selectedLogoFile, setSelectedLogoFile] = useState(null);
     const [selectedLogoPreview, setSelectedLogoPreview] = useState(null);
     const [selectedDesignFile, setSelectedDesignFile] = useState(null);
@@ -88,11 +91,17 @@ const UploadFilesPage = () => {
 
     useEffect(() => {
         fetchMyClass();
+        return () => {
+            if (selectedLogoPreview) URL.revokeObjectURL(selectedLogoPreview);
+            if (selectedDesignPreview) URL.revokeObjectURL(selectedDesignPreview);
+        };
     }, []);
 
     useEffect(() => {
-        if (myClass && activeTab === 'library') fetchMyLibrary();
-    }, [myClass, activeTab]);
+        if (myClass) {
+            fetchMyLibrary();
+        }
+    }, [myClass]);
 
     useEffect(() => {
         return () => {
@@ -127,7 +136,11 @@ const UploadFilesPage = () => {
 
     const handleUploadClick = async (type) => {
         const file = type === 'logo' ? selectedLogoFile : selectedDesignFile;
-        if (!file) return;
+        if (!file) {
+            message.error('Please select a file');
+            return;
+        }
+        
         const formData = new FormData();
         const name = file.name ? file.name.replace(/\.[^/.]+$/, '') : (type === 'logo' ? 'logo' : 'back_design');
         formData.append('name', name);
@@ -148,13 +161,18 @@ const UploadFilesPage = () => {
                 message.success('Back design uploaded');
                 clearDesignSelection();
             }
-            fetchMyClass();
+            setUploadModalOpen(false);
             fetchMyLibrary();
         } catch (error) {
             message.error(error.response?.data?.message || 'Upload failed');
         } finally {
             setUploading(false);
         }
+    };
+
+    const openUploadModal = (type) => {
+        setUploadType(type);
+        setUploadModalOpen(true);
     };
 
     if (!myClass && !uploading) {
@@ -170,243 +188,216 @@ const UploadFilesPage = () => {
 
     return (
         <div className="fade-in">
-            <div style={{ marginBottom: 24 }}>
-                <Title level={4} style={{ margin: 0 }}>Upload Files</Title>
-                <Text type="secondary" style={{ display: 'block', marginTop: 4 }}>
-                    Select file → preview → click Upload. Files appear in My library.
-                </Text>
+            <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                    <Title level={4} style={{ margin: 0 }}>Upload Files</Title>
+                    <Text type="secondary">
+                        Manage your class logos and back designs
+                    </Text>
+                </div>
             </div>
 
-            <Tabs
-                activeKey={activeTab}
-                onChange={setActiveTab}
-                animated={{ inkBar: true, tabPane: true }}
-                size="large"
-            >
-                <TabPane
-                    tab={<span><UploadOutlined /> Upload</span>}
-                    key="upload"
+            <Card className="glass-card" style={{ border: 'none' }}>
+                <Tabs 
+                    activeKey={activeTab} 
+                    onChange={setActiveTab}
+                    tabBarExtraContent={
+                        <Button
+                            type="primary"
+                            icon={<UploadOutlined />}
+                            onClick={() => openUploadModal(activeTab === 'logos' ? 'logo' : 'design')}
+                        >
+                            {activeTab === 'logos' ? 'Add Logo' : 'Add Back Design'}
+                        </Button>
+                    }
                 >
-                    <Row gutter={[24, 24]}>
-                        <Col xs={24} lg={12}>
-                            <Card
-                                className="glass-card"
-                                style={{ border: 'none', borderRadius: 12 }}
-                                bodyStyle={{ padding: 24 }}
-                            >
-                                <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                                    <div>
-                                        <Title level={5} style={{ margin: '0 0 4px 0' }}>
-                                            <FileImageOutlined style={{ marginRight: 8, color: '#00b96b' }} />
-                                            Class Logo
-                                        </Title>
-                                        <Text type="secondary">PNG, JPG up to 2MB</Text>
-                                    </div>
-                                    <Upload
-                                        beforeUpload={(file) => handleFileSelect(file, 'logo')}
-                                        showUploadList={false}
-                                        accept="image/*"
-                                        disabled={uploading}
-                                    >
-                                        <Button
-                                            type="dashed"
-                                            icon={<InboxOutlined />}
-                                            block
-                                            size="large"
-                                            style={{
-                                                height: 100,
-                                                borderStyle: 'dashed',
-                                                borderWidth: 2,
-                                                borderRadius: 12,
-                                                borderColor: '#d9d9d9'
-                                            }}
-                                        >
-                                            Select logo (PNG, JPG up to 2MB)
-                                        </Button>
-                                    </Upload>
-                                    {selectedLogoFile && (
-                                        <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #f0f0f0' }}>
-                                            <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>Preview</Text>
-                                            <img
-                                                src={selectedLogoPreview}
-                                                alt="Preview"
-                                                style={{ maxWidth: '100%', maxHeight: 160, borderRadius: 8, border: '1px solid #f0f0f0', display: 'block' }}
-                                            />
-                                            <Space style={{ marginTop: 12 }}>
-                                                <Button
-                                                    type="primary"
-                                                    loading={uploading}
-                                                    icon={<UploadOutlined />}
-                                                    onClick={() => handleUploadClick('logo')}
-                                                >
-                                                    Upload
-                                                </Button>
-                                                <Button onClick={clearLogoSelection} disabled={uploading}>Cancel</Button>
-                                            </Space>
-                                        </div>
-                                    )}
-                                    {/* {!selectedLogoFile && myClass?.logo_path && (
-                                        <div style={{ textAlign: 'center', paddingTop: 16, borderTop: '1px solid #f0f0f0' }}>
-                                            <Tag color="success">Current logo</Tag>
-                                            <div style={{ marginTop: 12 }}>
-                                                <img
-                                                    src={getUploadsUrl(myClass.logo_path)}
-                                                    alt="Class Logo"
-                                                    style={{ maxWidth: '100%', maxHeight: 160, borderRadius: 8, border: '1px solid #f0f0f0' }}
-                                                />
-                                            </div>
-                                        </div>
-                                    )} */}
-                                </Space>
-                            </Card>
-                        </Col>
-                        <Col xs={24} lg={12}>
-                            <Card
-                                className="glass-card"
-                                style={{ border: 'none', borderRadius: 12 }}
-                                bodyStyle={{ padding: 24 }}
-                            >
-                                <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                                    <div>
-                                        <Title level={5} style={{ margin: '0 0 4px 0' }}>
-                                            <PictureOutlined style={{ marginRight: 8, color: '#00b96b' }} />
-                                            Back Design
-                                        </Title>
-                                        <Text type="secondary">PNG, JPG up to 5MB</Text>
-                                    </div>
-                                    <Upload
-                                        beforeUpload={(file) => handleFileSelect(file, 'design')}
-                                        showUploadList={false}
-                                        accept="image/*"
-                                        disabled={uploading}
-                                    >
-                                        <Button
-                                            type="dashed"
-                                            icon={<InboxOutlined />}
-                                            block
-                                            size="large"
-                                            style={{
-                                                height: 100,
-                                                borderStyle: 'dashed',
-                                                borderWidth: 2,
-                                                borderRadius: 12,
-                                                borderColor: '#d9d9d9'
-                                            }}
-                                        >
-                                            Select back design (PNG, JPG up to 5MB)
-                                        </Button>
-                                    </Upload>
-                                    {selectedDesignFile && (
-                                        <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #f0f0f0' }}>
-                                            <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>Preview</Text>
-                                            <img
-                                                src={selectedDesignPreview}
-                                                alt="Preview"
-                                                style={{ maxWidth: '100%', maxHeight: 160, borderRadius: 8, border: '1px solid #f0f0f0', display: 'block' }}
-                                            />
-                                            <Space style={{ marginTop: 12 }}>
-                                                <Button
-                                                    type="primary"
-                                                    loading={uploading}
-                                                    icon={<UploadOutlined />}
-                                                    onClick={() => handleUploadClick('design')}
-                                                >
-                                                    Upload
-                                                </Button>
-                                                <Button onClick={clearDesignSelection} disabled={uploading}>Cancel</Button>
-                                            </Space>
-                                        </div>
-                                    )}
-                                    {/* {!selectedDesignFile && myClass?.back_design_path && (
-                                        <div style={{ textAlign: 'center', paddingTop: 16, borderTop: '1px solid #f0f0f0' }}>
-                                            <Tag color="success">Current design</Tag>
-                                            <div style={{ marginTop: 12 }}>
-                                                <img
-                                                    src={getUploadsUrl(myClass.back_design_path)}
-                                                    alt="Back Design"
-                                                    style={{ maxWidth: '100%', maxHeight: 160, borderRadius: 8, border: '1px solid #f0f0f0' }}
-                                                />
-                                            </div>
-                                        </div>
-                                    )} */}
-                                </Space>
-                            </Card>
-                        </Col>
-                    </Row>
-                </TabPane>
-
-                <TabPane
-                    tab={<span><InboxOutlined /> My library</span>}
-                    key="library"
-                >
-                    <Card className="glass-card" style={{ border: 'none' }} bodyStyle={{ padding: 24 }}>
+                    <TabPane 
+                        tab={<span><FileImageOutlined /> Logos ({myLogos.length})</span>} 
+                        key="logos"
+                    >
                         {libraryLoading ? (
                             <div style={{ textAlign: 'center', padding: 48 }}>
                                 <Spin size="large" />
                             </div>
+                        ) : myLogos.length === 0 ? (
+                            <Empty 
+                                description="No logos uploaded yet" 
+                                style={{ padding: 48 }}
+                                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                            >
+                                <Button 
+                                    type="primary" 
+                                    icon={<UploadOutlined />}
+                                    onClick={() => openUploadModal('logo')}
+                                >
+                                    Upload First Logo
+                                </Button>
+                            </Empty>
                         ) : (
-                            <Tabs defaultActiveKey="logos" size="middle">
-                                <TabPane tab={`Logos (${myLogos.length})`} key="logos">
-                                    {myLogos.length === 0 ? (
-                                        <Empty description="No logos uploaded yet" style={{ padding: 32 }} />
-                                    ) : (
-                                        <Row gutter={[16, 16]}>
-                                            {myLogos.map((item) => (
-                                                <Col xs={24} sm={12} md={8} lg={6} key={item.id}>
-                                                    <Card
-                                                        size="small"
-                                                        cover={
-                                                            <div style={{ padding: 12, background: '#fafafa', minHeight: 120, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                                <img
-                                                                    src={getUploadsUrl(item.file_path)}
-                                                                    alt={item.name}
-                                                                    style={{ maxWidth: '100%', maxHeight: 120, objectFit: 'contain' }}
-                                                                />
-                                                            </div>
-                                                        }
-                                                        style={{ borderRadius: 8 }}
-                                                    >
-                                                        <Text strong ellipsis style={{ display: 'block' }}>{item.name}</Text>
-                                                        <div style={{ marginTop: 8 }}>{getStatusTag(item.status)}</div>
-                                                    </Card>
-                                                </Col>
-                                            ))}
-                                        </Row>
-                                    )}
-                                </TabPane>
-                                <TabPane tab={`Back designs (${myDesigns.length})`} key="designs">
-                                    {myDesigns.length === 0 ? (
-                                        <Empty description="No back designs uploaded yet" style={{ padding: 32 }} />
-                                    ) : (
-                                        <Row gutter={[16, 16]}>
-                                            {myDesigns.map((item) => (
-                                                <Col xs={24} sm={12} md={8} lg={6} key={item.id}>
-                                                    <Card
-                                                        size="small"
-                                                        cover={
-                                                            <div style={{ padding: 12, background: '#fafafa', minHeight: 120, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                                <img
-                                                                    src={getUploadsUrl(item.file_path)}
-                                                                    alt={item.name}
-                                                                    style={{ maxWidth: '100%', maxHeight: 120, objectFit: 'contain' }}
-                                                                />
-                                                            </div>
-                                                        }
-                                                        style={{ borderRadius: 8 }}
-                                                    >
-                                                        <Text strong ellipsis style={{ display: 'block' }}>{item.name}</Text>
-                                                        <div style={{ marginTop: 8 }}>{getStatusTag(item.status)}</div>
-                                                    </Card>
-                                                </Col>
-                                            ))}
-                                        </Row>
-                                    )}
-                                </TabPane>
-                            </Tabs>
+                            <Row gutter={[16, 16]}>
+                                {myLogos.map((item) => (
+                                    <Col xs={12} sm={8} md={6} lg={4} key={item.id}>
+                                        <Card
+                                            hoverable
+                                            cover={
+                                                <div style={{ padding: 12, background: '#fafafa', minHeight: 120, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                    <img
+                                                        src={getUploadsUrl(item.file_path)}
+                                                        alt={item.name}
+                                                        style={{ maxWidth: '100%', maxHeight: 120, objectFit: 'contain' }}
+                                                    />
+                                                </div>
+                                            }
+                                            style={{ borderRadius: 8 }}
+                                        >
+                                            <Text strong ellipsis style={{ display: 'block' }}>{item.name}</Text>
+                                            <div style={{ marginTop: 8 }}>{getStatusTag(item.status)}</div>
+                                        </Card>
+                                    </Col>
+                                ))}
+                            </Row>
                         )}
-                    </Card>
-                </TabPane>
-            </Tabs>
+                    </TabPane>
+                    
+                    <TabPane 
+                        tab={<span><PictureOutlined /> Back Designs ({myDesigns.length})</span>} 
+                        key="designs"
+                    >
+                        {libraryLoading ? (
+                            <div style={{ textAlign: 'center', padding: 48 }}>
+                                <Spin size="large" />
+                            </div>
+                        ) : myDesigns.length === 0 ? (
+                            <Empty 
+                                description="No back designs uploaded yet" 
+                                style={{ padding: 48 }}
+                                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                            >
+                                <Button 
+                                    type="primary" 
+                                    icon={<UploadOutlined />}
+                                    onClick={() => openUploadModal('design')}
+                                >
+                                    Upload First Back Design
+                                </Button>
+                            </Empty>
+                        ) : (
+                            <Row gutter={[16, 16]}>
+                                {myDesigns.map((item) => (
+                                    <Col xs={12} sm={8} md={6} lg={4} key={item.id}>
+                                        <Card
+                                            hoverable
+                                            cover={
+                                                <div style={{ padding: 12, background: '#fafafa', minHeight: 120, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                    <img
+                                                        src={getUploadsUrl(item.file_path)}
+                                                        alt={item.name}
+                                                        style={{ maxWidth: '100%', maxHeight: 120, objectFit: 'contain' }}
+                                                    />
+                                                </div>
+                                            }
+                                            style={{ borderRadius: 8 }}
+                                        >
+                                            <Text strong ellipsis style={{ display: 'block' }}>{item.name}</Text>
+                                            <div style={{ marginTop: 8 }}>{getStatusTag(item.status)}</div>
+                                        </Card>
+                                    </Col>
+                                ))}
+                            </Row>
+                        )}
+                    </TabPane>
+                </Tabs>
+            </Card>
+
+            {/* Upload Modal */}
+            <Modal
+                title={uploadType === 'logo' ? 'Upload Logo' : 'Upload Back Design'}
+                open={uploadModalOpen}
+                onCancel={() => {
+                    setUploadModalOpen(false);
+                    clearLogoSelection();
+                    clearDesignSelection();
+                }}
+                footer={[
+                    <Button 
+                        key="cancel" 
+                        onClick={() => {
+                            setUploadModalOpen(false);
+                            clearLogoSelection();
+                            clearDesignSelection();
+                        }}
+                    >
+                        Cancel
+                    </Button>,
+                    <Button
+                        key="upload"
+                        type="primary"
+                        loading={uploading}
+                        onClick={() => handleUploadClick(uploadType)}
+                        disabled={uploadType === 'logo' ? !selectedLogoFile : !selectedDesignFile}
+                    >
+                        Upload
+                    </Button>
+                ]}
+                destroyOnClose
+            >
+                <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                    <div>
+                        <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
+                            {uploadType === 'logo' 
+                                ? 'Select logo file (PNG, JPG up to 2MB)' 
+                                : 'Select back design file (PNG, JPG up to 5MB)'}
+                        </Text>
+                        <Upload
+                            beforeUpload={(file) => handleFileSelect(file, uploadType)}
+                            showUploadList={false}
+                            accept="image/*"
+                            disabled={uploading}
+                        >
+                            <Button
+                                type="dashed"
+                                icon={<InboxOutlined />}
+                                block
+                                size="large"
+                                style={{
+                                    height: 100,
+                                    borderStyle: 'dashed',
+                                    borderWidth: 2,
+                                    borderColor: (uploadType === 'logo' ? selectedLogoFile : selectedDesignFile) ? '#00b96b' : '#d9d9d9'
+                                }}
+                            >
+                                {(uploadType === 'logo' ? selectedLogoFile : selectedDesignFile) 
+                                    ? '✓ File Selected - Click to Change' 
+                                    : 'Click to Select File'}
+                            </Button>
+                        </Upload>
+                    </div>
+
+                    {((uploadType === 'logo' && selectedLogoPreview) || (uploadType === 'design' && selectedDesignPreview)) && (
+                        <div>
+                            <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
+                                Preview
+                            </Text>
+                            <div style={{ 
+                                padding: 16, 
+                                background: '#fafafa', 
+                                borderRadius: 8, 
+                                textAlign: 'center',
+                                border: '1px solid #f0f0f0'
+                            }}>
+                                <img
+                                    src={uploadType === 'logo' ? selectedLogoPreview : selectedDesignPreview}
+                                    alt="Preview"
+                                    style={{ maxWidth: '100%', maxHeight: 200, objectFit: 'contain' }}
+                                />
+                            </div>
+                            <Text type="success" style={{ display: 'block', marginTop: 8, fontSize: 12 }}>
+                                ✓ {(uploadType === 'logo' ? selectedLogoFile : selectedDesignFile)?.name}
+                            </Text>
+                        </div>
+                    )}
+                </Space>
+            </Modal>
         </div>
     );
 };

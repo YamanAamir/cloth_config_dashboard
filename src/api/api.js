@@ -23,6 +23,7 @@ export const toggleClassRepStatus = (id, data) => api.patch(`/admin/class-rep/${
 
 // Class APIs
 export const getAllClasses = (params = {}) => api.post('/admin/classes', params);
+export const getAllOrders = (params = {}) => api.get('/admin/orders/list', params);
 export const createClass = (data) => api.post('/admin/class/create', data);
 export const updateClass = (id, data) => api.put(`/admin/class/${id}/update`, data);
 export const deleteClass = (id) => api.delete(`/admin/class/${id}/delete`);
@@ -36,6 +37,12 @@ export const rejectLogo = (logoId, body = {}) => api.put(`/admin/reject-logo/${l
 export const getAllBackDesigns = (params = {}) => api.post('/admin/back-designs', params);
 export const approveBackDesign = (id) => api.put(`/admin/approve-back-design/${id}`);
 export const rejectBackDesign = (id) => api.put(`/admin/reject-back-design/${id}`);
+
+// Back Design Templates (Library) - Admin
+export const getAllBackDesignTemplates = (params = {}) => api.post('/admin/back-design-templates', params);
+export const uploadBackDesignTemplate = (formData) => apiFormdata.post('/admin/back-design-templates/upload', formData);
+export const deleteBackDesignTemplate = (id) => api.delete(`/admin/back-design-templates/${id}`);
+export const getClassBackDesign = (classId) => api.get(`/admin/class/${classId}/back-design`);
 
 // Name List APIs (Admin)
 export const getAllNameLists = (params = {}) => api.get('/admin/namelist/list', { params });
@@ -54,6 +61,7 @@ export const uploadLogo = (formData) => apiFormdata.post('/class-rep/upload-logo
 export const uploadBackDesign = (formData) => apiFormdata.post('/class-rep/upload-back-design', formData);
 export const getMyLogos = (params = {}) => api.post('/class-rep/my-logos', params);
 export const getMyBackDesigns = (params = {}) => api.post('/class-rep/my-back-designs', params);
+export const selectBackDesignForClass = (data) => api.post('/class-rep/select-back-design', data);
 
 // Name List APIs (Class Rep)
 export const getNameList = () => api.get('/class-rep/name-list');
@@ -63,3 +71,6 @@ export const updateNameListItem = (itemId, data) => api.put(`/class-rep/namelist
 export const reorderNameListItems = (nameListId, items) => api.put(`/class-rep/namelist/reorder/${nameListId}`, { items });
 export const markNameListReady = (nameListId) => api.put(`/class-rep/namelist/${nameListId}/ready`);
 export const deleteNameListItem = (itemId) => api.delete(`/class-rep/namelist/item/${itemId}`);
+
+// Order Details API
+export const getOrderDetails = (orderId) => api.get(`/admin/orders/${orderId}/details`);

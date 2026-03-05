@@ -16,6 +16,10 @@ import MyClassPage from './pages/MyClassPage';
 import UploadFilesPage from './pages/UploadFilesPage';
 import NameListReviewPage from './pages/NameListReviewPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import OrderList from './pages/OrderList';
+import BackDesignConfiguratorPage from './pages/BackDesignConfiguratorPage';
+import NameListPage from './pages/NameListPage';
+import BackDesignTemplatesPage from './pages/BackDesignTemplatesPage';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
@@ -85,6 +89,14 @@ const AppRoutes = () => {
           }
         />
         <Route
+          path="design-templates"
+          element={
+            <ProtectedRoute allowedRoles={[Role.ADMIN]}>
+              <BackDesignTemplatesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="name-list"
           element={
             <ProtectedRoute allowedRoles={[Role.ADMIN]}>
@@ -105,6 +117,30 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={[Role.CLASS_REPRESENTATIVE]}>
               <UploadFilesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="namelist"
+          element={
+            <ProtectedRoute allowedRoles={[Role.CLASS_REPRESENTATIVE]}>
+              <NameListPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="back-design-configurator"
+          element={
+            <ProtectedRoute allowedRoles={[Role.CLASS_REPRESENTATIVE]}>
+              <BackDesignConfiguratorPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="orders-list"
+          element={
+            <ProtectedRoute allowedRoles={[Role.ADMIN]}>
+              <OrderList />
             </ProtectedRoute>
           }
         />
