@@ -81,7 +81,9 @@ const UploadFilesPage = () => {
                 getMyBackDesigns({ page: 1, limit: 50 })
             ]);
             setMyLogos(logoRes.data?.data ?? []);
-            setMyDesigns(designRes.data?.data ?? []);
+            // Only show designs NOT from configurator (direct uploads)
+            const filteredDesigns = designRes.data?.data?.filter(design => design.isFromConfigurator !== true) ?? [];
+            setMyDesigns(filteredDesigns);
         } catch (error) {
             message.error('Failed to load your uploads');
         } finally {
@@ -297,7 +299,8 @@ const UploadFilesPage = () => {
                                                 </div>
                                             }
                                             style={{ borderRadius: 8 }}
-                                        >
+                                            >
+                                            {console.log(getUploadsUrl(item.file_path))}
                                             <Text strong ellipsis style={{ display: 'block' }}>{item.name}</Text>
                                             <div style={{ marginTop: 8 }}>{getStatusTag(item.status)}</div>
                                         </Card>

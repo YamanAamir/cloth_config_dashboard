@@ -19,7 +19,7 @@ import {
     Image,
     List,
 } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, TeamOutlined, BankOutlined, CalendarOutlined, UserAddOutlined, EyeOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, TeamOutlined, BankOutlined, CalendarOutlined, UserAddOutlined, EyeOutlined, HistoryOutlined } from '@ant-design/icons';
 import {
     getAllClasses,
     createClass,
@@ -30,7 +30,8 @@ import {
     getAllClassReps,
     assignClassRep,
     getAllOrders,
-    getOrderDetails
+    getOrderDetails,
+    getOrderHistory,
 } from '../api/api';
 import { Status } from '../utils/constants';
 
@@ -49,6 +50,9 @@ const OrderList = () => {
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
     const [drawerLoading, setDrawerLoading] = useState(false);
+    const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false);
+    const [orderHistory, setOrderHistory] = useState([]);
+    const [historyLoading, setHistoryLoading] = useState(false);
     const [form] = Form.useForm();
     const [assignForm] = Form.useForm();
     const [pagination, setPagination] = useState({
@@ -154,6 +158,20 @@ const OrderList = () => {
             setIsDrawerOpen(false);
         } finally {
             setDrawerLoading(false);
+        }
+    };
+
+    const handleViewHistory = async (orderId) => {
+        setHistoryLoading(true);
+        setHistoryDrawerOpen(true);
+        try {
+            const response = await getOrderHistory(orderId);
+            setOrderHistory(response.data.data || []);
+        } catch (error) {
+            message.error('Failed to fetch order history');
+            setHistoryDrawerOpen(false);
+        } finally {
+            setHistoryLoading(false);
         }
     };
 
@@ -263,6 +281,11 @@ const OrderList = () => {
                         type="text"
                         icon={<EyeOutlined style={{ color: '#00b96b' }} />}
                         onClick={() => handleView(record)}
+                    />
+                    <Button
+                        type="text"
+                        icon={<HistoryOutlined style={{ color: '#1890ff' }} />}
+                        onClick={() => handleViewHistory(record.id)}
                     />
                 </Space>
             ),
@@ -524,6 +547,87 @@ const OrderList = () => {
                             )}
                         />
                     </div>
+                )}
+            </Drawer>
+
+            {/* Order History Drawer */}
+            <Drawer
+                title="Order History & Versions"
+                placement="right"
+                width={700}
+                onClose={() => setHistoryDrawerOpen(false)}
+                open={historyDrawerOpen}
+                loading={historyLoading}
+            >
+                {orderHistory.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: 40 }}>
+                        <HistoryOutlined style={{ fontSize: 48, color: '#d9d9d9', marginBottom: 16 }} />
+                        <div style={{ color: '#999' }}>No history available</div>
+                    </div>
+                ) : (
+                    <List
+                        dataSource={orderHistory}
+                        renderItem={(item) => (
+                            <List.Item key={item.id}>
+                                <Card style={{ width: '100%' }} size="small">
+                                    <Space direction="vertical" style={{ width: '100%' }} size="small">
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <Space>
+                                                <Tag color="blue">Version {item.version}</Tag>
+                                                <Tag color={item.action === 'created' ? 'green' : 'orange'}>
+                                                    {item.action.toUpperCase()}
+                                                </Tag>
+                                            </Space>
+                                            <Text type="secondary" style={{ fontSize: 12 }}>
+                                                {new Date(item.created_at).toLocaleString()}
+                                            </Text>
+                                        </div>
+                                        
+                                        {item.changes_summary && (
+                                            <Text type="secondary" style={{ fontSize: 12 }}>
+                                                {item.changes_summary}
+                                            </Text>
+                                        )}
+                                        
+                                        <Divider style={{ margin: '8px 0' }} />
+                                        
+                                        <Descriptions size="small" column={1} bordered>
+                                            <Descriptions.Item label="Changed By">
+                                                User ID: {item.changed_by}
+                                            </Descriptions.Item>
+                                            <Descriptions.Item label="Items Count">
+                                                {item.items_snapshot?.length || 0} item(s)
+                                            </Descriptions.Item>
+                                            {item.order_snapshot?.delivery_details && (
+                                                <Descriptions.Item label="Delivery">
+                                                    {typeof item.order_snapshot.delivery_details === 'string' 
+                                                        ? JSON.parse(item.order_snapshot.delivery_details).city 
+                                                        : item.order_snapshot.delivery_details.city}
+                                                </Descriptions.Item>
+                                            )}
+                                        </Descriptions>
+                                        
+                                        {item.items_snapshot && item.items_snapshot.length > 0 && (
+                                            <div style={{ marginTop: 8 }}>
+                                                <Text strong style={{ fontSize: 12 }}>Items in this version:</Text>
+                                                <List
+                                                    size="small"
+                                                    dataSource={item.items_snapshot}
+                                                    renderItem={(orderItem) => (
+                                                        <List.Item style={{ padding: '4px 0' }}>
+                                                            <Text style={{ fontSize: 11 }}>
+                                                                • {orderItem.product_type} - {orderItem.selectedColor} ({orderItem.selectedSize})
+                                                            </Text>
+                                                        </List.Item>
+                                                    )}
+                                                />
+                                            </div>
+                                        )}
+                                    </Space>
+                                </Card>
+                            </List.Item>
+                        )}
+                    />
                 )}
             </Drawer>
         </div>

@@ -125,6 +125,16 @@ const SchoolsPage = () => {
             render: (type) => <Tag color="blue">{type}</Tag>
         },
         {
+            title: 'Classes',
+            dataIndex: 'class_count',
+            key: 'class_count',
+            render: (count) => (
+                <Tag color="cyan" style={{ fontSize: 13, padding: '2px 8px' }}>
+                    {count || 0}
+                </Tag>
+            ),
+        },
+        {
             title: 'Created At',
             dataIndex: 'created_at',
             key: 'created_at',

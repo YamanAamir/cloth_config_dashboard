@@ -42,7 +42,7 @@ export const rejectBackDesign = (id) => api.put(`/admin/reject-back-design/${id}
 export const getAllBackDesignTemplates = (params = {}) => api.post('/admin/back-design-templates', params);
 export const uploadBackDesignTemplate = (formData) => apiFormdata.post('/admin/back-design-templates/upload', formData);
 export const deleteBackDesignTemplate = (id) => api.delete(`/admin/back-design-templates/${id}`);
-export const getClassBackDesign = (classId) => api.get(`/admin/class/${classId}/back-design`);
+export const getClassBackDesign = (classId) => api.get(`/class-rep/class/${classId}/configurator-back-design`);
 
 // Name List APIs (Admin)
 export const getAllNameLists = (params = {}) => api.get('/admin/namelist/list', { params });
@@ -59,8 +59,10 @@ export const updateStudent = (id, data) => api.put(`/rep/student/${id}/update`, 
 export const deleteStudent = (id) => api.delete(`/rep/student/${id}/delete`);
 export const uploadLogo = (formData) => apiFormdata.post('/class-rep/upload-logo', formData);
 export const uploadBackDesign = (formData) => apiFormdata.post('/class-rep/upload-back-design', formData);
+export const updateBackDesign = (id, formData) => apiFormdata.post(`/class-rep/upload-back-design/${id}`, formData);
 export const getMyLogos = (params = {}) => api.post('/class-rep/my-logos', params);
-export const getMyBackDesigns = (params = {}) => api.post('/class-rep/my-back-designs', params);
+export const getMyBackDesigns = (params = {}) => api.post('/class-rep/back-designs', params);
+export const getConfiguratorBackDesign = () => api.get('/class-rep/configurator-back-design');
 export const selectBackDesignForClass = (data) => api.post('/class-rep/select-back-design', data);
 
 // Name List APIs (Class Rep)
@@ -74,3 +76,4 @@ export const deleteNameListItem = (itemId) => api.delete(`/class-rep/namelist/it
 
 // Order Details API
 export const getOrderDetails = (orderId) => api.get(`/admin/orders/${orderId}/details`);
+export const getOrderHistory = (orderId) => api.get(`/admin/orders/${orderId}/history`);

@@ -1,35 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-    Card,
-    Typography,
-    Button,
-    Upload,
-    Input,
-    message,
-    Space,
-    Spin,
-    ColorPicker,
-    Select,
-    Row,
-    Col,
-    Divider,
-    Slider,
-    Tooltip,
-    Empty
+    Card, Typography, Button, message, Space, Spin, ColorPicker, Select,
+    Row, Col, Divider, Input, Empty, Tooltip
 } from 'antd';
 import {
-    PlusOutlined,
-    SaveOutlined,
-    InboxOutlined,
-    DeleteOutlined,
-    LockOutlined,
-    UnlockOutlined,
-    UndoOutlined,
-    ExpandOutlined,
-    FullscreenOutlined,
-    FullscreenExitOutlined
+    PlusOutlined, SaveOutlined, InboxOutlined, DeleteOutlined,
+    LockOutlined, UnlockOutlined, UndoOutlined, PlusCircleOutlined, MinusCircleOutlined
 } from '@ant-design/icons';
-import { getMyClass, uploadBackDesign, getMyBackDesigns } from '../api/api';
+import { getMyClass, uploadBackDesign, updateBackDesign, getMyBackDesigns, getConfiguratorBackDesign } from '../api/api';
 import { getUploadsUrl } from '../utils/constants';
 
 const { Title, Text } = Typography;
@@ -40,12 +18,14 @@ const BackDesignConfiguratorPage = () => {
     const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
 
-    // Back designs gallery
+    // Back designs
     const [backDesigns, setBackDesigns] = useState([]);
     const [designsLoading, setDesignsLoading] = useState(false);
     const [showGallery, setShowGallery] = useState(true);
+    const [existingConfiguratorDesign, setExistingConfiguratorDesign] = useState(null);
+    const [isEditMode, setIsEditMode] = useState(false);
 
-    // Image state
+    // Selected design
     const [selectedImage, setSelectedImage] = useState(null);
     const [imagePreview, setImagePreview] = useState(null);
     const [selectedDesignId, setSelectedDesignId] = useState(null);
@@ -57,60 +37,23 @@ const BackDesignConfiguratorPage = () => {
     const [currentColor, setCurrentColor] = useState('#000000');
     const [currentFontFamily, setCurrentFontFamily] = useState('Arial');
     const [selectedTextId, setSelectedTextId] = useState(null);
+    const user = localStorage.getItem("user");
+    const classId = user ? JSON.parse(user)?.class_id : null;
 
-    // Drag state
+    // Dragging
     const [isDragging, setIsDragging] = useState(false);
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
     const canvasRef = useRef(null);
-    const containerRef = useRef(null);
 
     useEffect(() => {
         fetchMyClass();
+        fetchConfiguratorDesign(); // Check if configurator design exists
         fetchBackDesigns();
-        return () => {
-            if (imagePreview) URL.revokeObjectURL(imagePreview);
-        };
+        return () => { if (imagePreview) URL.revokeObjectURL(imagePreview); };
     }, []);
 
-    const fetchBackDesigns = async () => {
-        setDesignsLoading(true);
-        try {
-            const response = await getMyBackDesigns({ page: 1, limit: 50 });
-            setBackDesigns(response.data?.data ?? []);
-        } catch (error) {
-            message.error('Failed to load back designs');
-        } finally {
-            setDesignsLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        if (imagePreview) {
-            drawCanvas();
-
-            // Auto-save draft
-            if (textElements.length > 0) {
-                saveDesignToLocalStorage();
-            }
-
-            // Send updated design to iframe in real-time
-            setTimeout(() => {
-                const canvas = canvasRef.current;
-                if (canvas) {
-                    const backDesignBase64 = canvas.toDataURL('image/png');
-                    ['preview-iframe', 'preview-iframe2'].forEach((id) => {
-                        const iframe = document.getElementById(id);
-                        if (iframe?.contentWindow) {
-                            const msg = `T-Shirt:backDesign: ${backDesignBase64}`;
-                            iframe.contentWindow.postMessage(msg, '*');
-                        }
-                    });
-                }
-            }, 100);
-        }
-    }, [imagePreview, textElements, selectedTextId]);
-
+    // Fetch user class
     const fetchMyClass = async () => {
         setLoading(true);
         try {
@@ -123,282 +66,187 @@ const BackDesignConfiguratorPage = () => {
         }
     };
 
-    const handleDesignSelect = (design) => {
+    // Fetch back designs
+    const fetchBackDesigns = async () => {
+        setDesignsLoading(true);
+        try {
+            const response = await getMyBackDesigns({ limit: 100 });
+            if (response.data?.success && response.data?.data) {
+                // Only show approved library designs in gallery
+                const libraryDesigns = response.data.data.filter(
+                    design => design.isFromConfigurator !== true && design.process_status === 'approved'
+                );
+                setBackDesigns(libraryDesigns);
+            } else setBackDesigns([]);
+        } catch (error) {
+            message.error('Failed to load back designs');
+            setBackDesigns([]);
+        } finally {
+            setDesignsLoading(false);
+        }
+    };
+
+    // Fetch existing configurator design
+    const fetchConfiguratorDesign = async () => {
+        try {
+            const response = await getClassBackDesign(classId);
+            if (response.data?.success && response.data?.data) {
+                const design = response.data.data;
+                setExistingConfiguratorDesign(design);
+                setIsEditMode(true);
+                loadDesignForEditing(design);
+            }
+        } catch (error) {
+            // No existing design, that's fine
+            console.log('No existing configurator design');
+        }
+    };
+
+    // Load a design to edit
+    const loadDesignForEditing = (design) => {
         const imageUrl = getUploadsUrl(design.file_path);
         setSelectedDesignId(design.id);
         setImagePreview(imageUrl);
-        setShowGallery(false);
 
-        // Load image to set as selectedImage for canvas
         fetch(imageUrl)
-            .then(res => res.blob())
+            .then(res => { if (!res.ok) throw new Error(res.statusText); return res.blob(); })
             .then(blob => {
-                const file = new File([blob], design.name, { type: 'image/png' });
-                setSelectedImage(file);
+                setSelectedImage(new File([blob], design.name, { type: 'image/png' }));
+                message.success('Design loaded! You can now add or edit text.');
             })
-            .catch(error => {
-                console.error('Error loading image:', error);
-                message.error('Failed to load image');
+            .catch(error => message.error(`Failed to load image: ${error.message}`));
+
+        setShowGallery(false);
+    };
+
+    // Canvas draw
+    useEffect(() => {
+        if (!canvasRef.current || !imagePreview) return;
+
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+            canvas.width = 800;
+            canvas.height = 800;
+            const scale = Math.max(canvas.width / img.width, canvas.height / img.height);
+            const x = (canvas.width / 2) - (img.width / 2) * scale;
+            const y = (canvas.height / 2) - (img.height / 2) * scale;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+
+            textElements.forEach(el => {
+                ctx.save();
+                ctx.translate(el.x, el.y);
+                ctx.rotate((el.rotation * Math.PI) / 180);
+                ctx.font = `${el.fontSize}px ${el.fontFamily}`;
+                ctx.fillStyle = el.color;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(el.text, 0, 0);
+                ctx.restore();
             });
-    };
+        };
+        img.src = imagePreview;
+    }, [imagePreview, textElements]);
 
-    const handleImageSelect = (file) => {
-        const isImage = file.type.startsWith('image/');
-        if (!isImage) {
-            message.error('Please select an image file');
-            return false;
-        }
-
-        const isLt5M = file.size / 1024 / 1024 < 5;
-        if (!isLt5M) {
-            message.error('Image must be smaller than 5MB');
-            return false;
-        }
-
-        if (imagePreview) URL.revokeObjectURL(imagePreview);
-        setSelectedImage(file);
-        setImagePreview(URL.createObjectURL(file));
-        setTextElements([]);
-        setSelectedTextId(null);
-        return false;
-    };
-
+    // Add new text
     const handleAddText = () => {
-        if (!currentText.trim()) {
-            message.warning('Please enter text');
-            return;
-        }
-
-        const newTextElement = {
+        if (!currentText.trim()) return message.warning('Please enter text');
+        const newText = {
             id: Date.now(),
             text: currentText,
             fontSize: currentFontSize,
             color: currentColor,
             fontFamily: currentFontFamily,
             x: 400,
-            y: 100 + (textElements.length * 50),
+            y: 100 + textElements.length * 50,
             rotation: 0,
             locked: false
         };
-
-        setTextElements([...textElements, newTextElement]);
+        setTextElements([...textElements, newText]);
         setCurrentText('');
-        message.success('Text added! Drag to reposition');
     };
 
+    // Remove text
     const handleRemoveText = (id) => {
         setTextElements(textElements.filter(el => el.id !== id));
         if (selectedTextId === id) setSelectedTextId(null);
-        message.success('Text removed');
     };
 
-    const toggleLock = (id) => {
-        setTextElements(textElements.map(el =>
-            el.id === id ? { ...el, locked: !el.locked } : el
-        ));
-    };
-
-    const rotateText = (id) => {
-        setTextElements(textElements.map(el =>
-            el.id === id ? { ...el, rotation: (el.rotation + 45) % 360 } : el
-        ));
-    };
-
-    const resizeText = (id, delta) => {
-        setTextElements(textElements.map(el =>
-            el.id === id ? { ...el, fontSize: Math.max(16, Math.min(72, el.fontSize + delta)) } : el
-        ));
-    };
-
+    // Drag handlers
     const handleCanvasMouseDown = (e) => {
         if (!canvasRef.current) return;
-
         const canvas = canvasRef.current;
         const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
-        const x = (e.clientX - rect.left) * scaleX;
-        const y = (e.clientY - rect.top) * scaleY;
+        const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+        const y = (e.clientY - rect.top) * (canvas.height / rect.height);
 
-        // Check if clicked on any text
-        const ctx = canvas.getContext('2d');
         for (let i = textElements.length - 1; i >= 0; i--) {
-            const element = textElements[i];
-            if (element.locked) continue;
-
-            ctx.font = `${element.fontSize}px ${element.fontFamily}`;
-            const metrics = ctx.measureText(element.text);
+            const el = textElements[i];
+            if (el.locked) continue;
+            const ctx = canvas.getContext('2d');
+            ctx.font = `${el.fontSize}px ${el.fontFamily}`;
+            const metrics = ctx.measureText(el.text);
             const textWidth = metrics.width;
-            const textHeight = element.fontSize;
-
-            if (
-                x >= element.x - textWidth / 2 &&
-                x <= element.x + textWidth / 2 &&
-                y >= element.y - textHeight / 2 &&
-                y <= element.y + textHeight / 2
-            ) {
-                setSelectedTextId(element.id);
+            const textHeight = el.fontSize;
+            if (x >= el.x - textWidth / 2 && x <= el.x + textWidth / 2 &&
+                y >= el.y - textHeight / 2 && y <= el.y + textHeight / 2) {
+                setSelectedTextId(el.id);
                 setIsDragging(true);
-                setDragOffset({
-                    x: x - element.x,
-                    y: y - element.y
-                });
+                setDragOffset({ x: x - el.x, y: y - el.y });
                 return;
             }
         }
-
         setSelectedTextId(null);
     };
 
     const handleCanvasMouseMove = (e) => {
         if (!isDragging || !selectedTextId || !canvasRef.current) return;
-
         const canvas = canvasRef.current;
         const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
-        const x = (e.clientX - rect.left) * scaleX;
-        const y = (e.clientY - rect.top) * scaleY;
-
-        setTextElements(textElements.map(el =>
-            el.id === selectedTextId ? {
-                ...el,
-                x: x - dragOffset.x,
-                y: y - dragOffset.y
-            } : el
-        ));
+        const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+        const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+        setTextElements(textElements.map(el => el.id === selectedTextId ? { ...el, x: x - dragOffset.x, y: y - dragOffset.y } : el));
     };
 
-    const handleCanvasMouseUp = () => {
-        setIsDragging(false);
-    };
+    const handleCanvasMouseUp = () => setIsDragging(false);
 
-    const drawCanvas = () => {
-        const canvas = canvasRef.current;
-        if (!canvas || !imagePreview) return;
-
-        const ctx = canvas.getContext('2d');
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        img.onload = () => {
-            canvas.width = 800;
-            canvas.height = 800;
-
-            const scale = Math.max(canvas.width / img.width, canvas.height / img.height);
-            const x = (canvas.width / 2) - (img.width / 2) * scale;
-            const y = (canvas.height / 2) - (img.height / 2) * scale;
-            ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
-
-            textElements.forEach(element => {
-                ctx.save();
-                ctx.translate(element.x, element.y);
-                ctx.rotate((element.rotation * Math.PI) / 180);
-
-                ctx.font = `${element.fontSize}px ${element.fontFamily}`;
-                ctx.fillStyle = element.color;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-
-                ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-                ctx.shadowBlur = 4;
-                ctx.shadowOffsetX = 2;
-                ctx.shadowOffsetY = 2;
-
-                ctx.fillText(element.text, 0, 0);
-
-                ctx.shadowColor = 'transparent';
-                ctx.shadowBlur = 0;
-                ctx.shadowOffsetX = 0;
-                ctx.shadowOffsetY = 0;
-
-                ctx.restore();
-            });
-        };
-
-        img.src = imagePreview;
-    };
-
-    const saveDesignToLocalStorage = () => {
-        if (!selectedImage || textElements.length === 0) return;
-
-        const designData = {
-            textElements,
-            imageName: selectedImage.name,
-            timestamp: Date.now()
-        };
-
-        localStorage.setItem('backDesignDraft', JSON.stringify(designData));
-    };
-
-    const loadDesignFromLocalStorage = () => {
-        const saved = localStorage.getItem('backDesignDraft');
-        if (saved) {
-            try {
-                const designData = JSON.parse(saved);
-                setTextElements(designData.textElements || []);
-                message.success('Draft loaded');
-            } catch (error) {
-                console.error('Failed to load draft:', error);
-            }
-        }
-    };
-
+    // Submit design
     const handleSubmit = async () => {
-        if (!selectedImage) {
-            message.error('Please select an image');
-            return;
-        }
-
-        if (textElements.length === 0) {
-            message.warning('Add at least one text element');
-            return;
-        }
-
+        if (!selectedImage) return message.error('Select an image first');
+        if (textElements.length === 0) return message.warning('Add at least one text element');
         setUploading(true);
-
         try {
             const canvas = canvasRef.current;
-
-            const blob = await new Promise((resolve) => {
-                canvas.toBlob(resolve, 'image/png');
-            });
-
-            const backDesignBase64 = canvas.toDataURL('image/png');
-
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
             const formData = new FormData();
-            const fileName = selectedImage.name
-                ? selectedImage.name.replace(/\.[^/.]+$/, '')
-                : 'back_design';
-
+            const fileName = selectedImage.name.replace(/\.[^/.]+$/, '');
             formData.append('name', `${fileName}_configured`);
             formData.append('backDesign', blob, `${fileName}_configured.png`);
-
-            const response = await uploadBackDesign(formData);
-
-            message.success(response.data?.message || 'Back design saved successfully!');
-
-            ['preview-iframe', 'preview-iframe2'].forEach((id) => {
-                const iframe = document.getElementById(id);
-                if (iframe?.contentWindow) {
-                    const msg = `T-Shirt:backDesign: ${backDesignBase64}`;
-                    iframe.contentWindow.postMessage(msg, '*');
-                }
-            });
-
-            localStorage.removeItem('backDesignDraft');
-
-            if (imagePreview) URL.revokeObjectURL(imagePreview);
-
+            formData.append('isFromConfigurator', 'true');
+            
+            let response;
+            if (isEditMode && existingConfiguratorDesign?.id) {
+                // Update existing design
+                response = await updateBackDesign(existingConfiguratorDesign.id, formData);
+                message.success(response.data?.message || 'Back design updated successfully!');
+            } else {
+                // Create new design
+                response = await uploadBackDesign(formData);
+                message.success(response.data?.message || 'Back design saved successfully!');
+            }
+            
             setSelectedImage(null);
             setImagePreview(null);
             setTextElements([]);
-            setCurrentText('');
             setSelectedTextId(null);
             setShowGallery(true);
-            setSelectedDesignId(null);
-
+            setIsEditMode(false);
+            setExistingConfiguratorDesign(null);
             fetchBackDesigns();
-
+            fetchConfiguratorDesign(); // Refresh configurator design
         } catch (error) {
             message.error(error?.response?.data?.message || 'Submission failed');
         } finally {
@@ -406,325 +254,180 @@ const BackDesignConfiguratorPage = () => {
         }
     };
 
-    if (loading) {
-        return (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-                <Spin size="large" />
-            </div>
-        );
-    }
+    if (loading) return <div style={{ display: 'flex', justifyContent: 'center', minHeight: '60vh', alignItems: 'center' }}><Spin size="large" /></div>;
 
     return (
-        <div className="fade-in">
-            <div style={{ marginBottom: 24 }}>
-                <Title level={4} style={{ margin: 0 }}>Back Design Configurator</Title>
-                <Text type="secondary">
-                    Select image, add text, drag to position, and customize your design
-                </Text>
-            </div>
+        <div>
+            <Title level={4}>Back Design Configurator</Title>
 
             <Row gutter={[24, 24]}>
+                {/* Left panel */}
                 <Col xs={24} lg={10}>
-                    <Card className="glass-card" style={{ border: 'none' }}>
-                        <Space direction="vertical" size="large" style={{ width: '100%' }}>
-                            <div>
-                                <Title level={5}>
-                                    <span style={{
-                                        display: 'inline-block',
-                                        width: 28,
-                                        height: 28,
-                                        borderRadius: '50%',
-                                        background: '#00b96b',
-                                        color: 'white',
-                                        textAlign: 'center',
-                                        lineHeight: '28px',
-                                        marginRight: 8,
-                                        fontSize: 14
-                                    }}>1</span>
-                                    Select Base Image
-                                </Title>
-
-                                {showGallery ? (
-                                    designsLoading ? (
-                                        <div style={{ textAlign: 'center', padding: 24 }}>
-                                            <Spin />
-                                        </div>
-                                    ) : backDesigns.length === 0 ? (
-                                        <Empty
-                                            description="No back designs available"
-                                            style={{ padding: 24 }}
-                                            image={Empty.PRESENTED_IMAGE_SIMPLE}
-                                        />
-                                    ) : (
-                                        <div style={{ 
-                                            maxHeight: '400px', 
-                                            overflowY: 'auto',
-                                            paddingRight: 8
-                                        }}>
-                                            <Row gutter={[8, 8]}>
-                                                {backDesigns.map((design) => (
-                                                    <Col span={12} key={design.id}>
-                                                        <Card
-                                                            hoverable
-                                                            onClick={() => handleDesignSelect(design)}
-                                                            style={{
-                                                                cursor: 'pointer',
-                                                                border: selectedDesignId === design.id ? '2px solid #00b96b' : '1px solid #f0f0f0'
-                                                            }}
-                                                            bodyStyle={{ padding: 8 }}
-                                                        >
-                                                            <div style={{
-                                                                height: 80,
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                justifyContent: 'center',
-                                                                background: '#fafafa',
-                                                                borderRadius: 4
-                                                            }}>
-                                                                <img
-                                                                    src={getUploadsUrl(design.file_path)}
-                                                                    alt={design.name}
-                                                                    style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
-                                                                />
-                                                            </div>
-                                                            <Text ellipsis style={{ display: 'block', marginTop: 4, fontSize: 11 }}>
-                                                                {design.name}
-                                                            </Text>
-                                                        </Card>
-                                                    </Col>
-                                                ))}
-                                            </Row>
-                                        </div>
-                                    )
-                                ) : (
-                                    <>
-                                        <div style={{
-                                            padding: 12,
-                                            background: '#f0f7ff',
-                                            borderRadius: 8,
-                                            border: '1px solid #91d5ff',
-                                            marginBottom: 12
-                                        }}>
-                                            <Text type="success" style={{ fontSize: 12 }}>
-                                                ✓ Design selected
-                                            </Text>
-                                            <Button
-                                                type="link"
-                                                size="small"
-                                                onClick={() => {
-                                                    setShowGallery(true);
-                                                    setSelectedImage(null);
-                                                    setImagePreview(null);
-                                                    setSelectedDesignId(null);
-                                                    setTextElements([]);
-                                                }}
-                                                style={{ marginLeft: 8, padding: 0 }}
-                                            >
-                                                Change Design
-                                            </Button>
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-
-                            <Divider />
-
-                            <div>
-                                <Title level={5}>
-                                    <span style={{
-                                        display: 'inline-block',
-                                        width: 28,
-                                        height: 28,
-                                        borderRadius: '50%',
-                                        background: '#00b96b',
-                                        color: 'white',
-                                        textAlign: 'center',
-                                        lineHeight: '28px',
-                                        marginRight: 8,
-                                        fontSize: 14
-                                    }}>2</span>
-                                    Add Text Elements
-                                </Title>
-                                <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                                    <div>
-                                        <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
-                                            Text Content
-                                        </Text>
-                                        <TextArea
-                                            placeholder="Enter your text here..."
-                                            value={currentText}
-                                            onChange={(e) => setCurrentText(e.target.value)}
-                                            rows={2}
-                                            disabled={!selectedImage}
-                                            maxLength={100}
-                                            showCount
-                                        />
-                                    </div>
-
+                    <Card>
+                        <Title level={5}>1. Select Base Image</Title>
+                        {showGallery ? (
+                            designsLoading ? <Spin /> :
+                                backDesigns.length === 0 ? <Empty description="No library designs available" /> :
                                     <Row gutter={[8, 8]}>
-                                        <Col span={12}>
-                                            <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
-                                                Font Size
-                                            </Text>
-                                            <Select
-                                                value={currentFontSize}
-                                                onChange={setCurrentFontSize}
-                                                style={{ width: '100%' }}
-                                                disabled={!selectedImage}
-                                            >
-                                                <Select.Option value={16}>Small (16px)</Select.Option>
-                                                <Select.Option value={24}>Medium (24px)</Select.Option>
-                                                <Select.Option value={32}>Large (32px)</Select.Option>
-                                                <Select.Option value={48}>X-Large (48px)</Select.Option>
-                                                <Select.Option value={64}>XX-Large (64px)</Select.Option>
-                                            </Select>
-                                        </Col>
-                                        <Col span={12}>
-                                            <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
-                                                Color
-                                            </Text>
-                                            <ColorPicker
-                                                value={currentColor}
-                                                onChange={(color) => setCurrentColor(color.toHexString())}
-                                                disabled={!selectedImage}
-                                                showText
-                                                style={{ width: '100%' }}
-                                            />
-                                        </Col>
-                                    </Row>
-
-                                    <Button
-                                        type="primary"
-                                        icon={<PlusOutlined />}
-                                        onClick={handleAddText}
-                                        block
-                                        size="large"
-                                        disabled={!selectedImage}
-                                    >
-                                        Add Text to Design
-                                    </Button>
-                                </Space>
-                            </div>
-
-                            {textElements.length > 0 && (
-                                <>
-                                    <Divider />
-                                    <div>
-                                        <Title level={5}>Text Elements ({textElements.length})</Title>
-                                        <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 12 }}>
-                                            Drag text on canvas to reposition
-                                        </Text>
-                                        <Space direction="vertical" style={{ width: '100%' }} size="small">
-                                            {textElements.map((element) => (
+                                        {backDesigns.map(design => (
+                                            <Col span={12} key={design.id}>
                                                 <Card
-                                                    key={element.id}
-                                                    size="small"
-                                                    style={{
-                                                        background: selectedTextId === element.id ? '#e6f7ff' : '#fafafa',
-                                                        border: selectedTextId === element.id ? '2px solid #00b96b' : '1px solid #f0f0f0'
-                                                    }}
+                                                    hoverable
+                                                    onClick={() => loadDesignForEditing(design)}
+                                                    style={{ border: selectedDesignId === design.id ? '2px solid #00b96b' : '1px solid #f0f0f0' }}
                                                 >
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                        <div style={{ flex: 1 }}>
-                                                            <Text strong ellipsis>{element.text}</Text>
-                                                            <br />
-                                                            <Text type="secondary" style={{ fontSize: 11 }}>
-                                                                {element.fontSize}px • {element.rotation}°
-                                                            </Text>
-                                                        </div>
-                                                        <Space size="small">
-                                                            <Tooltip title={element.locked ? "Unlock" : "Lock"}>
-                                                                <Button
-                                                                    type="text"
-                                                                    icon={element.locked ? <LockOutlined /> : <UnlockOutlined />}
-                                                                    onClick={() => toggleLock(element.id)}
-                                                                    size="small"
-                                                                />
-                                                            </Tooltip>
-                                                            <Tooltip title="Rotate">
-                                                                <Button
-                                                                    type="text"
-                                                                    icon={<UndoOutlined />}
-                                                                    onClick={() => rotateText(element.id)}
-                                                                    size="small"
-                                                                    disabled={element.locked}
-                                                                />
-                                                            </Tooltip>
-                                                            <Tooltip title="Delete">
-                                                                <Button
-                                                                    type="text"
-                                                                    danger
-                                                                    icon={<DeleteOutlined />}
-                                                                    onClick={() => handleRemoveText(element.id)}
-                                                                    size="small"
-                                                                />
-                                                            </Tooltip>
-                                                        </Space>
-                                                    </div>
+                                                    <img src={getUploadsUrl(design.file_path)} alt={design.name} style={{ width: '100%', height: 80, objectFit: 'contain' }} />
+                                                    <Text>{design.name}</Text>
                                                 </Card>
-                                            ))}
-                                        </Space>
-                                    </div>
-                                </>
-                            )}
-
-                            <Divider />
-
+                                            </Col>
+                                        ))}
+                                    </Row>
+                        ) : (
                             <div>
-                                <Title level={5}>
-                                    <span style={{
-                                        display: 'inline-block',
-                                        width: 28,
-                                        height: 28,
-                                        borderRadius: '50%',
-                                        background: '#00b96b',
-                                        color: 'white',
-                                        textAlign: 'center',
-                                        lineHeight: '28px',
-                                        marginRight: 8,
-                                        fontSize: 14
-                                    }}>3</span>
-                                    Submit Design
-                                </Title>
-                                <Button
-                                    type="primary"
-                                    size="large"
-                                    icon={<SaveOutlined />}
-                                    onClick={handleSubmit}
-                                    loading={uploading}
-                                    disabled={!selectedImage || textElements.length === 0}
-                                    block
-                                    style={{ height: 50 }}
-                                >
-                                    {uploading ? 'Submitting...' : 'Submit Back Design'}
+                                <div style={{ padding: 12, background: '#f0f7ff', borderRadius: 8, marginBottom: 8 }}>
+                                    <Text type="success">✓ Design selected</Text>
+                                </div>
+                                <Button onClick={() => {
+                                    setShowGallery(true);
+                                    setSelectedImage(null);
+                                    setImagePreview(null);
+                                    setSelectedDesignId(null);
+                                    setTextElements([]);
+                                    setIsEditMode(false);
+                                }}>
+                                    Change Design
                                 </Button>
                             </div>
-                        </Space>
+                        )}
+
+                        <Divider />
+                        <Title level={5}>2. Text Elements</Title>
+                        {textElements.map(el => (
+                            <Card key={el.id} size="small" style={{ marginBottom: 8, border: selectedTextId === el.id ? '2px solid #00b96b' : '1px solid #f0f0f0' }} onClick={() => setSelectedTextId(el.id)}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div>
+                                        <Text strong>{el.text}</Text>
+                                        <br />
+                                        <Text type="secondary" style={{ fontSize: 11 }}>{el.fontSize}px • {el.rotation}°</Text>
+                                    </div>
+                                </div>
+                                {selectedTextId === el.id && (
+                                    <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid #f0f0f0' }}>
+                                        <Space direction="vertical" style={{ width: '100%' }} size="small">
+                                            <Row gutter={8}>
+                                                <Col span={12}>
+                                                    <Text type="secondary" style={{ fontSize: 11 }}>Font Size</Text>
+                                                    <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+                                                        <Button
+                                                            size="small"
+                                                            icon={<MinusCircleOutlined />}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setTextElements(textElements.map(t =>
+                                                                    t.id === el.id ? { ...t, fontSize: Math.max(12, t.fontSize - 4) } : t
+                                                                ));
+                                                            }}
+                                                        />
+                                                        <Input
+                                                            size="small"
+                                                            value={el.fontSize}
+                                                            style={{ width: 60, textAlign: 'center' }}
+                                                            readOnly
+                                                        />
+                                                        <Button
+                                                            size="small"
+                                                            icon={<PlusCircleOutlined />}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setTextElements(textElements.map(t =>
+                                                                    t.id === el.id ? { ...t, fontSize: Math.min(96, t.fontSize + 4) } : t
+                                                                ));
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </Col>
+                                                <Col span={12}>
+                                                    <Text type="secondary" style={{ fontSize: 11 }}>Color</Text>
+                                                    <ColorPicker
+                                                        value={el.color}
+                                                        onChange={(color) => {
+                                                            setTextElements(textElements.map(t =>
+                                                                t.id === el.id ? { ...t, color: color.toHexString() } : t
+                                                            ));
+                                                        }}
+                                                        size="small"
+                                                        showText
+                                                        style={{ width: '100%', marginTop: 4 }}
+                                                    />
+                                                </Col>
+                                            </Row>
+                                            <Space size="small" style={{ width: '100%', justifyContent: 'flex-end' }}>
+                                                <Tooltip title={el.locked ? "Unlock" : "Lock"}>
+                                                    <Button
+                                                        size="small"
+                                                        type={el.locked ? "primary" : "default"}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setTextElements(textElements.map(t => t.id === el.id ? { ...t, locked: !t.locked } : t));
+                                                        }}
+                                                        icon={el.locked ? <LockOutlined /> : <UnlockOutlined />}
+                                                    />
+                                                </Tooltip>
+                                                <Tooltip title="Rotate 45°">
+                                                    <Button
+                                                        size="small"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setTextElements(textElements.map(t => t.id === el.id ? { ...t, rotation: (t.rotation + 45) % 360 } : t));
+                                                        }}
+                                                        icon={<UndoOutlined />}
+                                                        disabled={el.locked}
+                                                    />
+                                                </Tooltip>
+                                                <Tooltip title="Delete">
+                                                    <Button
+                                                        size="small"
+                                                        danger
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleRemoveText(el.id);
+                                                        }}
+                                                        icon={<DeleteOutlined />}
+                                                    />
+                                                </Tooltip>
+                                            </Space>
+                                        </Space>
+                                    </div>
+                                )}
+                            </Card>
+                        ))}
+
+                        <TextArea placeholder="Enter text" value={currentText} onChange={e => setCurrentText(e.target.value)} rows={2} />
+                        <Row gutter={8} style={{ marginTop: 8 }}>
+                            <Col span={12}>
+                                <Select value={currentFontSize} onChange={setCurrentFontSize} style={{ width: '100%' }}>
+                                    {[16, 24, 32, 48, 64].map(v => <Select.Option key={v} value={v}>{v}px</Select.Option>)}
+                                </Select>
+                            </Col>
+                            <Col span={12}>
+                                <ColorPicker value={currentColor} onChange={color => setCurrentColor(color.toHexString())} style={{ width: '100%' }} />
+                            </Col>
+                        </Row>
+                        <Button type="primary" icon={<PlusOutlined />} onClick={handleAddText} block style={{ marginTop: 12 }}>Add Text</Button>
+
+                        <Divider />
+                        <Title level={5}>3. {isEditMode ? 'Update' : 'Submit'} Design</Title>
+                        <Button type="primary" icon={<SaveOutlined />} onClick={handleSubmit} block loading={uploading} disabled={!selectedImage || textElements.length === 0}>
+                            {uploading ? (isEditMode ? 'Updating...' : 'Submitting...') : (isEditMode ? 'Update Back Design' : 'Submit Back Design')}
+                        </Button>
                     </Card>
                 </Col>
 
+                {/* Right panel - Canvas */}
                 <Col xs={24} lg={14}>
-                    <Card className="glass-card" style={{ border: 'none', position: 'sticky', top: 24 }}>
-                        <Title level={5} style={{ marginBottom: 16 }}>
-                            Live Preview
-                            {selectedTextId && (
-                                <Text type="secondary" style={{ fontSize: 12, marginLeft: 12 }}>
-                                    (Drag selected text to reposition)
-                                </Text>
-                            )}
-                        </Title>
-                        <div
-                            ref={containerRef}
-                            style={{
-                                background: '#f5f5f5',
-                                borderRadius: 8,
-                                padding: 16,
-                                display: 'flex',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                minHeight: 600
-                            }}
-                        >
+                    <Card style={{ position: 'sticky', top: 24 }}>
+                        <Title level={5}>Live Preview</Title>
+                        <div style={{ minHeight: 600, display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#f5f5f5', borderRadius: 8, padding: 16 }}>
                             {imagePreview ? (
                                 <canvas
                                     ref={canvasRef}
@@ -732,21 +435,12 @@ const BackDesignConfiguratorPage = () => {
                                     onMouseMove={handleCanvasMouseMove}
                                     onMouseUp={handleCanvasMouseUp}
                                     onMouseLeave={handleCanvasMouseUp}
-                                    style={{
-                                        maxWidth: '100%',
-                                        border: '2px solid #d9d9d9',
-                                        borderRadius: 4,
-                                        cursor: isDragging ? 'grabbing' : (selectedTextId ? 'grab' : 'default'),
-                                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-                                    }}
+                                    style={{ maxWidth: '100%', border: '2px solid #d9d9d9', borderRadius: 4 }}
                                 />
                             ) : (
-                                <div style={{ textAlign: 'center', color: '#999', padding: 40 }}>
+                                <div style={{ textAlign: 'center', color: '#999' }}>
                                     <InboxOutlined style={{ fontSize: 64, marginBottom: 16, opacity: 0.3 }} />
-                                    <br />
-                                    <Text type="secondary" style={{ fontSize: 16 }}>
-                                        Select an image to start designing
-                                    </Text>
+                                    <Text>Select an image to start designing</Text>
                                 </div>
                             )}
                         </div>

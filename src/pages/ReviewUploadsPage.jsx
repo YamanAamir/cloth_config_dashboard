@@ -97,7 +97,7 @@ const ReviewUploadsPage = () => {
                 ...(designPagination.status !== '' && { status: designPagination.status }),
             });
             const { limit, page, total, totalPages } = response.data.pagination || {};
-            setBackDesigns(response.data.data || []);
+            setBackDesigns(response.data.data.filter(i => i.isFromConfigurator == false) || []);
             setDesignPagination(prev => ({
                 ...prev,
                 limit: limit ?? prev.limit,

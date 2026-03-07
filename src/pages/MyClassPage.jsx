@@ -267,7 +267,7 @@ const MyClassPage = () => {
                     >
                         Registration Link
                     </Button>
-                    <Button
+                    {/* <Button
                         type="primary"
                         onClick={() => {
                             setBackDesignModalOpen(true);
@@ -275,7 +275,7 @@ const MyClassPage = () => {
                         }}
                     >
                         Select Design Template
-                    </Button>
+                    </Button> */}
                 </Space>
             </div>
 
@@ -369,7 +369,7 @@ const MyClassPage = () => {
                         style={{ padding: 48 }}
                         image={Empty.PRESENTED_IMAGE_SIMPLE}
                     >
-                        <Button 
+                        {/* <Button 
                             type="primary"
                             onClick={() => {
                                 setBackDesignModalOpen(true);
@@ -377,7 +377,7 @@ const MyClassPage = () => {
                             }}
                         >
                             Select Design Template
-                        </Button>
+                        </Button> */}
                     </Empty>
                 ) : (
                     <Row gutter={[16, 16]}>
@@ -421,7 +421,7 @@ const MyClassPage = () => {
                                     <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>Created</Text>
                                     <Text>{new Date(currentBackDesign.created_at).toLocaleDateString()}</Text>
                                 </div>
-                                <Button 
+                                {/* <Button 
                                     type="default"
                                     onClick={() => {
                                         setBackDesignModalOpen(true);
@@ -430,7 +430,7 @@ const MyClassPage = () => {
                                     block
                                 >
                                     Change Design Template
-                                </Button>
+                                </Button> */}
                             </Space>
                         </Col>
                     </Row>
