@@ -37,6 +37,10 @@ const BackDesignConfiguratorPage = () => {
     const [currentColor, setCurrentColor] = useState('#000000');
     const [currentFontFamily, setCurrentFontFamily] = useState('Arial');
     const [selectedTextId, setSelectedTextId] = useState(null);
+    
+    // Design color state
+    const [designColor, setDesignColor] = useState('white');
+    
     const user = localStorage.getItem("user");
     const classId = user ? JSON.parse(user)?.class_id : null;
 
@@ -226,6 +230,7 @@ const BackDesignConfiguratorPage = () => {
             formData.append('name', `${fileName}_configured`);
             formData.append('backDesign', blob, `${fileName}_configured.png`);
             formData.append('isFromConfigurator', 'true');
+            formData.append('designColor', designColor); // Add design color
             
             let response;
             if (isEditMode && existingConfiguratorDesign?.id) {
@@ -299,6 +304,48 @@ const BackDesignConfiguratorPage = () => {
                                 </Button>
                             </div>
                         )}
+
+                        <Divider />
+                        
+                        {/* Design Color Selection */}
+                        <div style={{ marginBottom: 16 }}>
+                            <Text strong style={{ display: 'block', marginBottom: 8 }}>
+                                Garment Color
+                            </Text>
+                            <Select
+                                value={designColor}
+                                onChange={setDesignColor}
+                                style={{ width: '100%' }}
+                                size="large"
+                            >
+                                <Select.Option value="white">
+                                    <Space>
+                                        <div style={{ 
+                                            width: 20, 
+                                            height: 20, 
+                                            background: 'white', 
+                                            border: '1px solid #d9d9d9',
+                                            borderRadius: 4 
+                                        }} />
+                                        White Garment
+                                    </Space>
+                                </Select.Option>
+                                <Select.Option value="black">
+                                    <Space>
+                                        <div style={{ 
+                                            width: 20, 
+                                            height: 20, 
+                                            background: 'black',
+                                            borderRadius: 4 
+                                        }} />
+                                        Black Garment
+                                    </Space>
+                                </Select.Option>
+                            </Select>
+                            <Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: 4 }}>
+                                Select the garment color this design will be printed on
+                            </Text>
+                        </div>
 
                         <Divider />
                         <Title level={5}>2. Text Elements</Title>
