@@ -9,7 +9,7 @@ import {
 import { getMyClass } from '../api/api';
 import NameListManager from '../components/NameListManager';
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 
 const NameListPage = () => {
     const [myClass, setMyClass] = useState(null);
@@ -51,9 +51,9 @@ const NameListPage = () => {
         <div className="fade-in">
             <div style={{ marginBottom: 24 }}>
                 <Title level={4} style={{ margin: 0 }}>Class Name List</Title>
-                <Text type="secondary">
+                <Typography.Text type="secondary">
                     Manage your class student name list for graduation garments
-                </Text>
+                </Typography.Text>
             </div>
 
             <Card className="glass-card" style={{ border: 'none' }}>

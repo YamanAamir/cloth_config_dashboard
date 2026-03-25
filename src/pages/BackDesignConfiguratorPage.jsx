@@ -10,7 +10,7 @@ import {
 import { getMyClass, uploadBackDesign, updateBackDesign, getMyBackDesigns, getConfiguratorBackDesign } from '../api/api';
 import { getUploadsUrl } from '../utils/constants';
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 const { TextArea } = Input;
 
 const BackDesignConfiguratorPage = () => {
@@ -282,7 +282,7 @@ const BackDesignConfiguratorPage = () => {
                                                     style={{ border: selectedDesignId === design.id ? '2px solid #00b96b' : '1px solid #f0f0f0' }}
                                                 >
                                                     <img src={getUploadsUrl(design.file_path)} alt={design.name} style={{ width: '100%', height: 80, objectFit: 'contain' }} />
-                                                    <Text>{design.name}</Text>
+                                                    <Typography.Text>{design.name}</Typography.Text>
                                                 </Card>
                                             </Col>
                                         ))}
@@ -290,7 +290,7 @@ const BackDesignConfiguratorPage = () => {
                         ) : (
                             <div>
                                 <div style={{ padding: 12, background: '#f0f7ff', borderRadius: 8, marginBottom: 8 }}>
-                                    <Text type="success">✓ Design selected</Text>
+                                    <Typography.Text type="success">✓ Design selected</Typography.Text>
                                 </div>
                                 <Button onClick={() => {
                                     setShowGallery(true);
@@ -309,9 +309,9 @@ const BackDesignConfiguratorPage = () => {
                         
                         {/* Design Color Selection */}
                         <div style={{ marginBottom: 16 }}>
-                            <Text strong style={{ display: 'block', marginBottom: 8 }}>
+                            <Typography.Text strong style={{ display: 'block', marginBottom: 8 }}>
                                 Garment Color
-                            </Text>
+                            </Typography.Text>
                             <Select
                                 value={designColor}
                                 onChange={setDesignColor}
@@ -342,9 +342,9 @@ const BackDesignConfiguratorPage = () => {
                                     </Space>
                                 </Select.Option>
                             </Select>
-                            <Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: 4 }}>
+                            <Typography.Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: 4 }}>
                                 Select the garment color this design will be printed on
-                            </Text>
+                            </Typography.Text>
                         </div>
 
                         <Divider />
@@ -353,9 +353,9 @@ const BackDesignConfiguratorPage = () => {
                             <Card key={el.id} size="small" style={{ marginBottom: 8, border: selectedTextId === el.id ? '2px solid #00b96b' : '1px solid #f0f0f0' }} onClick={() => setSelectedTextId(el.id)}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <div>
-                                        <Text strong>{el.text}</Text>
+                                        <Typography.Text strong>{el.text}</Typography.Text>
                                         <br />
-                                        <Text type="secondary" style={{ fontSize: 11 }}>{el.fontSize}px • {el.rotation}°</Text>
+                                        <Typography.Text type="secondary" style={{ fontSize: 11 }}>{el.fontSize}px • {el.rotation}°</Typography.Text>
                                     </div>
                                 </div>
                                 {selectedTextId === el.id && (
@@ -363,7 +363,7 @@ const BackDesignConfiguratorPage = () => {
                                         <Space direction="vertical" style={{ width: '100%' }} size="small">
                                             <Row gutter={8}>
                                                 <Col span={12}>
-                                                    <Text type="secondary" style={{ fontSize: 11 }}>Font Size</Text>
+                                                    <Typography.Text type="secondary" style={{ fontSize: 11 }}>Font Size</Typography.Text>
                                                     <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
                                                         <Button
                                                             size="small"
@@ -394,7 +394,7 @@ const BackDesignConfiguratorPage = () => {
                                                     </div>
                                                 </Col>
                                                 <Col span={12}>
-                                                    <Text type="secondary" style={{ fontSize: 11 }}>Color</Text>
+                                                    <Typography.Text type="secondary" style={{ fontSize: 11 }}>Color</Typography.Text>
                                                     <ColorPicker
                                                         value={el.color}
                                                         onChange={(color) => {
@@ -487,7 +487,7 @@ const BackDesignConfiguratorPage = () => {
                             ) : (
                                 <div style={{ textAlign: 'center', color: '#999' }}>
                                     <InboxOutlined style={{ fontSize: 64, marginBottom: 16, opacity: 0.3 }} />
-                                    <Text>Select an image to start designing</Text>
+                                    <Typography.Text>Select an image to start designing</Typography.Text>
                                 </div>
                             )}
                         </div>

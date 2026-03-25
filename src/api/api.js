@@ -77,3 +77,5 @@ export const deleteNameListItem = (itemId) => api.delete(`/class-rep/namelist/it
 // Order Details API
 export const getOrderDetails = (orderId) => api.get(`/admin/orders/${orderId}/details`);
 export const getOrderHistory = (orderId) => api.get(`/admin/orders/${orderId}/history`);
+export const unlockOrder = (orderId) => api.put(`/admin/orders/${orderId}/unlock`);
+export const lockOrder = (orderId) => api.put(`/admin/orders/${orderId}/lock`);

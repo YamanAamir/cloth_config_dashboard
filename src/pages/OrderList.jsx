@@ -19,7 +19,7 @@ import {
     Image,
     List,
 } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, TeamOutlined, BankOutlined, CalendarOutlined, UserAddOutlined, EyeOutlined, HistoryOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, TeamOutlined, BankOutlined, CalendarOutlined, UserAddOutlined, EyeOutlined, HistoryOutlined, UserOutlined, LockOutlined, UnlockOutlined } from '@ant-design/icons';
 import {
     getAllClasses,
     createClass,
@@ -32,13 +32,21 @@ import {
     getAllOrders,
     getOrderDetails,
     getOrderHistory,
+    getStudents,
+    unlockOrder,
+    lockOrder
 } from '../api/api';
-import { Status } from '../utils/constants';
+import { Status, Role } from '../utils/constants';
+import { useAuth } from '../context/AuthContext';
+import useSocket from '../hooks/useSocket';
 
 const { Title } = Typography;
 const { Option } = Select;
 
 const OrderList = () => {
+    const { user } = useAuth();
+    const isClassRep = user?.role === Role.CLASS_REPRESENTATIVE;
+
     const [classes, setClasses] = useState([]);
     const [schools, setSchools] = useState([]);
     const [classReps, setClassReps] = useState([]);
@@ -81,7 +89,7 @@ const OrderList = () => {
                 totalPages: totalPages ?? 1,
             }));
         } catch (error) {
-            message.error('Failed to fetch classes');
+            message.error('Failed to fetch orders');
         } finally {
             setLoading(false);
         }
@@ -108,10 +116,17 @@ const OrderList = () => {
         fetchDropdowns();
     }, []);
 
+    // Real-time update: refresh orders when any student saves/pays
+    useSocket('admin_room', 'new_order_admin', () => {
+        console.log('🔔 Real-time: new order activity detected. Refreshing...');
+        fetchOrders();
+    });
+
     const handleAddEdit = async (values) => {
         try {
             const payload = {
                 ...values,
+                change_deadline: values.change_deadline ? new Date(values.change_deadline).toISOString() : null,
                 status: values.status ? Status.ACTIVE : Status.INACTIVE
             };
 
@@ -196,97 +211,216 @@ const OrderList = () => {
         }
     };
 
+    const handleToggleLock = async (record) => {
+        try {
+            if (record.is_locked) {
+                await unlockOrder(record.id);
+                message.success('Order unlocked successfully');
+            } else {
+                await lockOrder(record.id);
+                message.success('Order locked successfully');
+            }
+            fetchOrders();
+        } catch (error) {
+            message.error(error.response?.data?.message || 'Lock toggle failed');
+        }
+    };
+
+    // Shared price map for display
+    const ITEM_PRICES = {
+        'T-SHIRT': 200, 'SWEATSHIRT': 350, 'HOODIE': 450,
+        'ZIPPERHOODIE': 500, 'SWEATPANTS': 300, 'SHORTS': 250,
+    };
+    const getItemPrice = (type) => ITEM_PRICES[type?.toUpperCase()] || 0;
+
     const columns = [
         {
             title: 'Student',
             key: 'student',
+            width: 180,
             render: (_, record) => (
                 <Space direction="vertical" size={0}>
-                    <strong>{record.student?.name}</strong>
-                    <span style={{ fontSize: 12, color: '#888' }}>
-                        {record.student?.email}
-                    </span>
+                    <strong style={{ fontSize: 13 }}>{record.student?.name || '-'}</strong>
+                    <span style={{ fontSize: 11, color: '#888' }}>{record.student?.email}</span>
                 </Space>
             ),
         },
         {
-            title: 'Class Name',
+            title: 'Class',
             key: 'class_name',
+            width: 150,
             render: (_, record) => (
-                <span style={{ fontWeight: 600 }}>
-                    {record.class?.name || '-'}
-                </span>
+                <Space direction="vertical" size={0}>
+                    <span style={{ fontWeight: 600, fontSize: 13 }}>{record.class?.name || '-'}</span>
+                    {record.class?.graduation_year && (
+                        <span style={{ fontSize: 11, color: '#888' }}>Class of {record.class.graduation_year}</span>
+                    )}
+                    {record.class?.change_deadline && (() => {
+                        const isPast = new Date() > new Date(record.class.change_deadline);
+                        return (
+                            <Tag color={isPast ? 'volcano' : 'blue'} style={{ marginTop: 2, fontSize: 10 }}>
+                                <CalendarOutlined style={{ marginRight: 2 }} />
+                                {new Date(record.class.change_deadline).toLocaleDateString()}
+                            </Tag>
+                        );
+                    })()}
+                </Space>
             ),
         },
         {
-            title: 'Delivery Details',
-            key: 'delivery',
+            title: 'Order Items',
+            key: 'order_items',
+            width: 230,
             render: (_, record) => {
-                const details = record.delivery_details
-                    ? JSON.parse(record.delivery_details)
-                    : null;
-
-                if (!details) return '-';
-
+                const items = record.order_items || [];
+                if (items.length === 0) return <span style={{ color: '#bbb', fontSize: 12 }}>No items placed</span>;
                 return (
-                    <Space direction="vertical" size={0}>
-                        <span>{details.firstName} {details.lastName}</span>
-                        <span style={{ fontSize: 12, color: '#888' }}>
-                            {details.city}, {details.country}
-                        </span>
+                    <Space direction="vertical" size={4}>
+                        {items.map((item) => (
+                            <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                <Tag
+                                    color={item.status === 1 ? 'success' : 'warning'}
+                                    style={{ fontSize: 10, margin: 0, lineHeight: '16px' }}
+                                >
+                                    {item.status === 1 ? '✓ PAID' : 'UNPAID'}
+                                </Tag>
+                                <span style={{ fontSize: 12 }}>
+                                    {item.product_type}
+                                    {item.selectedColor ? ` · ${item.selectedColor}` : ''}
+                                    {item.selectedSize ? ` · ${item.selectedSize}` : ''}
+                                </span>
+                                <span style={{ fontSize: 11, color: '#888', marginLeft: 'auto' }}>
+                                    {getItemPrice(item.product_type)} DKK
+                                </span>
+                            </div>
+                        ))}
                     </Space>
                 );
             },
         },
         {
-            title: 'Process Status',
-            dataIndex: 'process_status',
-            key: 'process_status',
-            render: (status) => {
-                let color = 'default';
-
-                if (status === 'in_progress') color = 'processing';
-                if (status === 'completed') color = 'success';
-                if (status === 'pending') color = 'warning';
-
-                return <Tag color={color}>{status}</Tag>;
+            title: 'Financials',
+            key: 'financials',
+            width: 140,
+            render: (_, record) => {
+                const total = parseFloat(record.total_amount || 0);
+                const paid = parseFloat(record.amount_paid || 0);
+                const balance = Math.max(0, total - paid);
+                const isFullyPaid = paid >= total && total > 0;
+                return (
+                    <Space direction="vertical" size={2}>
+                        <div style={{ fontSize: 13, fontWeight: 700 }}>{total} DKK</div>
+                        <div style={{ fontSize: 11, color: isFullyPaid ? '#52c41a' : '#faad14' }}>
+                            Paid: {paid} DKK
+                        </div>
+                        {!isFullyPaid && total > 0 && (
+                            <div style={{ fontSize: 11, color: '#ff4d4f' }}>Due: {balance} DKK</div>
+                        )}
+                    </Space>
+                );
             },
         },
         {
-            title: 'Locked',
-            dataIndex: 'is_locked',
-            key: 'is_locked',
-            render: (locked) => (
-                <Tag color={locked ? 'error' : 'success'}>
-                    {locked ? 'Locked' : 'Open'}
-                </Tag>
-            ),
+            title: 'Status',
+            key: 'combined_status',
+            width: 130,
+            render: (_, record) => {
+                const pStatus = record.process_status;
+                const payStatus = record.payment_status;
+
+                const pColorMap = {
+                    saved: 'blue', in_progress: 'processing',
+                    completed: 'success', partial_paid: 'cyan',
+                };
+                const payColorMap = { unpaid: 'error', partial: 'warning', paid: 'success' };
+
+                return (
+                    <Space direction="vertical" size={4}>
+                        <Tag color={pColorMap[pStatus] || 'default'} style={{ fontSize: 11 }}>
+                            {pStatus?.replace(/_/g, ' ').toUpperCase() || 'UNKNOWN'}
+                        </Tag>
+                        <Tag color={payColorMap[payStatus] || 'default'} style={{ fontSize: 10 }}>
+                            {payStatus?.toUpperCase() || 'UNPAID'}
+                        </Tag>
+                    </Space>
+                );
+            },
         },
-        // {
-        //     title: 'Created At',
-        //     dataIndex: 'created_at',
-        //     key: 'created_at',
-        //     render: (date) => (
-        //         <Tag color="cyan">
-        //             {new Date(date).toLocaleDateString()}
-        //         </Tag>
-        //     ),
-        // },
+        {
+            title: 'Lock',
+            key: 'is_locked',
+            width: 120,
+            render: (_, record) => {
+                const now = new Date();
+                const isPastDeadline = record.class?.change_deadline && now > new Date(record.class.change_deadline);
+                const isPastEditWindow = record.edit_deadline && now > new Date(record.edit_deadline);
+
+                if (record.is_locked) return <Tag color="error" style={{ fontWeight: 600 }}>Locked (Manual)</Tag>;
+                if (isPastDeadline) return <Tag color="error" style={{ fontWeight: 600 }}>Locked (Deadline)</Tag>;
+                if (record.payment_status === 'paid' && isPastEditWindow) return <Tag color="volcano">Edit Window Done</Tag>;
+
+                return (
+                    <Space direction="vertical" size={2}>
+                        <Tag color="success">Open</Tag>
+                        {record.edit_deadline && (
+                            <span style={{ fontSize: 10, color: '#888' }}>
+                                Edit until: {new Date(record.edit_deadline).toLocaleDateString()}
+                            </span>
+                        )}
+                    </Space>
+                );
+            },
+        },
         {
             title: 'Action',
             key: 'action',
+            width: 130,
             render: (_, record) => (
-                <Space size="middle">
+                <Space size="small">
                     <Button
                         type="text"
                         icon={<EyeOutlined style={{ color: '#00b96b' }} />}
                         onClick={() => handleView(record)}
+                        title="View Order Details"
+                    />
+                    <Button
+                        type="text"
+                        icon={<EditOutlined style={{ color: '#fa8c16' }} />}
+                        onClick={() => {
+                            const classData = record.class || {};
+                            const classId = classData.id || record.class_id;
+                            if (!classId) { message.error('Class ID not found'); return; }
+                            setEditingClass({ ...classData, id: classId, order_id: record.id });
+                            form.setFieldsValue({
+                                name: classData.name,
+                                graduation_year: classData.graduation_year,
+                                school_id: classData.school_id,
+                                change_deadline: classData.change_deadline ? classData.change_deadline.split('T')[0] : undefined,
+                                status: classData.status === Status.ACTIVE
+                            });
+                            setIsModalOpen(true);
+                        }}
+                        title="Edit Class"
                     />
                     <Button
                         type="text"
                         icon={<HistoryOutlined style={{ color: '#1890ff' }} />}
                         onClick={() => handleViewHistory(record.id)}
+                        title="View History"
                     />
+                    <Popconfirm
+                        title={`${record.is_locked ? 'Unlock' : 'Lock'} this order?`}
+                        onConfirm={() => handleToggleLock(record)}
+                        okText="Yes" cancelText="No"
+                    >
+                        <Button
+                            type="text"
+                            icon={record.is_locked
+                                ? <UnlockOutlined style={{ color: '#52c41a' }} />
+                                : <LockOutlined style={{ color: '#d9d9d9' }} />}
+                            title={record.is_locked ? 'Unlock Order' : 'Lock Order'}
+                        />
+                    </Popconfirm>
                 </Space>
             ),
         },
@@ -297,20 +431,21 @@ const OrderList = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                 <div>
                     <Title level={4} style={{ margin: 0 }}>Orders</Title>
+                    <Typography.Text type="secondary">Manage class orders and statuses</Typography.Text>
                 </div>
             </div>
 
             <Card className="glass-card" style={{ border: 'none' }}>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
                     <Input.Search
-                        placeholder="Search class or school name"
+                        placeholder="Search student or class name"
                         allowClear
                         enterButton
                         style={{ width: 300 }}
                         onChange={(e) => {
                             const value = e.target.value;
-                            clearTimeout(window.searchTimerClasses);
-                            window.searchTimerClasses = setTimeout(() => {
+                            clearTimeout(window.searchTimerOrders);
+                            window.searchTimerOrders = setTimeout(() => {
                                 setPagination(prev => ({ ...prev, current: 1, search: value }));
                             }, 500);
                         }}
@@ -345,7 +480,7 @@ const OrderList = () => {
                 open={isModalOpen}
                 onCancel={() => setIsModalOpen(false)}
                 footer={null}
-                destroyOnClose
+                destroyOnHidden
             >
                 <Form
                     form={form}
@@ -368,6 +503,14 @@ const OrderList = () => {
                         rules={[{ required: true, message: 'Please enter graduation year' }]}
                     >
                         <Input type="number" prefix={<CalendarOutlined />} placeholder="e.g. 2025" />
+                    </Form.Item>
+
+                    <Form.Item
+                        name="change_deadline"
+                        label="Ordering Deadline"
+                        tooltip="The date when students can no longer place or edit orders"
+                    >
+                        <Input type="date" prefix={<CalendarOutlined />} />
                     </Form.Item>
 
                     <Form.Item
@@ -403,7 +546,7 @@ const OrderList = () => {
                 open={isAssignModalOpen}
                 onCancel={() => setIsAssignModalOpen(false)}
                 footer={null}
-                destroyOnClose
+                destroyOnHidden
             >
                 <Form
                     form={assignForm}
@@ -439,11 +582,12 @@ const OrderList = () => {
                     </Form.Item>
                 </Form>
             </Modal>
+
             {/* Order Details Drawer */}
             <Drawer
                 title={`Order Details - #${selectedOrderDetails?.id}`}
                 placement="right"
-                width={800}
+                size="large"
                 onClose={() => setIsDrawerOpen(false)}
                 open={isDrawerOpen}
                 loading={drawerLoading}
@@ -459,7 +603,22 @@ const OrderList = () => {
                                 </Tag>
                             </Descriptions.Item>
                             <Descriptions.Item label="Locked">
-                                {selectedOrderDetails.is_locked ? <Tag color="error">Yes</Tag> : <Tag color="success">No</Tag>}
+                                {(() => {
+                                    const isPastDeadline = selectedOrderDetails.class?.change_deadline && new Date() > new Date(selectedOrderDetails.class.change_deadline);
+                                    const isLocked = selectedOrderDetails.is_locked || isPastDeadline;
+                                    return (
+                                        <Tag color={isLocked ? 'error' : 'success'}>
+                                            {isLocked ? (isPastDeadline && !selectedOrderDetails.is_locked ? 'YES (AUTO-LOCKED)' : 'YES') : 'NO'}
+                                        </Tag>
+                                    );
+                                })()}
+                            </Descriptions.Item>
+                            <Descriptions.Item label="Deadline">
+                                {selectedOrderDetails.class?.change_deadline ? (
+                                    <Tag color={new Date() > new Date(selectedOrderDetails.class.change_deadline) ? 'volcano' : 'blue'}>
+                                        {new Date(selectedOrderDetails.class.change_deadline).toLocaleString()}
+                                    </Tag>
+                                ) : '-'}
                             </Descriptions.Item>
                             <Descriptions.Item label="Created At">
                                 {new Date(selectedOrderDetails.created_at).toLocaleString()}
@@ -554,7 +713,7 @@ const OrderList = () => {
             <Drawer
                 title="Order History & Versions"
                 placement="right"
-                width={700}
+                size="large"
                 onClose={() => setHistoryDrawerOpen(false)}
                 open={historyDrawerOpen}
                 loading={historyLoading}
@@ -567,66 +726,98 @@ const OrderList = () => {
                 ) : (
                     <List
                         dataSource={orderHistory}
-                        renderItem={(item) => (
-                            <List.Item key={item.id}>
-                                <Card style={{ width: '100%' }} size="small">
-                                    <Space direction="vertical" style={{ width: '100%' }} size="small">
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <Space>
-                                                <Tag color="blue">Version {item.version}</Tag>
-                                                <Tag color={item.action === 'created' ? 'green' : 'orange'}>
-                                                    {item.action.toUpperCase()}
-                                                </Tag>
-                                            </Space>
-                                            <Text type="secondary" style={{ fontSize: 12 }}>
-                                                {new Date(item.created_at).toLocaleString()}
-                                            </Text>
-                                        </div>
-                                        
-                                        {item.changes_summary && (
-                                            <Text type="secondary" style={{ fontSize: 12 }}>
-                                                {item.changes_summary}
-                                            </Text>
-                                        )}
-                                        
-                                        <Divider style={{ margin: '8px 0' }} />
-                                        
-                                        <Descriptions size="small" column={1} bordered>
-                                            <Descriptions.Item label="Changed By">
-                                                User ID: {item.changed_by}
-                                            </Descriptions.Item>
-                                            <Descriptions.Item label="Items Count">
-                                                {item.items_snapshot?.length || 0} item(s)
-                                            </Descriptions.Item>
-                                            {item.order_snapshot?.delivery_details && (
-                                                <Descriptions.Item label="Delivery">
-                                                    {typeof item.order_snapshot.delivery_details === 'string' 
-                                                        ? JSON.parse(item.order_snapshot.delivery_details).city 
-                                                        : item.order_snapshot.delivery_details.city}
-                                                </Descriptions.Item>
-                                            )}
-                                        </Descriptions>
-                                        
-                                        {item.items_snapshot && item.items_snapshot.length > 0 && (
-                                            <div style={{ marginTop: 8 }}>
-                                                <Text strong style={{ fontSize: 12 }}>Items in this version:</Text>
-                                                <List
-                                                    size="small"
-                                                    dataSource={item.items_snapshot}
-                                                    renderItem={(orderItem) => (
-                                                        <List.Item style={{ padding: '4px 0' }}>
-                                                            <Text style={{ fontSize: 11 }}>
-                                                                • {orderItem.product_type} - {orderItem.selectedColor} ({orderItem.selectedSize})
-                                                            </Text>
-                                                        </List.Item>
-                                                    )}
-                                                />
+                        renderItem={(item) => {
+                            const prevItems = item.changes?.previousItems || [];
+                            const prevTotal = item.changes?.previousTotal;
+                            const prevDelivery = item.changes?.previousDelivery
+                                ? (typeof item.changes.previousDelivery === 'string'
+                                    ? JSON.parse(item.changes.previousDelivery)
+                                    : item.changes.previousDelivery)
+                                : null;
+
+                            const actionColorMap = {
+                                created: 'green',
+                                updated: 'orange',
+                                payment_initiation: 'purple',
+                                payment_received: 'cyan',
+                            };
+
+                            return (
+                                <List.Item key={item.id}>
+                                    <Card style={{ width: '100%' }} size="small">
+                                        <Space direction="vertical" style={{ width: '100%' }} size="small">
+                                            {/* Header Row */}
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                                                <Space>
+                                                    <Tag color="blue">V{item.version}</Tag>
+                                                    <Tag color={actionColorMap[item.action] || 'default'}>
+                                                        {item.action?.toUpperCase().replace(/_/g, ' ')}
+                                                    </Tag>
+                                                </Space>
+                                                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                                                    {new Date(item.created_at).toLocaleString()}
+                                                </Typography.Text>
                                             </div>
-                                        )}
-                                    </Space>
-                                </Card>
-                            </List.Item>
-                        )}
+
+                                            {item.changes_summary && (
+                                                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                                                    {item.changes_summary}
+                                                </Typography.Text>
+                                            )}
+
+                                            <Divider style={{ margin: '8px 0' }} />
+
+                                            <Descriptions size="small" column={2} bordered>
+                                                <Descriptions.Item label="Changed By">
+                                                    User #{item.changed_by || '-'}
+                                                </Descriptions.Item>
+                                                {prevTotal != null && (
+                                                    <Descriptions.Item label="Amount at Version">
+                                                        <strong>{prevTotal} DKK</strong>
+                                                    </Descriptions.Item>
+                                                )}
+                                                {prevDelivery?.city && (
+                                                    <Descriptions.Item label="Delivery (City)" span={2}>
+                                                        {prevDelivery.city}, {prevDelivery.country || ''}
+                                                    </Descriptions.Item>
+                                                )}
+                                            </Descriptions>
+
+                                            {/* Per-item breakdown */}
+                                            {prevItems.length > 0 && (
+                                                <div style={{ marginTop: 8 }}>
+                                                    <Typography.Text strong style={{ fontSize: 12 }}>Garments in this version:</Typography.Text>
+                                                    <List
+                                                        size="small"
+                                                        style={{ marginTop: 6 }}
+                                                        dataSource={prevItems}
+                                                        renderItem={(orderItem) => {
+                                                            const isPaymentAction = item.action === 'payment_received' || item.action === 'payment_initiation';
+                                                            return (
+                                                                <List.Item
+                                                                    style={{ padding: '6px 0' }}
+                                                                    extra={isPaymentAction ? (
+                                                                        <Tag color={orderItem.status === 1 ? 'success' : 'warning'} style={{ margin: 0, fontSize: 10 }}>
+                                                                            {orderItem.status === 1 ? 'PAID' : 'UNPAID'}
+                                                                        </Tag>
+                                                                    ) : null}
+                                                                >
+                                                                    <Typography.Text style={{ fontSize: 12 }}>
+                                                                        <strong>{orderItem.product_type}</strong>
+                                                                        {orderItem.selectedColor && ` · ${orderItem.selectedColor}`}
+                                                                        {orderItem.selectedSize && ` · Size: ${orderItem.selectedSize}`}
+                                                                    </Typography.Text>
+                                                                </List.Item>
+                                                            );
+                                                        }}
+                                                    />
+                                                </div>
+                                            )}
+                                        </Space>
+                                    </Card>
+                                </List.Item>
+                            );
+                        }}
                     />
                 )}
             </Drawer>

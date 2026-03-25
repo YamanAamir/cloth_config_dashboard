@@ -4,7 +4,7 @@ import { Form, Input, Button, Card, Typography, message, Layout, Alert } from 'a
 import { LockOutlined } from '@ant-design/icons';
 import { setUserPassword } from '../api/api'; // API call
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 
 const ResetPasswordPage = () => {
     const location = useLocation();
@@ -77,9 +77,9 @@ const ResetPasswordPage = () => {
             <div style={{ width: '100%', maxWidth: 400, padding: '0 20px' }}>
                 <Card style={{ border: 'none', textAlign: 'center' }}>
                     <Title level={2} style={{ marginBottom: 16 }}>Set Your Password</Title>
-                    <Text type="secondary" style={{ display: 'block', marginBottom: 24 }}>
+                    <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 24 }}>
                         Enter a new password for your account
-                    </Text>
+                    </Typography.Text>
 
                     <Form form={form} layout="vertical" onFinish={onFinish} size="large">
                         <Form.Item

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import {
-    List,
     Input,
     Button,
     Card,
@@ -39,7 +38,7 @@ import {
     createNameList
 } from '../api/api';
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 
 const NameListManager = ({ classId, isAdmin = false }) => {
     const [loading, setLoading] = useState(false);
@@ -250,45 +249,21 @@ const NameListManager = ({ classId, isAdmin = false }) => {
                 </div>
             )}
 
-            <List
-                bordered
-                dataSource={items}
-                renderItem={(item, index) => (
-                    <List.Item
-                        actions={canEdit ? [
-                            <Tooltip title="Move Up">
-                                <Button
-                                    size="small"
-                                    icon={<ArrowUpOutlined />}
-                                    disabled={index === 0}
-                                    onClick={() => moveItem(index, 'up')}
-                                />
-                            </Tooltip>,
-                            <Tooltip title="Move Down">
-                                <Button
-                                    size="small"
-                                    icon={<ArrowDownOutlined />}
-                                    disabled={index === items.length - 1}
-                                    onClick={() => moveItem(index, 'down')}
-                                />
-                            </Tooltip>,
-                            <Tooltip title="Edit">
-                                <Button
-                                    size="small"
-                                    icon={<EditOutlined />}
-                                    onClick={() => {
-                                        setEditingItem(item);
-                                        // set modal
-                                    }}
-                                />
-                            </Tooltip>,
-                            <Popconfirm title="Delete?" onConfirm={() => handleDeleteItem(item.id)}>
-                                <Button size="small" danger icon={<DeleteOutlined />} />
-                            </Popconfirm>
-                        ] : []}
+            <div style={{ border: '1px solid #d9d9d9', borderRadius: 8, overflow: 'hidden' }}>
+                {items.length > 0 ? items.map((item, index) => (
+                    <div
+                        key={item.id}
+                        style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            padding: '12px 16px',
+                            borderBottom: index === items.length - 1 ? 'none' : '1px solid #f0f0f0',
+                            backgroundColor: '#fff'
+                        }}
                     >
                         <Space>
-                            <Text type="secondary" style={{ width: 30 }}>{index + 1}.</Text>
+                            <Typography.Text type="secondary" style={{ width: 30 }}>{index + 1}.</Typography.Text>
                             {editingItem?.id === item.id ? (
                                 <Input
                                     defaultValue={item.name}
@@ -298,12 +273,47 @@ const NameListManager = ({ classId, isAdmin = false }) => {
                                     style={{ width: 300 }}
                                 />
                             ) : (
-                                <Text strong={!canEdit}>{item.name}</Text>
+                                <Typography.Text strong={!canEdit}>{item.name}</Typography.Text>
                             )}
                         </Space>
-                    </List.Item>
+
+                        {canEdit && (
+                            <Space size="small">
+                                <Tooltip title="Move Up">
+                                    <Button
+                                        size="small"
+                                        icon={<ArrowUpOutlined />}
+                                        disabled={index === 0}
+                                        onClick={() => moveItem(index, 'up')}
+                                    />
+                                </Tooltip>
+                                <Tooltip title="Move Down">
+                                    <Button
+                                        size="small"
+                                        icon={<ArrowDownOutlined />}
+                                        disabled={index === items.length - 1}
+                                        onClick={() => moveItem(index, 'down')}
+                                    />
+                                </Tooltip>
+                                <Tooltip title="Edit">
+                                    <Button
+                                        size="small"
+                                        icon={<EditOutlined />}
+                                        onClick={() => setEditingItem(item)}
+                                    />
+                                </Tooltip>
+                                <Popconfirm title="Delete?" onConfirm={() => handleDeleteItem(item.id)}>
+                                    <Button size="small" danger icon={<DeleteOutlined />} />
+                                </Popconfirm>
+                            </Space>
+                        )}
+                    </div>
+                )) : (
+                    <div style={{ padding: 40 }}>
+                         <Empty description="No names in list yet." />
+                    </div>
                 )}
-            />
+            </div>
             {items.length === 0 && <div style={{ textAlign: 'center', margin: 20, color: '#999' }}>No names in list yet.</div>}
         </div>
     );

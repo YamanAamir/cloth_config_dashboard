@@ -32,7 +32,7 @@ import {
 } from '../api/api';
 import { getUploadsUrl, Status } from '../utils/constants';
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 const { TabPane } = Tabs;
 
 const STATUS_MAP = {
@@ -193,9 +193,9 @@ const UploadFilesPage = () => {
             <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                     <Title level={4} style={{ margin: 0 }}>Upload Files</Title>
-                    <Text type="secondary">
+                    <Typography.Text type="secondary">
                         Manage your class logos and back designs
-                    </Text>
+                    </Typography.Text>
                 </div>
             </div>
 
@@ -252,7 +252,7 @@ const UploadFilesPage = () => {
                                             }
                                             style={{ borderRadius: 8 }}
                                         >
-                                            <Text strong ellipsis style={{ display: 'block' }}>{item.name}</Text>
+                                            <Typography.Text strong ellipsis style={{ display: 'block' }}>{item.name}</Typography.Text>
                                             <div style={{ marginTop: 8 }}>{getStatusTag(item.status)}</div>
                                         </Card>
                                     </Col>
@@ -301,7 +301,7 @@ const UploadFilesPage = () => {
                                             style={{ borderRadius: 8 }}
                                             >
                                             {console.log(getUploadsUrl(item.file_path))}
-                                            <Text strong ellipsis style={{ display: 'block' }}>{item.name}</Text>
+                                            <Typography.Text strong ellipsis style={{ display: 'block' }}>{item.name}</Typography.Text>
                                             <div style={{ marginTop: 8 }}>{getStatusTag(item.status)}</div>
                                         </Card>
                                     </Col>
@@ -342,15 +342,15 @@ const UploadFilesPage = () => {
                         Upload
                     </Button>
                 ]}
-                destroyOnClose
+                destroyOnHidden
             >
                 <Space direction="vertical" size="large" style={{ width: '100%' }}>
                     <div>
-                        <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
+                        <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
                             {uploadType === 'logo' 
                                 ? 'Select logo file (PNG, JPG up to 2MB)' 
                                 : 'Select back design file (PNG, JPG up to 5MB)'}
-                        </Text>
+                        </Typography.Text>
                         <Upload
                             beforeUpload={(file) => handleFileSelect(file, uploadType)}
                             showUploadList={false}
@@ -378,9 +378,9 @@ const UploadFilesPage = () => {
 
                     {((uploadType === 'logo' && selectedLogoPreview) || (uploadType === 'design' && selectedDesignPreview)) && (
                         <div>
-                            <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
+                            <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
                                 Preview
-                            </Text>
+                            </Typography.Text>
                             <div style={{ 
                                 padding: 16, 
                                 background: '#fafafa', 
@@ -394,9 +394,9 @@ const UploadFilesPage = () => {
                                     style={{ maxWidth: '100%', maxHeight: 200, objectFit: 'contain' }}
                                 />
                             </div>
-                            <Text type="success" style={{ display: 'block', marginTop: 8, fontSize: 12 }}>
+                            <Typography.Text type="success" style={{ display: 'block', marginTop: 8, fontSize: 12 }}>
                                 ✓ {(uploadType === 'logo' ? selectedLogoFile : selectedDesignFile)?.name}
-                            </Text>
+                            </Typography.Text>
                         </div>
                     )}
                 </Space>

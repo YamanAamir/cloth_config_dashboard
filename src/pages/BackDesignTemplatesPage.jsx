@@ -19,7 +19,7 @@ import {
 } from '../api/api';
 import { getUploadsUrl } from '../utils/constants';
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 
 const BackDesignTemplatesPage = () => {
     const [templates, setTemplates] = useState([]);
@@ -255,13 +255,13 @@ const BackDesignTemplatesPage = () => {
                         Upload Template
                     </Button>
                 ]}
-                destroyOnClose
+                destroyOnHidden
             >
                 <Space direction="vertical" size="large" style={{ width: '100%' }}>
                     <div>
-                        <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
+                        <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
                             Select template file (PNG, JPG up to 5MB)
-                        </Text>
+                        </Typography.Text>
                         <Upload
                             beforeUpload={handleFileSelect}
                             showUploadList={false}
@@ -287,9 +287,9 @@ const BackDesignTemplatesPage = () => {
 
                     {selectedPreview && (
                         <div>
-                            <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
+                            <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
                                 Preview
-                            </Text>
+                            </Typography.Text>
                             <div style={{ 
                                 padding: 16, 
                                 background: '#fafafa', 
@@ -303,9 +303,9 @@ const BackDesignTemplatesPage = () => {
                                     style={{ maxWidth: '100%', maxHeight: 300, objectFit: 'contain' }}
                                 />
                             </div>
-                            <Text type="success" style={{ display: 'block', marginTop: 8, fontSize: 12 }}>
+                            <Typography.Text type="success" style={{ display: 'block', marginTop: 8, fontSize: 12 }}>
                                 ✓ {selectedFile.name}
-                            </Text>
+                            </Typography.Text>
                         </div>
                     )}
                 </Space>

@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { loginUser } from '../api/api';
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 
 const LoginPage = () => {
     const [loading, setLoading] = useState(false);
@@ -43,7 +43,7 @@ const LoginPage = () => {
             <div className="fade-in" style={{ width: '100%', maxWidth: 400, padding: '0 20px' }}>
                 <Card className="glass-card" style={{ border: 'none', textAlign: 'center' }}>
                     <Title level={2} style={{ marginBottom: 8, color: '#006d75' }}>Login</Title>
-                    <Text type="secondary" style={{ display: 'block', marginBottom: 24 }}>Sign in to manage your dashboard</Text>
+                    <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 24 }}>Sign in to manage your dashboard</Typography.Text>
 
                     <Form
                         name="login"
@@ -74,9 +74,9 @@ const LoginPage = () => {
                     </Form>
 
                     <div style={{ marginTop: 16 }}>
-                        <Text type="secondary" style={{ fontSize: '12px' }}>
+                        <Typography.Text type="secondary" style={{ fontSize: '12px' }}>
                             &copy; 2024 ClothConfig. All rights reserved.
-                        </Text>
+                        </Typography.Text>
                     </div>
                 </Card>
             </div>

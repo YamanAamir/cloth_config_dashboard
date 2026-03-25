@@ -4,7 +4,7 @@ import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { registerUser } from '../api/api';
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 
 const RegisterPage = () => {
     const location = useLocation();
@@ -125,7 +125,7 @@ const RegisterPage = () => {
         return (
             <Layout style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #00b96b 0%, #006d75 100%)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                 <Card className="glass-card" style={{ border: 'none' }}>
-                    <Text>Loading...</Text>
+                    <Typography.Text>Loading...</Typography.Text>
                 </Card>
             </Layout>
         );
@@ -137,9 +137,9 @@ const RegisterPage = () => {
             <div className="fade-in" style={{ width: '100%', maxWidth: 400, padding: '0 20px' }}>
                 <Card className="glass-card" style={{ border: 'none', textAlign: 'center' }}>
                     <Title level={2} style={{ marginBottom: 8, color: '#006d75' }}>Join Your Class</Title>
-                    <Text type="secondary" style={{ display: 'block', marginBottom: 24 }}>
+                    <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 24 }}>
                         Register as a student for your class
-                    </Text>
+                    </Typography.Text>
 
                     <Form
                         form={form}
@@ -182,9 +182,9 @@ const RegisterPage = () => {
                         </Form.Item>
                     </Form>
 
-                    <Text type="secondary" style={{ fontSize: 12 }}>
+                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                         Already have an account? <a href="/login">Log in</a>
-                    </Text>
+                    </Typography.Text>
                 </Card>
             </div>
         </Layout>

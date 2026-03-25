@@ -1,5 +1,5 @@
 import React from 'react';
-import { Row, Col, Card, Statistic, Typography, List, Avatar, Tag, Space, Spin } from 'antd';
+import { Row, Col, Card, Statistic, Typography, Avatar, Tag, Space, Spin } from 'antd';
 import {
     BankOutlined,
     UserOutlined,
@@ -15,7 +15,7 @@ import { useEffect } from 'react';
 import { adminDashboard } from '../api/api';
 import { useState } from 'react';
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 
 const DashboardPage = () => {
     const [dashboard, setDashboard] = useState(null);
@@ -146,7 +146,7 @@ const DashboardPage = () => {
     if (!dashboard) {
         return (
             <div style={{ textAlign: 'center', padding: '50px' }}>
-                <Text type="danger">Failed to load dashboard data.</Text>
+                <Typography.Text type="danger">Failed to load dashboard data.</Typography.Text>
             </div>
         )
     };
@@ -157,7 +157,7 @@ const DashboardPage = () => {
         <div>
             <div style={{ marginBottom: 24 }}>
                 <Title level={2}>Welcome to Dashboard</Title>
-                <Text type="secondary">Here's what's happening today in your dashboard.</Text>
+                <Typography.Text type="secondary">Here's what's happening today in your dashboard.</Typography.Text>
             </div>
 
             <Row gutter={[24, 24]}>
@@ -194,7 +194,7 @@ const DashboardPage = () => {
                                 <Tag color="success" style={{ border: 'none', borderRadius: '4px' }}>
                                     <ArrowUpOutlined />
                                 </Tag>
-                                <Text type="secondary" style={{ fontSize: '12px' }}>{stat.trend.split(' ').slice(1).join(' ')}</Text>
+                                <Typography.Text type="secondary" style={{ fontSize: '12px' }}>{stat.trend.split(' ').slice(1).join(' ')}</Typography.Text>
                             </div> */}
                         </Card>
                     </Col>
@@ -209,29 +209,31 @@ const DashboardPage = () => {
                         style={{ border: 'none' }}
                         extra={<a href="#">View All</a>}
                     >
-                        <List
-                            itemLayout="horizontal"
-                            dataSource={recentActivities}
-                            renderItem={(item) => (
-                                <List.Item>
-                                    <List.Item.Meta
-                                        avatar={
-                                            <Avatar
-                                                style={{ backgroundColor: item.status === 'success' ? '#f6ffed' : '#e6f7ff' }}
-                                                icon={item.status === 'success' ? <CheckCircleOutlined style={{ color: '#52c41a' }} /> : <ClockCircleOutlined style={{ color: '#1890ff' }} />}
-                                            />
-                                        }
-                                        title={<strong>{item.action}</strong>}
-                                        description={
+                        <div style={{ maxHeight: 400, overflowY: 'auto' }}>
+                            {recentActivities.map((item) => (
+                                <div key={item.id} style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    padding: '12px 16px',
+                                    borderBottom: '1px solid #f0f0f0',
+                                    justifyContent: 'space-between'
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                                        <Avatar
+                                            style={{ backgroundColor: item.status === 'success' ? '#f6ffed' : '#e6f7ff' }}
+                                            icon={item.status === 'success' ? <CheckCircleOutlined style={{ color: '#52c41a' }} /> : <ClockCircleOutlined style={{ color: '#1890ff' }} />}
+                                        />
+                                        <div>
+                                            <div style={{ fontWeight: 600 }}>{item.action}</div>
                                             <Space>
-                                                <Text type="secondary">{item.item}</Text>
+                                                <Typography.Text type="secondary">{item.item}</Typography.Text>
                                                 <Tag color="cyan">{item.time}</Tag>
                                             </Space>
-                                        }
-                                    />
-                                </List.Item>
-                            )}
-                        />
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </Card>
                 </Col>
             </Row>

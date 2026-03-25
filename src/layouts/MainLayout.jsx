@@ -117,6 +117,18 @@ const MainLayout = () => {
             label: 'Back Design Configurator',
             roles: [Role.CLASS_REPRESENTATIVE],
         },
+        {
+            key: '/student-overview',
+            icon: <UserOutlined />,
+            label: 'Student Overview',
+            roles: [Role.CLASS_REPRESENTATIVE],
+        },
+        {
+            key: '/orders-list',
+            icon: <OrderedListOutlined />,
+            label: 'Orders List',
+            roles: [Role.ADMIN, Role.CLASS_REPRESENTATIVE],
+        },
     ];
 
 

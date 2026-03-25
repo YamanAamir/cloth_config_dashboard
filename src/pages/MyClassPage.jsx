@@ -42,7 +42,7 @@ import {
 import NameListManager from '../components/NameListManager';
 import { getUploadsUrl, Status } from '../utils/constants';
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 
 const STATUS_MAP = {
     [Status.ACTIVE]: { label: 'Approved', color: 'success', icon: <CheckCircleOutlined /> },
@@ -256,7 +256,7 @@ const MyClassPage = () => {
             <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
                 <div>
                     <Title level={4} style={{ margin: 0 }}>My Class</Title>
-                    <Text type="secondary">Manage class logos and student name list</Text>
+                    <Typography.Text type="secondary">Manage class logos and student name list</Typography.Text>
                 </div>
                 <Space>
                     <Button
@@ -404,22 +404,22 @@ const MyClassPage = () => {
                         <Col xs={24} md={12}>
                             <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                                 <div>
-                                    <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>Design Name</Text>
-                                    <Text strong style={{ fontSize: 16 }}>{currentBackDesign.name}</Text>
+                                    <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>Design Name</Typography.Text>
+                                    <Typography.Text strong style={{ fontSize: 16 }}>{currentBackDesign.name}</Typography.Text>
                                 </div>
                                 <div>
-                                    <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>Type</Text>
+                                    <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>Type</Typography.Text>
                                     <Tag color={currentBackDesign.is_library ? 'blue' : 'green'}>
                                         {currentBackDesign.is_library ? 'Design Template' : 'Custom Back Design'}
                                     </Tag>
                                 </div>
                                 <div>
-                                    <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>Status</Text>
+                                    <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>Status</Typography.Text>
                                     {getStatusTag(currentBackDesign.status)}
                                 </div>
                                 <div>
-                                    <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>Created</Text>
-                                    <Text>{new Date(currentBackDesign.created_at).toLocaleDateString()}</Text>
+                                    <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>Created</Typography.Text>
+                                    <Typography.Text>{new Date(currentBackDesign.created_at).toLocaleDateString()}</Typography.Text>
                                 </div>
                                 {/* <Button 
                                     type="default"
@@ -501,9 +501,9 @@ const MyClassPage = () => {
                                     bodyStyle={{ padding: 12 }}
                                 >
                                     <Tooltip title={logo.name}>
-                                        <Text strong ellipsis style={{ display: 'block', marginBottom: 8 }}>
+                                        <Typography.Text strong ellipsis style={{ display: 'block', marginBottom: 8 }}>
                                             {logo.name}
-                                        </Text>
+                                        </Typography.Text>
                                     </Tooltip>
                                     {getStatusTag(logo.status)}
                                 </Card>
@@ -545,13 +545,13 @@ const MyClassPage = () => {
                         Upload Logo
                     </Button>
                 ]}
-                destroyOnClose
+                destroyOnHidden
             >
                 <Space direction="vertical" size="large" style={{ width: '100%' }}>
                     <div>
-                        <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
+                        <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
                             Select logo file (PNG, JPG up to 2MB)
-                        </Text>
+                        </Typography.Text>
                         <Upload
                             beforeUpload={handleLogoFileSelect}
                             showUploadList={false}
@@ -577,9 +577,9 @@ const MyClassPage = () => {
 
                     {selectedLogoPreview && (
                         <div>
-                            <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
+                            <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
                                 Preview
-                            </Text>
+                            </Typography.Text>
                             <div style={{ 
                                 padding: 16, 
                                 background: '#fafafa', 
@@ -593,9 +593,9 @@ const MyClassPage = () => {
                                     style={{ maxWidth: '100%', maxHeight: 200, objectFit: 'contain' }}
                                 />
                             </div>
-                            <Text type="success" style={{ display: 'block', marginTop: 8, fontSize: 12 }}>
+                            <Typography.Text type="success" style={{ display: 'block', marginTop: 8, fontSize: 12 }}>
                                 ✓ {selectedLogoFile.name}
-                            </Text>
+                            </Typography.Text>
                         </div>
                     )}
                 </Space>
@@ -619,11 +619,11 @@ const MyClassPage = () => {
                         Copy Link
                     </Button>,
                 ]}
-                destroyOnClose
+                destroyOnHidden
             >
-                <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
+                <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
                     Share this link with students so they can register and join your class.
-                </Text>
+                </Typography.Text>
                 <Input.TextArea
                     readOnly
                     value={registrationLink}
@@ -661,7 +661,7 @@ const MyClassPage = () => {
                     </Button>
                 ]}
                 width={800}
-                destroyOnClose
+                destroyOnHidden
             >
                 {templatesLoading ? (
                     <div style={{ textAlign: 'center', padding: 48 }}>
@@ -707,9 +707,9 @@ const MyClassPage = () => {
                                     bodyStyle={{ padding: 12 }}
                                 >
                                     <Tooltip title={template.name}>
-                                        <Text strong ellipsis style={{ display: 'block' }}>
+                                        <Typography.Text strong ellipsis style={{ display: 'block' }}>
                                             {template.name}
-                                        </Text>
+                                        </Typography.Text>
                                     </Tooltip>
                                     {selectedTemplate === template.id && (
                                         <CheckCircleOutlined style={{ color: '#00b96b', fontSize: 20, position: 'absolute', top: 8, right: 8 }} />

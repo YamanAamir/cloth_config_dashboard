@@ -20,6 +20,7 @@ import OrderList from './pages/OrderList';
 import BackDesignConfiguratorPage from './pages/BackDesignConfiguratorPage';
 import NameListPage from './pages/NameListPage';
 import BackDesignTemplatesPage from './pages/BackDesignTemplatesPage';
+import StudentOverview from './pages/StudentOverview';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
@@ -137,9 +138,17 @@ const AppRoutes = () => {
           }
         />
         <Route
+          path="student-overview"
+          element={
+            <ProtectedRoute allowedRoles={[Role.CLASS_REPRESENTATIVE]}>
+              <StudentOverview />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="orders-list"
           element={
-            <ProtectedRoute allowedRoles={[Role.ADMIN]}>
+            <ProtectedRoute allowedRoles={[Role.ADMIN, Role.CLASS_REPRESENTATIVE]}>
               <OrderList />
             </ProtectedRoute>
           }

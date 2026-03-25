@@ -31,7 +31,7 @@ import {
 } from '../api/api';
 import { Status, getUploadsUrl } from '../utils/constants';
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 const { TabPane } = Tabs;
 
 const STATUS_FILTER_OPTIONS = [
@@ -174,19 +174,19 @@ const ReviewUploadsPage = () => {
                 />
             ),
         },
-        { title: 'Name', dataIndex: 'name', key: 'name', render: (t) => <Text strong>{t || '—'}</Text> },
+        { title: 'Name', dataIndex: 'name', key: 'name', render: (t) => <Typography.Text strong>{t || '—'}</Typography.Text> },
         {
             title: 'School',
             key: 'school',
-            render: (_, record) => <Text>{record.school?.name || '—'}</Text>,
+            render: (_, record) => <Typography.Text>{record.school?.name || '—'}</Typography.Text>,
         },
         {
             title: 'Uploaded By',
             key: 'user',
             render: (_, record) => (
                 <Space direction="vertical" size={0}>
-                    <Text>{record.user?.name || '—'}</Text>
-                    {record.user?.email && <Text type="secondary" style={{ fontSize: 12 }}>{record.user.email}</Text>}
+                    <Typography.Text>{record.user?.name || '—'}</Typography.Text>
+                    {record.user?.email && <Typography.Text type="secondary" style={{ fontSize: 12 }}>{record.user.email}</Typography.Text>}
                 </Space>
             ),
         },
@@ -252,11 +252,11 @@ const ReviewUploadsPage = () => {
                 />
             ),
         },
-        { title: 'Name', dataIndex: 'name', key: 'name', render: (t) => <Text strong>{t || '—'}</Text> },
+        { title: 'Name', dataIndex: 'name', key: 'name', render: (t) => <Typography.Text strong>{t || '—'}</Typography.Text> },
         {
             title: 'Class',
             key: 'class',
-            render: (_, record) => <Text>{record.class?.name || '—'}</Text>,
+            render: (_, record) => <Typography.Text>{record.class?.name || '—'}</Typography.Text>,
         },
         {
             title: 'Status',
@@ -309,7 +309,7 @@ const ReviewUploadsPage = () => {
         <div className="fade-in">
             <div style={{ marginBottom: 24 }}>
                 <Title level={4} style={{ margin: 0 }}>Review Uploads</Title>
-                <Text type="secondary">Review and approve class logos and back designs</Text>
+                <Typography.Text type="secondary">Review and approve class logos and back designs</Typography.Text>
             </div>
 
             <Card className="glass-card" style={{ border: 'none' }}>

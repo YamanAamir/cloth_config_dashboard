@@ -23,7 +23,7 @@ import {
 import { getAllNameLists } from '../api/api';
 import NameListManager from '../components/NameListManager';
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 
 const STATUS_FILTERS = [
     { value: 'draft', label: 'Draft' },
@@ -103,12 +103,12 @@ const NameListReviewPage = () => {
         {
             title: 'Class Name',
             key: 'className',
-            render: (_, record) => <Text strong>{record.class?.name || 'Unknown Class'}</Text>,
+            render: (_, record) => <Typography.Text strong>{record.class?.name || 'Unknown Class'}</Typography.Text>,
         },
         {
             title: 'School',
             key: 'school',
-            render: (_, record) => <Text>{record.class?.school?.name || '—'}</Text>,
+            render: (_, record) => <Typography.Text>{record.class?.school?.name || '—'}</Typography.Text>,
         },
         {
             title: 'Student Count',
@@ -142,7 +142,7 @@ const NameListReviewPage = () => {
         <div className="fade-in">
             <div style={{ marginBottom: 24 }}>
                 <Title level={4} style={{ margin: 0 }}>Name Lists Review</Title>
-                <Text type="secondary">Review class name lists submitted by Class Representatives</Text>
+                <Typography.Text type="secondary">Review class name lists submitted by Class Representatives</Typography.Text>
             </div>
 
             <Card className="glass-card" style={{ border: 'none' }}>
@@ -199,7 +199,7 @@ const NameListReviewPage = () => {
                 onCancel={handleModalClose}
                 footer={null}
                 width={800}
-                destroyOnClose
+                destroyOnHidden
             >
                 {selectedClassId && (
                     <NameListManager

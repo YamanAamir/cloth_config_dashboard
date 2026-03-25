@@ -396,7 +396,7 @@ const ClassesPage = () => {
                 open={isModalOpen}
                 onCancel={() => setIsModalOpen(false)}
                 footer={null}
-                destroyOnClose
+                destroyOnHidden
             >
                 <Form
                     form={form}
@@ -454,7 +454,7 @@ const ClassesPage = () => {
                 open={isAssignModalOpen}
                 onCancel={() => setIsAssignModalOpen(false)}
                 footer={null}
-                destroyOnClose
+                destroyOnHidden
             >
                 <Form
                     form={assignForm}
@@ -495,7 +495,7 @@ const ClassesPage = () => {
             <Drawer
                 title={`Back Design - ${selectedClassForDesign?.name || ''}`}
                 placement="right"
-                width={600}
+                size="large"
                 onClose={() => {
                     setDesignDrawerOpen(false);
                     setSelectedClassForDesign(null);
