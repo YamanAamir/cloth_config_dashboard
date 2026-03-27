@@ -79,3 +79,6 @@ export const getOrderDetails = (orderId) => api.get(`/admin/orders/${orderId}/de
 export const getOrderHistory = (orderId) => api.get(`/admin/orders/${orderId}/history`);
 export const unlockOrder = (orderId) => api.put(`/admin/orders/${orderId}/unlock`);
 export const lockOrder = (orderId) => api.put(`/admin/orders/${orderId}/lock`);
+export const lockClass = (classId) => api.put(`/admin/lock-class/${classId}`);
+export const unlockClass = (classId) => api.put(`/admin/unlock-class/${classId}`);
+export const sendDeadlineReminder = (classId) => api.post(`/admin/class/${classId}/send-deadline-reminder`);

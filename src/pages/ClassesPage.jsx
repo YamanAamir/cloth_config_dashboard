@@ -18,7 +18,7 @@ import {
     Image,
     Spin
 } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, TeamOutlined, BankOutlined, CalendarOutlined, UserAddOutlined, EyeOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, TeamOutlined, BankOutlined, CalendarOutlined, UserAddOutlined, EyeOutlined, LockOutlined, UnlockOutlined } from '@ant-design/icons';
 import {
     getAllClasses,
     createClass,
@@ -28,7 +28,9 @@ import {
     getAllSchools,
     getAllClassReps,
     assignClassRep,
-    getClassBackDesign
+    getClassBackDesign,
+    lockClass,
+    unlockClass
 } from '../api/api';
 import { Status, getUploadsUrl } from '../utils/constants';
 
@@ -110,6 +112,7 @@ const ClassesPage = () => {
         try {
             const payload = {
                 ...values,
+                change_deadline: values.change_deadline ? new Date(values.change_deadline).toISOString() : null,
                 status: values.status ? Status.ACTIVE : Status.INACTIVE
             };
 
@@ -163,6 +166,21 @@ const ClassesPage = () => {
             fetchClasses();
         } catch (error) {
             message.error('Status update failed');
+        }
+    };
+
+    const handleToggleClassLock = async (record) => {
+        try {
+            if (record.order_locked) {
+                await unlockClass(record.id);
+                message.success(`Class "${record.name}" unlocked`);
+            } else {
+                await lockClass(record.id);
+                message.success(`Class "${record.name}" locked`);
+            }
+            fetchClasses();
+        } catch (error) {
+            message.error(error.response?.data?.message || 'Lock toggle failed');
         }
     };
 
@@ -221,6 +239,21 @@ const ClassesPage = () => {
                     {year}
                 </Tag>
             )
+        },
+        {
+            title: 'Ordering Deadline',
+            dataIndex: 'change_deadline',
+            key: 'change_deadline',
+            render: (deadline) => {
+                if (!deadline) return <span style={{ color: '#bbb', fontSize: 12 }}>Not set</span>;
+                const isPast = new Date() > new Date(deadline);
+                return (
+                    <Tag color={isPast ? 'volcano' : 'blue'}>
+                        <CalendarOutlined style={{ marginRight: 4 }} />
+                        {new Date(deadline).toLocaleDateString()}
+                    </Tag>
+                );
+            }
         },
         {
             title: 'Status',
@@ -294,6 +327,26 @@ const ClassesPage = () => {
             ),
         },
         {
+            title: 'Lock',
+            key: 'order_locked',
+            render: (_, record) => (
+                <Popconfirm
+                    title={`${record.order_locked ? 'Unlock' : 'Lock'} class "${record.name}"?`}
+                    onConfirm={() => handleToggleClassLock(record)}
+                    okText="Yes" cancelText="No"
+                >
+                    <Button
+                        size="small"
+                        type={record.order_locked ? 'primary' : 'default'}
+                        danger={record.order_locked}
+                        icon={record.order_locked ? <LockOutlined /> : <UnlockOutlined />}
+                    >
+                        {record.order_locked ? 'Locked' : 'Unlocked'}
+                    </Button>
+                </Popconfirm>
+            ),
+        },
+        {
             title: 'Action',
             key: 'action',
             render: (_, record) => (
@@ -307,7 +360,10 @@ const ClassesPage = () => {
                                 ...record,
                                 status: record.status === Status.ACTIVE,
                                 school_id: record.school_id,
-                                user_id: record.users?.[0]?.id || record.user_id
+                                user_id: record.users?.[0]?.id || record.user_id,
+                                change_deadline: record.change_deadline
+                                    ? record.change_deadline.split('T')[0]
+                                    : undefined
                             });
                             setIsModalOpen(true);
                         }}
@@ -419,6 +475,14 @@ const ClassesPage = () => {
                         rules={[{ required: true, message: 'Please enter graduation year' }]}
                     >
                         <Input type="number" prefix={<CalendarOutlined />} placeholder="e.g. 2025" />
+                    </Form.Item>
+
+                    <Form.Item
+                        name="change_deadline"
+                        label="Ordering Deadline"
+                        tooltip="Students cannot place or edit orders after this date"
+                    >
+                        <Input type="date" prefix={<CalendarOutlined />} />
                     </Form.Item>
 
                     <Form.Item

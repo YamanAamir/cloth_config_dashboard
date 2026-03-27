@@ -1,68 +1,36 @@
 import React, { useState, useEffect } from 'react';
 import {
-    Table,
-    Button,
-    Card,
-    Typography,
-    Space,
-    Modal,
-    Form,
-    Input,
-    Switch,
-    message,
-    Popconfirm,
-    Select,
-    Tag,
-    Drawer,
-    Descriptions,
-    Divider,
-    Image,
-    List,
+    Table, Button, Card, Typography, Space,
+    Input, message, Popconfirm, Tag,
+    Drawer, Descriptions, Divider, Image, List, Row, Col,
 } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, TeamOutlined, BankOutlined, CalendarOutlined, UserAddOutlined, EyeOutlined, HistoryOutlined, UserOutlined, LockOutlined, UnlockOutlined } from '@ant-design/icons';
+import { CalendarOutlined, EyeOutlined, HistoryOutlined, LockOutlined, UnlockOutlined, MailOutlined } from '@ant-design/icons';
 import {
-    getAllClasses,
-    createClass,
-    updateClass,
-    deleteClass,
-    toggleClassStatus,
-    getAllSchools,
-    getAllClassReps,
-    assignClassRep,
     getAllOrders,
     getOrderDetails,
     getOrderHistory,
-    getStudents,
     unlockOrder,
-    lockOrder
+    lockOrder,
+    sendDeadlineReminder
 } from '../api/api';
 import { Status, Role } from '../utils/constants';
 import { useAuth } from '../context/AuthContext';
 import useSocket from '../hooks/useSocket';
 
 const { Title } = Typography;
-const { Option } = Select;
 
 const OrderList = () => {
     const { user } = useAuth();
     const isClassRep = user?.role === Role.CLASS_REPRESENTATIVE;
 
     const [classes, setClasses] = useState([]);
-    const [schools, setSchools] = useState([]);
-    const [classReps, setClassReps] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
-    const [editingClass, setEditingClass] = useState(null);
-    const [selectedClass, setSelectedClass] = useState(null);
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
     const [drawerLoading, setDrawerLoading] = useState(false);
     const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false);
     const [orderHistory, setOrderHistory] = useState([]);
     const [historyLoading, setHistoryLoading] = useState(false);
-    const [form] = Form.useForm();
-    const [assignForm] = Form.useForm();
     const [pagination, setPagination] = useState({
         current: 1,
         limit: 10,
@@ -95,72 +63,14 @@ const OrderList = () => {
         }
     };
 
-    const fetchDropdowns = async () => {
-        try {
-            const [schoolsRes, repsRes] = await Promise.all([
-                getAllSchools({ limit: 1000 }),
-                getAllClassReps({ limit: 1000 })
-            ]);
-            setSchools(schoolsRes.data.data || []);
-            setClassReps(repsRes.data.data || []);
-        } catch (error) {
-            message.error('Failed to fetch dropdown data');
-        }
-    };
-
     useEffect(() => {
         fetchOrders();
     }, [pagination.current, pagination.limit, pagination.search]);
 
-    useEffect(() => {
-        fetchDropdowns();
-    }, []);
-
-    // Real-time update: refresh orders when any student saves/pays
+    // Real-time update
     useSocket('admin_room', 'new_order_admin', () => {
-        console.log('🔔 Real-time: new order activity detected. Refreshing...');
         fetchOrders();
     });
-
-    const handleAddEdit = async (values) => {
-        try {
-            const payload = {
-                ...values,
-                change_deadline: values.change_deadline ? new Date(values.change_deadline).toISOString() : null,
-                status: values.status ? Status.ACTIVE : Status.INACTIVE
-            };
-
-            if (editingClass) {
-                await updateClass(editingClass.id, payload);
-                message.success('Class updated successfully');
-            } else {
-                await createClass(payload);
-                message.success('Class created successfully');
-            }
-            setIsModalOpen(false);
-            form.resetFields();
-            setEditingClass(null);
-            fetchOrders();
-        } catch (error) {
-            message.error(error.response?.data?.message || 'Operation failed');
-        }
-    };
-
-    const handleAssignRep = async (values) => {
-        try {
-            const payload = {
-                class_id: selectedClass.id,
-                class_rep_id: values.class_rep_id
-            };
-            await assignClassRep(payload);
-            message.success('Representative assigned successfully');
-            setIsAssignModalOpen(false);
-            assignForm.resetFields();
-            fetchOrders();
-        } catch (error) {
-            message.error(error.response?.data?.message || 'Assignment failed');
-        }
-    }
 
     const handleView = async (record) => {
         setDrawerLoading(true);
@@ -190,24 +100,12 @@ const OrderList = () => {
         }
     };
 
-    const handleDelete = async (id) => {
+    const handleSendReminder = async (classId) => {
         try {
-            await deleteClass(id);
-            message.success('Class deleted successfully');
-            fetchOrders();
+            await sendDeadlineReminder(classId);
+            message.success('Deadline reminder email sent successfully');
         } catch (error) {
-            message.error('Delete failed');
-        }
-    };
-
-    const handleToggleStatus = async (record) => {
-        try {
-            const newStatus = record.status === Status.ACTIVE ? Status.INACTIVE : Status.ACTIVE;
-            await toggleClassStatus(record.id, { status: newStatus });
-            message.success(`Status updated for ${record.name}`);
-            fetchOrders();
-        } catch (error) {
-            message.error('Status update failed');
+            message.error(error.response?.data?.message || 'Failed to send reminder');
         }
     };
 
@@ -266,37 +164,6 @@ const OrderList = () => {
                     })()}
                 </Space>
             ),
-        },
-        {
-            title: 'Order Items',
-            key: 'order_items',
-            width: 230,
-            render: (_, record) => {
-                const items = record.order_items || [];
-                if (items.length === 0) return <span style={{ color: '#bbb', fontSize: 12 }}>No items placed</span>;
-                return (
-                    <Space direction="vertical" size={4}>
-                        {items.map((item) => (
-                            <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                                <Tag
-                                    color={item.status === 1 ? 'success' : 'warning'}
-                                    style={{ fontSize: 10, margin: 0, lineHeight: '16px' }}
-                                >
-                                    {item.status === 1 ? '✓ PAID' : 'UNPAID'}
-                                </Tag>
-                                <span style={{ fontSize: 12 }}>
-                                    {item.product_type}
-                                    {item.selectedColor ? ` · ${item.selectedColor}` : ''}
-                                    {item.selectedSize ? ` · ${item.selectedSize}` : ''}
-                                </span>
-                                <span style={{ fontSize: 11, color: '#888', marginLeft: 'auto' }}>
-                                    {getItemPrice(item.product_type)} DKK
-                                </span>
-                            </div>
-                        ))}
-                    </Space>
-                );
-            },
         },
         {
             title: 'Financials',
@@ -385,29 +252,21 @@ const OrderList = () => {
                     />
                     <Button
                         type="text"
-                        icon={<EditOutlined style={{ color: '#fa8c16' }} />}
-                        onClick={() => {
-                            const classData = record.class || {};
-                            const classId = classData.id || record.class_id;
-                            if (!classId) { message.error('Class ID not found'); return; }
-                            setEditingClass({ ...classData, id: classId, order_id: record.id });
-                            form.setFieldsValue({
-                                name: classData.name,
-                                graduation_year: classData.graduation_year,
-                                school_id: classData.school_id,
-                                change_deadline: classData.change_deadline ? classData.change_deadline.split('T')[0] : undefined,
-                                status: classData.status === Status.ACTIVE
-                            });
-                            setIsModalOpen(true);
-                        }}
-                        title="Edit Class"
-                    />
-                    <Button
-                        type="text"
                         icon={<HistoryOutlined style={{ color: '#1890ff' }} />}
                         onClick={() => handleViewHistory(record.id)}
                         title="View History"
                     />
+                    <Popconfirm
+                        title="Send deadline reminder email to this student?"
+                        onConfirm={() => handleSendReminder(record.class_id)}
+                        okText="Send" cancelText="No"
+                    >
+                        <Button
+                            type="text"
+                            icon={<MailOutlined style={{ color: '#722ed1' }} />}
+                            title="Send Deadline Reminder"
+                        />
+                    </Popconfirm>
                     <Popconfirm
                         title={`${record.is_locked ? 'Unlock' : 'Lock'} this order?`}
                         onConfirm={() => handleToggleLock(record)}
@@ -473,115 +332,6 @@ const OrderList = () => {
                     }}
                 />
             </Card>
-
-            {/* Create/Edit Modal */}
-            <Modal
-                title={editingClass ? "Edit Class" : "Add New Class"}
-                open={isModalOpen}
-                onCancel={() => setIsModalOpen(false)}
-                footer={null}
-                destroyOnHidden
-            >
-                <Form
-                    form={form}
-                    layout="vertical"
-                    onFinish={handleAddEdit}
-                    initialValues={{ status: true }}
-                    style={{ marginTop: 20 }}
-                >
-                    <Form.Item
-                        name="name"
-                        label="Class Name"
-                        rules={[{ required: true, message: 'Please enter class name' }]}
-                    >
-                        <Input prefix={<TeamOutlined />} placeholder="e.g. Class of 2025 A" />
-                    </Form.Item>
-
-                    <Form.Item
-                        name="graduation_year"
-                        label="Graduation Year"
-                        rules={[{ required: true, message: 'Please enter graduation year' }]}
-                    >
-                        <Input type="number" prefix={<CalendarOutlined />} placeholder="e.g. 2025" />
-                    </Form.Item>
-
-                    <Form.Item
-                        name="change_deadline"
-                        label="Ordering Deadline"
-                        tooltip="The date when students can no longer place or edit orders"
-                    >
-                        <Input type="date" prefix={<CalendarOutlined />} />
-                    </Form.Item>
-
-                    <Form.Item
-                        name="school_id"
-                        label="Assign School"
-                        rules={[{ required: true, message: 'Please select a school' }]}
-                    >
-                        <Select placeholder="Select a school">
-                            {schools.map(school => (
-                                <Option key={school.id} value={school.id}>{school.name}</Option>
-                            ))}
-                        </Select>
-                    </Form.Item>
-
-                    <Form.Item name="status" label="Status" valuePropName="checked">
-                        <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
-                    </Form.Item>
-
-                    <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
-                        <Space>
-                            <Button onClick={() => setIsModalOpen(false)}>Cancel</Button>
-                            <Button type="primary" htmlType="submit">
-                                {editingClass ? 'Update Class' : 'Create Class'}
-                            </Button>
-                        </Space>
-                    </Form.Item>
-                </Form>
-            </Modal>
-
-            {/* Assign Representative Modal */}
-            <Modal
-                title={`Assign Representative to ${selectedClass?.name}`}
-                open={isAssignModalOpen}
-                onCancel={() => setIsAssignModalOpen(false)}
-                footer={null}
-                destroyOnHidden
-            >
-                <Form
-                    form={assignForm}
-                    layout="vertical"
-                    onFinish={handleAssignRep}
-                    style={{ marginTop: 20 }}
-                >
-                    <Form.Item
-                        name="class_rep_id"
-                        label="Select Representative"
-                        rules={[{ required: true, message: 'Please select a representative' }]}
-                    >
-                        <Select
-                            placeholder="Search and select representative"
-                            showSearch
-                            optionFilterProp="children"
-                        >
-                            {classReps.map(rep => (
-                                <Option key={rep.id} value={rep.id}>
-                                    {rep.name} ({rep.email}) - {rep.school?.name}
-                                </Option>
-                            ))}
-                        </Select>
-                    </Form.Item>
-
-                    <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
-                        <Space>
-                            <Button onClick={() => setIsAssignModalOpen(false)}>Cancel</Button>
-                            <Button type="primary" htmlType="submit">
-                                Assign Representative
-                            </Button>
-                        </Space>
-                    </Form.Item>
-                </Form>
-            </Modal>
 
             {/* Order Details Drawer */}
             <Drawer
@@ -649,61 +399,82 @@ const OrderList = () => {
                             </>
                         )}
 
-                        <Title level={5}>Order Items</Title>
+                        <Title level={5}>Order Items ({selectedOrderDetails.order_items?.length || 0})</Title>
                         <List
                             grid={{ gutter: 16, column: 1 }}
                             dataSource={selectedOrderDetails.order_items}
-                            renderItem={(item) => (
+                            renderItem={(item) => {
+                                const d = item.design_config || {};
+                                const hasLeftChest = d.leftChestText;
+                                const hasRightChest = d.rightChestText;
+                                const hasLeftSleeve = d.leftSleeveText;
+                                const hasRightSleeve = d.rightSleeveText;
+                                return (
                                 <List.Item>
                                     <Card
                                         type="inner"
-                                        title={`${item.product_type} - ${item.selectedColor}${item.selectedSize ? ` (${item.selectedSize})` : ''}`}
-                                        extra={<Tag color="blue">{item.id}</Tag>}
+                                        title={
+                                            <Space wrap>
+                                                <Tag color="blue">{item.product_type}</Tag>
+                                                <Tag color="default">{item.selectedColor}</Tag>
+                                                {item.selectedSize && <Tag color="cyan">Size: {item.selectedSize}</Tag>}
+                                                <Tag color={item.status === 1 ? 'success' : 'warning'}>
+                                                    {item.status === 1 ? '✓ PAID' : 'UNPAID'}
+                                                </Tag>
+                                            </Space>
+                                        }
+                                        extra={<span style={{ color: '#888', fontSize: 12 }}>#{item.id}</span>}
                                     >
-                                        <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-                                            <div style={{ flex: 1, minWidth: '300px' }}>
+                                        <Row gutter={[16, 16]}>
+                                            <Col xs={24} md={d.backDesign?.src ? 16 : 24}>
                                                 <Descriptions bordered size="small" column={1}>
-                                                    {item.design_config?.leftChestType && (
+                                                    {hasLeftChest && (
                                                         <Descriptions.Item label="Left Chest">
-                                                            {item.design_config.leftChestType}: {item.design_config.leftChestText}
-                                                            {item.design_config.leftChestFlag && ` (${item.design_config.leftChestFlag})`}
+                                                            {d.leftChestText}
+                                                            {d.leftChestFlag && <Tag style={{ marginLeft: 6 }}>{d.leftChestFlag}</Tag>}
                                                         </Descriptions.Item>
                                                     )}
-                                                    {item.design_config?.rightChestType && (
+                                                    {hasRightChest && (
                                                         <Descriptions.Item label="Right Chest">
-                                                            {item.design_config.rightChestType}: {item.design_config.rightChestText}
-                                                            {item.design_config.rightChestFlag && ` (${item.design_config.rightChestFlag})`}
+                                                            {d.rightChestText}
+                                                            {d.rightChestFlag && <Tag style={{ marginLeft: 6 }}>{d.rightChestFlag}</Tag>}
                                                         </Descriptions.Item>
                                                     )}
-                                                    {item.design_config?.leftSleeveType && (
+                                                    {hasLeftSleeve && (
                                                         <Descriptions.Item label="Left Sleeve">
-                                                            {item.design_config.leftSleeveType}: {item.design_config.leftSleeveText}
-                                                            {item.design_config.leftSleeveFlag && ` (${item.design_config.leftSleeveFlag})`}
+                                                            {d.leftSleeveText}
+                                                            {d.leftSleeveFlag && <Tag style={{ marginLeft: 6 }}>{d.leftSleeveFlag}</Tag>}
                                                         </Descriptions.Item>
                                                     )}
-                                                    {item.design_config?.rightSleeveType && (
+                                                    {hasRightSleeve && (
                                                         <Descriptions.Item label="Right Sleeve">
-                                                            {item.design_config.rightSleeveType}: {item.design_config.rightSleeveText}
-                                                            {item.design_config.rightSleeveFlag && ` (${item.design_config.rightSleeveFlag})`}
+                                                            {d.rightSleeveText}
+                                                            {d.rightSleeveFlag && <Tag style={{ marginLeft: 6 }}>{d.rightSleeveFlag}</Tag>}
+                                                        </Descriptions.Item>
+                                                    )}
+                                                    {!hasLeftChest && !hasRightChest && !hasLeftSleeve && !hasRightSleeve && (
+                                                        <Descriptions.Item label="Print Areas">
+                                                            <span style={{ color: '#bbb' }}>No text added</span>
                                                         </Descriptions.Item>
                                                     )}
                                                 </Descriptions>
-                                            </div>
-
-                                            {item.design_config?.backDesign?.src && (
-                                                <div style={{ textAlign: 'center' }}>
-                                                    <div style={{ marginBottom: 5, fontWeight: 'bold' }}>Back Design</div>
+                                            </Col>
+                                            {d.backDesign?.src && (
+                                                <Col xs={24} md={8} style={{ textAlign: 'center' }}>
+                                                    <div style={{ marginBottom: 6, fontWeight: 600, fontSize: 12, color: '#666' }}>Back Design</div>
                                                     <Image
                                                         width={120}
-                                                        src={item.design_config.backDesign.src}
+                                                        src={d.backDesign.src}
+                                                        style={{ borderRadius: 6, border: '1px solid #f0f0f0' }}
                                                         fallback="https://via.placeholder.com/120?text=No+Design"
                                                     />
-                                                </div>
+                                                </Col>
                                             )}
-                                        </div>
+                                        </Row>
                                     </Card>
                                 </List.Item>
-                            )}
+                                );
+                            }}
                         />
                     </div>
                 )}
