@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 450" width="400" height="450">
+  <defs>
+    <linearGradient id="fabricGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#e8e8e8;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#f5f5f5;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#d0d0d0;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="shadowLeft" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#000;stop-opacity:0.15" />
+      <stop offset="100%" style="stop-color:#000;stop-opacity:0" />
+    </linearGradient>
+    <linearGradient id="shadowRight" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#000;stop-opacity:0" />
+      <stop offset="100%" style="stop-color:#000;stop-opacity:0.12" />
+    </linearGradient>
+  </defs>
+
+  <!-- T-shirt body back view -->
+  <!-- Main body -->
+  <path d="M 80,80 L 20,160 L 80,175 L 75,420 L 325,420 L 320,175 L 380,160 L 320,80
+           Q 290,65 270,60 Q 250,55 240,58 Q 220,62 200,62 Q 180,62 160,58 Q 150,55 130,60
+           Q 110,65 80,80 Z"
+        fill="url(#fabricGrad)" stroke="#c0c0c0" stroke-width="1.5"/>
+
+  <!-- Left sleeve -->
+  <path d="M 80,80 Q 50,90 20,160 L 80,175 Q 85,140 90,110 Z"
+        fill="#e0e0e0" stroke="#c0c0c0" stroke-width="1"/>
+
+  <!-- Right sleeve -->
+  <path d="M 320,80 Q 350,90 380,160 L 320,175 Q 315,140 310,110 Z"
+        fill="#e0e0e0" stroke="#c0c0c0" stroke-width="1"/>
+
+  <!-- Collar (back) -->
+  <path d="M 130,60 Q 150,55 160,58 Q 180,62 200,62 Q 220,62 240,58 Q 250,55 270,60 Q 250,72 200,74 Q 150,72 130,60 Z"
+        fill="#d8d8d8" stroke="#b8b8b8" stroke-width="1"/>
+
+  <!-- Shadow overlays for depth -->
+  <path d="M 80,80 L 75,420 L 120,420 L 115,175 L 80,175 L 80,80 Z" fill="url(#shadowLeft)" />
+  <path d="M 320,80 L 325,420 L 280,420 L 285,175 L 320,175 L 320,80 Z" fill="url(#shadowRight)" />
+
+  <!-- Bottom hem -->
+  <path d="M 75,410 Q 200,420 325,410 L 325,420 Q 200,430 75,420 Z" fill="#c8c8c8" opacity="0.5"/>
+
+  <!-- Sleeve hem lines -->
+  <path d="M 20,160 Q 50,168 80,175" stroke="#b0b0b0" stroke-width="2" fill="none"/>
+  <path d="M 380,160 Q 350,168 320,175" stroke="#b0b0b0" stroke-width="2" fill="none"/>
+
+  <!-- Center back seam (subtle) -->
+  <line x1="200" y1="70" x2="200" y2="415" stroke="#d0d0d0" stroke-width="0.8" stroke-dasharray="4,6" opacity="0.5"/>
+</svg>

@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 450" width="400" height="450">
+  <defs>
+    <linearGradient id="fabricGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#e8e8e8;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#f5f5f5;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#d0d0d0;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="shadowLeft" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#000;stop-opacity:0.15" />
+      <stop offset="100%" style="stop-color:#000;stop-opacity:0" />
+    </linearGradient>
+    <linearGradient id="shadowRight" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#000;stop-opacity:0" />
+      <stop offset="100%" style="stop-color:#000;stop-opacity:0.12" />
+    </linearGradient>
+  </defs>
+
+  <!-- Crewneck body back view (longer sleeves) -->
+  <path d="M 80,80 L 10,180 L 75,195 L 75,420 L 325,420 L 325,195 L 390,180 L 320,80
+           Q 290,65 270,60 Q 250,55 240,58 Q 220,62 200,62 Q 180,62 160,58 Q 150,55 130,60
+           Q 110,65 80,80 Z"
+        fill="url(#fabricGrad)" stroke="#c0c0c0" stroke-width="1.5"/>
+
+  <!-- Left sleeve (longer) -->
+  <path d="M 80,80 Q 40,110 10,180 L 75,195 Q 78,150 85,115 Z"
+        fill="#e0e0e0" stroke="#c0c0c0" stroke-width="1"/>
+
+  <!-- Right sleeve (longer) -->
+  <path d="M 320,80 Q 360,110 390,180 L 325,195 Q 322,150 315,115 Z"
+        fill="#e0e0e0" stroke="#c0c0c0" stroke-width="1"/>
+
+  <!-- Ribbed collar (crewneck) -->
+  <path d="M 130,60 Q 165,50 200,50 Q 235,50 270,60 Q 250,72 200,74 Q 150,72 130,60 Z"
+        fill="#d0d0d0" stroke="#b0b0b0" stroke-width="1.5"/>
+  <!-- Collar rib lines -->
+  <path d="M 145,55 Q 200,52 255,55" stroke="#b8b8b8" stroke-width="0.8" fill="none"/>
+  <path d="M 140,60 Q 200,57 260,60" stroke="#b8b8b8" stroke-width="0.8" fill="none"/>
+  <path d="M 138,65 Q 200,63 262,65" stroke="#b8b8b8" stroke-width="0.8" fill="none"/>
+
+  <!-- Shadow overlays -->
+  <path d="M 80,80 L 75,420 L 115,420 L 112,195 L 75,195 L 80,80 Z" fill="url(#shadowLeft)" />
+  <path d="M 320,80 L 325,420 L 285,420 L 288,195 L 325,195 L 320,80 Z" fill="url(#shadowRight)" />
+
+  <!-- Bottom hem (ribbed) -->
+  <path d="M 75,408 Q 200,418 325,408 L 325,420 Q 200,430 75,420 Z" fill="#c8c8c8" opacity="0.5"/>
+  <line x1="75" y1="412" x2="325" y2="412" stroke="#c0c0c0" stroke-width="0.8"/>
+  <line x1="75" y1="416" x2="325" y2="416" stroke="#c0c0c0" stroke-width="0.8"/>
+
+  <!-- Sleeve cuffs (ribbed) -->
+  <path d="M 10,180 Q 42,188 75,195" stroke="#b0b0b0" stroke-width="2.5" fill="none"/>
+  <path d="M 390,180 Q 358,188 325,195" stroke="#b0b0b0" stroke-width="2.5" fill="none"/>
+
+  <!-- Center seam -->
+  <line x1="200" y1="68" x2="200" y2="415" stroke="#d0d0d0" stroke-width="0.8" stroke-dasharray="4,6" opacity="0.5"/>
+</svg>
