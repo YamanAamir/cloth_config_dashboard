@@ -108,7 +108,7 @@ const BackDesignConfiguratorPage = () => {
 
     // Load a design to edit
     const loadDesignForEditing = (design) => {
-        const imageUrl = getUploadsUrl(design.file_path);
+        const imageUrl = `${getUploadsUrl(design.file_path)}?t=${Date.now()}`;
         setSelectedDesignId(design.id);
         setImagePreview(imageUrl);
 
@@ -281,7 +281,7 @@ const BackDesignConfiguratorPage = () => {
                                                     onClick={() => loadDesignForEditing(design)}
                                                     style={{ border: selectedDesignId === design.id ? '2px solid #00b96b' : '1px solid #f0f0f0' }}
                                                 >
-                                                    <img src={getUploadsUrl(design.file_path)} alt={design.name} style={{ width: '100%', height: 80, objectFit: 'contain' }} />
+                                                    <img src={`${getUploadsUrl(design.file_path)}?t=${design.updated_at ? new Date(design.updated_at).getTime() : design.id}`} alt={design.name} style={{ width: '100%', height: 80, objectFit: 'contain' }} />
                                                     <Typography.Text>{design.name}</Typography.Text>
                                                 </Card>
                                             </Col>

@@ -392,7 +392,7 @@ const MyClassPage = () => {
                                 minHeight: 300
                             }}>
                                 <Image
-                                    src={getUploadsUrl(currentBackDesign.file_path)}
+                                    src={`${getUploadsUrl(currentBackDesign.file_path)}?t=${new Date(currentBackDesign.updated_at || currentBackDesign.created_at).getTime()}`}
                                     alt={currentBackDesign.name}
                                     style={{ maxWidth: '100%', maxHeight: 400, objectFit: 'contain' }}
                                     preview={{
