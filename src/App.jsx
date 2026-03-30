@@ -21,6 +21,8 @@ import BackDesignConfiguratorPage from './pages/BackDesignConfiguratorPage';
 import NameListPage from './pages/NameListPage';
 import BackDesignTemplatesPage from './pages/BackDesignTemplatesPage';
 import StudentOverview from './pages/StudentOverview';
+import ProfilePage from './pages/ProfilePage';
+import ProductionFilesPage from './pages/ProductionFilesPage';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
@@ -150,6 +152,22 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={[Role.ADMIN, Role.CLASS_REPRESENTATIVE]}>
               <OrderList />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="profile"
+          element={
+            <ProtectedRoute>
+              <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="production-files"
+          element={
+            <ProtectedRoute allowedRoles={[Role.ADMIN]}>
+              <ProductionFilesPage />
             </ProtectedRoute>
           }
         />

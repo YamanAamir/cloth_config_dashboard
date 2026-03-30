@@ -1,36 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import {
-    Table,
-    Button,
-    Card,
-    Typography,
-    Space,
-    Modal,
-    Form,
-    Input,
-    Switch,
-    message,
-    Popconfirm,
-    Select,
-    Tag,
-    Drawer,
-    Empty,
-    Image,
-    Spin
-} from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, TeamOutlined, BankOutlined, CalendarOutlined, UserAddOutlined, EyeOutlined, LockOutlined, UnlockOutlined } from '@ant-design/icons';
+    Table, Button, Card, Typography, Space, Modal,
+    Form, Input, Switch, message, Popconfirm, Select,
+    Tag, Drawer, Empty, Image, Spin, Dropdown} from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, TeamOutlined, BankOutlined, CalendarOutlined, UserAddOutlined, EyeOutlined, LockOutlined, UnlockOutlined, FileZipOutlined, FilePdfOutlined, FileExcelOutlined, MoreOutlined, MailOutlined } from '@ant-design/icons';
 import {
-    getAllClasses,
-    createClass,
-    updateClass,
-    deleteClass,
-    toggleClassStatus,
-    getAllSchools,
-    getAllClassReps,
-    assignClassRep,
-    getClassBackDesign,
-    lockClass,
-    unlockClass
+    getAllClasses, createClass, updateClass, deleteClass,
+    toggleClassStatus, getAllSchools, getAllClassReps,
+    assignClassRep, getClassBackDesign, lockClass, unlockClass,
+    generateProductionFiles, sendStatusEmail, sendFollowupEmail,
+    updateClassProcessStatus
 } from '../api/api';
 import { Status, getUploadsUrl } from '../utils/constants';
 
@@ -54,6 +33,17 @@ const ClassesPage = () => {
     const [selectedClassForDesign, setSelectedClassForDesign] = useState(null);
     const [classBackDesign, setClassBackDesign] = useState(null);
     const [loadingDesign, setLoadingDesign] = useState(false);
+
+    // Production files
+    const [generatingFiles, setGeneratingFiles] = useState(false);
+    const [productionFiles, setProductionFiles] = useState(null);
+    const [productionModalOpen, setProductionModalOpen] = useState(false);
+
+    // View Details Drawer
+    const [viewDrawerOpen, setViewDrawerOpen] = useState(false);
+    const [viewingClass, setViewingClass] = useState(null);
+    const [viewBackDesign, setViewBackDesign] = useState(null);
+    const [loadingViewDesign, setLoadingViewDesign] = useState(false);
     
     const [pagination, setPagination] = useState({
         current: 1,
@@ -184,6 +174,92 @@ const ClassesPage = () => {
         }
     };
 
+    const handleGenerateFiles = async (record) => {
+        setGeneratingFiles(true);
+        try {
+            const response = await generateProductionFiles(record.id);
+            const { pdf, excel } = response.data?.data || {};
+            message.success(`Production files generated for "${record.name}"`);
+            setProductionFiles({ pdf, excel });
+            setProductionModalOpen(true);
+        } catch (error) {
+            message.error(error.response?.data?.message || 'Generation failed');
+        } finally {
+            setGeneratingFiles(false);
+        }
+    };
+
+    const handleSendEmail = async (type, classId, className) => {
+        try {
+            if (type === 'status') {
+                await sendStatusEmail(classId);
+                message.success(`Status email sent for "${className}"`);
+            } else if (type === 'followup') {
+                await sendFollowupEmail(classId);
+                message.success(`Follow-up email sent for "${className}"`);
+            }
+        } catch (error) {
+            message.error(error.response?.data?.message || 'Failed to send email');
+        }
+    };
+
+    const handleUpdateProcessStatus = (record, status) => {
+        if (status === 'shipped') {
+            // Ask for tracking code
+            let trackingCode = '';
+            Modal.confirm({
+                title: 'Mark as Shipped',
+                content: (
+                    <div style={{ marginTop: 12 }}>
+                        <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
+                            Enter tracking code (optional):
+                        </Typography.Text>
+                        <Input
+                            placeholder="e.g. ABC123"
+                            onChange={(e) => { trackingCode = e.target.value; }}
+                        />
+                    </div>
+                ),
+                okText: 'Send & Update',
+                onOk: async () => {
+                    try {
+                        await updateClassProcessStatus(record.id, { process_status: 'shipped', trackingCode });
+                        message.success(`Class marked as shipped — email sent`);
+                        fetchClasses();
+                    } catch (error) {
+                        message.error(error.response?.data?.message || 'Failed');
+                    }
+                }
+            });
+        } else {
+            Modal.confirm({
+                title: `Mark class as "${status}"?`,
+                content: 'This will trigger an automatic email to all students.',
+                okText: 'Confirm',
+                onOk: async () => {
+                    try {
+                        await updateClassProcessStatus(record.id, { process_status: status });
+                        message.success(`Status updated to "${status}" — email sent`);
+                        fetchClasses();
+                    } catch (error) {
+                        message.error(error.response?.data?.message || 'Failed');
+                    }
+                }
+            });
+        }
+    };
+
+    const handleDownloadFile = (filePath) => {
+        if (!filePath) return;
+        // filePath is already "uploads/production_files/filename.pdf"
+        const url = getUploadsUrl(filePath);
+        const a = document.createElement('a');
+        a.href = url;
+        a.target = '_blank';
+        a.download = filePath.split(/[\\/]/).pop();
+        a.click();
+    };
+
     const handleViewDesign = async (classRecord) => {
         setSelectedClassForDesign(classRecord);
         setDesignDrawerOpen(true);
@@ -229,32 +305,32 @@ const ClassesPage = () => {
             },
         },
 
-        {
-            title: 'Graduation Year',
-            dataIndex: 'graduation_year',
-            key: 'graduation_year',
-            render: (year) => (
-                <Tag color="cyan">
-                    <CalendarOutlined style={{ marginRight: 4 }} />
-                    {year}
-                </Tag>
-            )
-        },
-        {
-            title: 'Ordering Deadline',
-            dataIndex: 'change_deadline',
-            key: 'change_deadline',
-            render: (deadline) => {
-                if (!deadline) return <span style={{ color: '#bbb', fontSize: 12 }}>Not set</span>;
-                const isPast = new Date() > new Date(deadline);
-                return (
-                    <Tag color={isPast ? 'volcano' : 'blue'}>
-                        <CalendarOutlined style={{ marginRight: 4 }} />
-                        {new Date(deadline).toLocaleDateString()}
-                    </Tag>
-                );
-            }
-        },
+        // {
+        //     title: 'Graduation Year',
+        //     dataIndex: 'graduation_year',
+        //     key: 'graduation_year',
+        //     render: (year) => (
+        //         <Tag color="cyan">
+        //             <CalendarOutlined style={{ marginRight: 4 }} />
+        //             {year}
+        //         </Tag>
+        //     )
+        // },
+        // {
+        //     title: 'Ordering Deadline',
+        //     dataIndex: 'change_deadline',
+        //     key: 'change_deadline',
+        //     render: (deadline) => {
+        //         if (!deadline) return <span style={{ color: '#bbb', fontSize: 12 }}>Not set</span>;
+        //         const isPast = new Date() > new Date(deadline);
+        //         return (
+        //             <Tag color={isPast ? 'volcano' : 'blue'}>
+        //                 <CalendarOutlined style={{ marginRight: 4 }} />
+        //                 {new Date(deadline).toLocaleDateString()}
+        //             </Tag>
+        //         );
+        //     }
+        // },
         {
             title: 'Status',
             dataIndex: 'status',
@@ -313,20 +389,6 @@ const ClassesPage = () => {
             }
         },
         {
-            title: 'Back Design',
-            key: 'back_design',
-            render: (_, record) => (
-                <Button
-                    size="small"
-                    type="default"
-                    icon={<EyeOutlined />}
-                    onClick={() => handleViewDesign(record)}
-                >
-                    View Design
-                </Button>
-            ),
-        },
-        {
             title: 'Lock',
             key: 'order_locked',
             render: (_, record) => (
@@ -349,12 +411,29 @@ const ClassesPage = () => {
         {
             title: 'Action',
             key: 'action',
-            render: (_, record) => (
-                <Space size="middle">
-                    <Button
-                        type="text"
-                        icon={<EditOutlined style={{ color: '#00b96b' }} />}
-                        onClick={() => {
+            render: (_, record) => {
+                const menuItems = [
+                    {
+                        key: 'view',
+                        label: 'View Details',
+                        icon: <EyeOutlined style={{ color: '#1890ff' }} />,
+                        onClick: async () => {
+                            setViewingClass(record);
+                            setViewDrawerOpen(true);
+                            setViewBackDesign(null);
+                            setLoadingViewDesign(true);
+                            try {
+                                const res = await getClassBackDesign(record.id);
+                                setViewBackDesign(res.data?.data);
+                            } catch { /* no design */ }
+                            finally { setLoadingViewDesign(false); }
+                        }
+                    },
+                    {
+                        key: 'edit',
+                        label: 'Edit',
+                        icon: <EditOutlined />,
+                        onClick: () => {
                             setEditingClass(record);
                             form.setFieldsValue({
                                 ...record,
@@ -366,23 +445,64 @@ const ClassesPage = () => {
                                     : undefined
                             });
                             setIsModalOpen(true);
-                        }}
-                    />
-                    <Popconfirm
-                        title="Delete Class"
-                        description="Are you sure you want to delete this class?"
-                        onConfirm={() => handleDelete(record.id)}
-                        okText="Yes"
-                        cancelText="No"
-                    >
-                        <Button
-                            type="text"
-                            danger
-                            icon={<DeleteOutlined />}
-                        />
-                    </Popconfirm>
-                </Space>
-            ),
+                        }
+                    },
+                    ...(record.order_locked ? [
+                        { type: 'divider' },
+                        {
+                            key: 'generate',
+                            label: generatingFiles ? 'Generating...' : 'Generate Production Files',
+                            icon: <FileZipOutlined style={{ color: '#00b96b' }} />,
+                            onClick: () => handleGenerateFiles(record),
+                            disabled: generatingFiles,
+                        },
+                        ...(productionFiles ? [
+                            {
+                                key: 'pdf',
+                                label: 'Download PDF',
+                                icon: <FilePdfOutlined style={{ color: '#ff4d4f' }} />,
+                                onClick: () => handleDownloadFile(productionFiles.pdf),
+                                disabled: !productionFiles.pdf,
+                            },
+                            {
+                                key: 'excel',
+                                label: 'Download Excel',
+                                icon: <FileExcelOutlined style={{ color: '#52c41a' }} />,
+                                onClick: () => handleDownloadFile(productionFiles.excel),
+                                disabled: !productionFiles.excel,
+                            },
+                        ] : []),
+                        { type: 'divider' },
+                        {
+                            key: 'shipped',
+                            label: 'Mark as Shipped',
+                            icon: <MailOutlined style={{ color: '#1890ff' }} />,
+                            onClick: () => handleUpdateProcessStatus(record, 'shipped'),
+                            disabled: record.process_status === 'shipped' || record.process_status === 'completed',
+                        },
+                        {
+                            key: 'completed',
+                            label: 'Mark as Completed',
+                            icon: <MailOutlined style={{ color: '#722ed1' }} />,
+                            onClick: () => handleUpdateProcessStatus(record, 'completed'),
+                            disabled: record.process_status === 'completed',
+                        },
+                    ] : []),
+                    { type: 'divider' },
+                    {
+                        key: 'delete',
+                        label: 'Delete',
+                        icon: <DeleteOutlined />,
+                        danger: true,
+                        onClick: () => handleDelete(record.id),
+                    },
+                ];
+                return (
+                    <Dropdown menu={{ items: menuItems }} trigger={['click']} placement="bottomRight">
+                        <Button type="text" icon={<MoreOutlined />} />
+                    </Dropdown>
+                );
+            },
         },
     ];
 
@@ -615,6 +735,126 @@ const ClassesPage = () => {
                                     </Tag>
                                 </div>
                             </Space>
+                        </Card>
+                    </Space>
+                )}
+            </Drawer>
+
+            {/* View Details Drawer */}
+            <Drawer
+                title={viewingClass?.name}
+                placement="right"
+                size="large"
+                onClose={() => { setViewDrawerOpen(false); setViewingClass(null); setViewBackDesign(null); }}
+                open={viewDrawerOpen}
+            >
+                {viewingClass && (
+                    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                        <Card size="small" title="Class Info">
+                            <Space direction="vertical" style={{ width: '100%' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <Typography.Text type="secondary">Class Name</Typography.Text>
+                                    <Typography.Text strong>{viewingClass.name}</Typography.Text>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <Typography.Text type="secondary">Graduation Year</Typography.Text>
+                                    <Tag color="cyan">{viewingClass.graduation_year}</Tag>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <Typography.Text type="secondary">Ordering Deadline</Typography.Text>
+                                    {viewingClass.change_deadline ? (
+                                        <Tag color={new Date() > new Date(viewingClass.change_deadline) ? 'volcano' : 'blue'}>
+                                            {new Date(viewingClass.change_deadline).toLocaleDateString()}
+                                        </Tag>
+                                    ) : <Typography.Text type="secondary">Not set</Typography.Text>}
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <Typography.Text type="secondary">Status</Typography.Text>
+                                    <Tag color={viewingClass.status === Status.ACTIVE ? 'success' : 'default'}>
+                                        {viewingClass.status === Status.ACTIVE ? 'Active' : 'Inactive'}
+                                    </Tag>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <Typography.Text type="secondary">Orders Locked</Typography.Text>
+                                    <Tag color={viewingClass.order_locked ? 'error' : 'success'} icon={viewingClass.order_locked ? <LockOutlined /> : <UnlockOutlined />}>
+                                        {viewingClass.order_locked ? 'Locked' : 'Unlocked'}
+                                    </Tag>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <Typography.Text type="secondary">Process Status</Typography.Text>
+                                    <Tag color={{
+                                        active: 'blue', orders_locked: 'orange',
+                                        production_ready: 'cyan', shipped: 'purple', completed: 'success'
+                                    }[viewingClass.process_status] || 'default'}>
+                                        {viewingClass.process_status?.replace(/_/g, ' ').toUpperCase() || '—'}
+                                    </Tag>
+                                </div>                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <Typography.Text type="secondary">Name List Locked</Typography.Text>
+                                    <Tag color={viewingClass.name_list_locked ? 'error' : 'success'}>
+                                        {viewingClass.name_list_locked ? 'Locked' : 'Unlocked'}
+                                    </Tag>
+                                </div>
+                            </Space>
+                        </Card>
+
+                        <Card size="small" title="School">
+                            <Space direction="vertical" style={{ width: '100%' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <Typography.Text type="secondary">School Name</Typography.Text>
+                                    <Typography.Text strong>{viewingClass.school?.name || '—'}</Typography.Text>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <Typography.Text type="secondary">Education Type</Typography.Text>
+                                    <Tag color="blue">{viewingClass.school?.education_type || '—'}</Tag>
+                                </div>
+                            </Space>
+                        </Card>
+
+                        <Card size="small" title="Class Representatives">
+                            {viewingClass.users?.length > 0 ? (
+                                viewingClass.users.map(u => (
+                                    <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                                        <Typography.Text strong>{u.name}</Typography.Text>
+                                        <Typography.Text type="secondary">{u.email}</Typography.Text>
+                                    </div>
+                                ))
+                            ) : (
+                                <Typography.Text type="secondary">No representative assigned</Typography.Text>
+                            )}
+                        </Card>
+
+                        <Card size="small" title="Back Design">
+                            {loadingViewDesign ? (
+                                <div style={{ textAlign: 'center', padding: 24 }}><Spin /></div>
+                            ) : !viewBackDesign ? (
+                                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No back design selected" style={{ padding: 16 }} />
+                            ) : (
+                                <Space direction="vertical" style={{ width: '100%' }}>
+                                    <div style={{ textAlign: 'center', background: '#fafafa', borderRadius: 8, padding: 16 }}>
+                                        <Image
+                                            src={getUploadsUrl(viewBackDesign.file_path)}
+                                            alt={viewBackDesign.name}
+                                            style={{ maxWidth: '100%', maxHeight: 300, objectFit: 'contain' }}
+                                        />
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                        <Typography.Text type="secondary">Name</Typography.Text>
+                                        <Typography.Text strong>{viewBackDesign.name}</Typography.Text>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                        <Typography.Text type="secondary">Type</Typography.Text>
+                                        <Tag color={viewBackDesign.is_library ? 'blue' : 'green'}>
+                                            {viewBackDesign.is_library ? 'Design Template' : 'Custom Upload'}
+                                        </Tag>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                        <Typography.Text type="secondary">Status</Typography.Text>
+                                        <Tag color={viewBackDesign.process_status === 'approved' ? 'success' : 'warning'}>
+                                            {viewBackDesign.process_status}
+                                        </Tag>
+                                    </div>
+                                </Space>
+                            )}
                         </Card>
                     </Space>
                 )}

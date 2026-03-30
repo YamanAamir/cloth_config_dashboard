@@ -129,6 +129,12 @@ const MainLayout = () => {
             label: 'Orders List',
             roles: [Role.ADMIN, Role.CLASS_REPRESENTATIVE],
         },
+        {
+            key: '/production-files',
+            icon: <FileZipOutlined />,
+            label: 'Production Files',
+            roles: [Role.ADMIN],
+        },
     ];
 
 
@@ -173,6 +179,7 @@ const MainLayout = () => {
             key: 'profile',
             label: 'Profile',
             icon: <SettingOutlined />,
+            onClick: () => navigate('/profile'),
         },
         {
             key: 'logout',

@@ -82,3 +82,8 @@ export const lockOrder = (orderId) => api.put(`/admin/orders/${orderId}/lock`);
 export const lockClass = (classId) => api.put(`/admin/lock-class/${classId}`);
 export const unlockClass = (classId) => api.put(`/admin/unlock-class/${classId}`);
 export const sendDeadlineReminder = (classId) => api.post(`/admin/class/${classId}/send-deadline-reminder`);
+export const sendStatusEmail = (classId) => api.post(`/admin/class/${classId}/send-status-email`);
+export const sendFollowupEmail = (classId) => api.post(`/admin/class/${classId}/send-followup-email`);
+export const updateClassProcessStatus = (classId, data) => api.put(`/admin/class/${classId}/process-status`, data);
+export const generateProductionFiles = (classId) => api.post(`/admin/generate-files/${classId}`);
+export const getProductionPackages = () => api.post('/admin/production-packages');
