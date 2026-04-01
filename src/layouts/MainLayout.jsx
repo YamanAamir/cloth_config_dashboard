@@ -135,6 +135,12 @@ const MainLayout = () => {
             label: 'Production Files',
             roles: [Role.ADMIN],
         },
+        {
+            key: '/countries',
+            icon: <BankOutlined />,
+            label: 'Study Trip Countries',
+            roles: [Role.ADMIN],
+        },
     ];
 
 

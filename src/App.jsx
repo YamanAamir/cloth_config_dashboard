@@ -23,6 +23,7 @@ import BackDesignTemplatesPage from './pages/BackDesignTemplatesPage';
 import StudentOverview from './pages/StudentOverview';
 import ProfilePage from './pages/ProfilePage';
 import ProductionFilesPage from './pages/ProductionFilesPage';
+import CountriesPage from './pages/CountriesPage';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
@@ -72,6 +73,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={[Role.ADMIN]}>
               <ClassRepsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="countries-logo"
+          element={
+            <ProtectedRoute allowedRoles={[Role.ADMIN]}>
+              <CountriesPage />
             </ProtectedRoute>
           }
         />
@@ -168,6 +177,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={[Role.ADMIN]}>
               <ProductionFilesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="countries"
+          element={
+            <ProtectedRoute allowedRoles={[Role.ADMIN]}>
+              <CountriesPage />
             </ProtectedRoute>
           }
         />

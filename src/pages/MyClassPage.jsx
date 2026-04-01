@@ -16,7 +16,8 @@ import {
     Image,
     Upload,
     Tooltip,
-    Input
+    Input,
+    Select
 } from 'antd';
 import {
     TeamOutlined,
@@ -37,7 +38,10 @@ import {
     uploadLogo,
     getAllBackDesignTemplates,
     selectBackDesignForClass,
-    getClassBackDesign
+    getClassBackDesign,
+    getStudyTripCountries,
+    setStudyTripCountry,
+    getClassRepLibraryDesigns
 } from '../api/api';
 import NameListManager from '../components/NameListManager';
 import { getUploadsUrl, Status } from '../utils/constants';
@@ -79,6 +83,10 @@ const MyClassPage = () => {
     const [currentBackDesign, setCurrentBackDesign] = useState(null);
     const [loadingCurrentDesign, setLoadingCurrentDesign] = useState(false);
 
+    // Study trip
+    const [studyTripCountries, setStudyTripCountries] = useState([]);
+    const [settingCountry, setSettingCountry] = useState(false);
+
     const fetchMyClass = async () => {
         setLoading(true);
         try {
@@ -117,7 +125,6 @@ const MyClassPage = () => {
 
     const fetchCurrentBackDesign = async () => {
         if (!myClass?.id) return;
-        
         setLoadingCurrentDesign(true);
         try {
             const response = await getClassBackDesign(myClass.id);
@@ -129,8 +136,29 @@ const MyClassPage = () => {
         }
     };
 
+    const fetchStudyTripCountries = async () => {
+        try {
+            const res = await getStudyTripCountries();
+            setStudyTripCountries(res.data.data || []);
+        } catch { /* silent */ }
+    };
+
+    const handleSetStudyTripCountry = async (countryId) => {
+        setSettingCountry(true);
+        try {
+            await setStudyTripCountry({ country_id: countryId });
+            message.success('Study trip country updated');
+            fetchMyClass();
+        } catch (error) {
+            message.error(error.response?.data?.message || 'Failed to update');
+        } finally {
+            setSettingCountry(false);
+        }
+    };
+
     useEffect(() => {
         fetchMyClass();
+        fetchStudyTripCountries();
     }, []);
 
     useEffect(() => {
@@ -349,7 +377,22 @@ const MyClassPage = () => {
                 </Col>
             </Row>
 
-            {/* Logo Gallery */}
+            {/* Study Trip Country */}
+            <Card className="glass-card" style={{ border: 'none', marginBottom: 24 }} title="Study Trip Country">
+                <Space direction="vertical" style={{ width: '100%' }}>
+                    <Select
+                        placeholder="Select study trip country"
+                        style={{ width: '100%', maxWidth: 400 }}
+                        value={myClass?.study_trip_country_id || undefined}
+                        onChange={handleSetStudyTripCountry}
+                        loading={settingCountry}
+                        allowClear
+                        options={studyTripCountries.map(c => ({ value: c.id, label: c.name }))}
+                    />
+                </Space>
+            </Card>
+
+            {/* Current Back Design */}
             <Card 
                 className="glass-card" 
                 style={{ border: 'none', marginBottom: 24 }}

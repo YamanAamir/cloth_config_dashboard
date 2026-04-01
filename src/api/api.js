@@ -74,7 +74,20 @@ export const reorderNameListItems = (nameListId, items) => api.put(`/class-rep/n
 export const markNameListReady = (nameListId) => api.put(`/class-rep/namelist/${nameListId}/ready`);
 export const deleteNameListItem = (itemId) => api.delete(`/class-rep/namelist/item/${itemId}`);
 
-// Order Details API
+// Country APIs (Admin)
+export const getAllCountries = (params = {}) => api.post('/admin/countries', params);
+export const createCountry = (data) => api.post('/admin/country/create', data);
+export const updateCountry = (id, data) => api.put(`/admin/country/${id}/update`, data);
+export const deleteCountry = (id) => api.delete(`/admin/country/${id}/delete`);
+
+// Library Design APIs (Admin)
+export const uploadLibraryDesign = (formData) => apiFormdata.post('/admin/library-design/upload', formData);
+export const getLibraryDesigns = (params = {}) => api.get('/admin/library-designs', { params });
+
+// Class Rep - Study Trip
+export const getStudyTripCountries = () => api.get('/class-rep/study-trip-countries');
+export const setStudyTripCountry = (data) => api.put('/class-rep/set-study-trip-country', data);
+export const getClassRepLibraryDesigns = () => api.get('/class-rep/library-designs');
 export const getOrderDetails = (orderId) => api.get(`/admin/orders/${orderId}/details`);
 export const getOrderHistory = (orderId) => api.get(`/admin/orders/${orderId}/history`);
 export const unlockOrder = (orderId) => api.put(`/admin/orders/${orderId}/unlock`);
