@@ -42,7 +42,7 @@ const GARMENTS = [
     },
 ];
 
-const PreviewModal = ({ open, onClose, canvasRef }) => {
+const PreviewModal = ({ open, onClose, canvasRef, designColor = 'white' }) => {
     const iframeRef = useRef(null);
 
     const [garmentType, setGarmentType] = useState("tshirt");
@@ -171,7 +171,7 @@ const PreviewModal = ({ open, onClose, canvasRef }) => {
 
                 if (g) {
                     sendToIframe(`Page : ${g.page}`);
-                    sendToIframe(`${g.prefix}:white`);
+                    sendToIframe(`${g.prefix}:${designColor}`);
                     setTimeout(() => sendDesign(g), 400);
                 }
             }
@@ -187,8 +187,7 @@ const PreviewModal = ({ open, onClose, canvasRef }) => {
     const handleGarmentSwitch = (g) => {
         setGarmentType(g.key);
         sendToIframe(`Page : ${g.page}`);
-        // Match color - send white as default for all garments
-        sendToIframe(`${g.prefix}:white`);
+        sendToIframe(`${g.prefix}:${designColor}`);
         setTimeout(() => {
             sendDesign(g);
         }, 300);

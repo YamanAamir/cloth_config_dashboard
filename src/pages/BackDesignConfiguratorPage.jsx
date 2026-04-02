@@ -229,25 +229,32 @@ const BackDesignConfiguratorPage = () => {
 
                         <div style={{ marginBottom: 16 }}>
                             <Text strong style={{ display: 'block', marginBottom: 8 }}>Garment Color</Text>
-                            <Select value={designColor} onChange={setDesignColor} style={{ width: '100%' }}>
-                                <Select.Option value="white">
-                                    <Space>
-                                        <div style={{ width: 16, height: 16, background: 'white', border: '1px solid #d9d9d9', borderRadius: 3 }} />
-                                        White Garment
-                                    </Space>
-                                </Select.Option>
-                                <Select.Option value="black">
-                                    <Space>
-                                        <div style={{ width: 16, height: 16, background: 'black', borderRadius: 3 }} />
-                                        Black Garment
-                                    </Space>
-                                </Select.Option>
-                            </Select>
-                            <Text type="secondary" style={{ fontSize: 11, marginTop: 4, display: 'block' }}>
-                                Print color: <strong>{designColor === 'black' ? 'White' : 'Black'}</strong>
-                            </Text>
+                            <Space>
+                                {[
+                                    { value: 'white', label: 'White', bg: '#ffffff', border: '#d9d9d9', printColor: 'Black print' },
+                                    { value: 'black', label: 'Black', bg: '#1a1a1a', border: '#1a1a1a', printColor: 'White print' },
+                                ].map(opt => (
+                                    <div
+                                        key={opt.value}
+                                        onClick={() => setDesignColor(opt.value)}
+                                        style={{
+                                            cursor: 'pointer',
+                                            padding: '8px 16px',
+                                            borderRadius: 8,
+                                            border: designColor === opt.value ? '2px solid #00b96b' : '2px solid #f0f0f0',
+                                            display: 'flex', alignItems: 'center', gap: 8,
+                                            background: designColor === opt.value ? '#f0fff8' : '#fafafa'
+                                        }}
+                                    >
+                                        <div style={{ width: 20, height: 20, borderRadius: '50%', background: opt.bg, border: `1px solid ${opt.border}` }} />
+                                        <div>
+                                            <div style={{ fontSize: 13, fontWeight: 500 }}>{opt.label}</div>
+                                            <div style={{ fontSize: 11, color: '#888' }}>{opt.printColor}</div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </Space>
                         </div>
-
                         <Divider />
                         <Title level={5}>2. Names</Title>
 
@@ -387,6 +394,7 @@ const BackDesignConfiguratorPage = () => {
                 open={previewOpen}
                 onClose={() => setPreviewOpen(false)}
                 canvasRef={canvasRef}
+                designColor={designColor}
             />
         </div>
     );

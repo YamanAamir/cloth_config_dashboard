@@ -3,12 +3,13 @@ import {
     Table, Button, Card, Typography, Space, Modal,
     Form, Input, message, Popconfirm, Upload, Image, Empty, Select, Tag
 } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, InboxOutlined, PictureOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, InboxOutlined } from '@ant-design/icons';
 import {
     getAllCountries, createCountry, updateCountry, deleteCountry,
     uploadLibraryDesign, getLibraryDesigns
 } from '../api/api';
 import { getUploadsUrl } from '../utils/constants';
+import AdminDesignEditor from '../components/configurator/AdminDesignEditor';
 
 const { Title, Text } = Typography;
 
@@ -30,6 +31,8 @@ const CountriesPage = () => {
     const [selectedFile, setSelectedFile] = useState(null);
     const [selectedPreview, setSelectedPreview] = useState(null);
     const [uploading, setUploading] = useState(false);
+    const [exportedDesign, setExportedDesign] = useState(null); // base64 from editor
+    const [exportedSize, setExportedSize] = useState(100);
     const [uploadForm] = Form.useForm();
 
     const fetchCountries = async () => {
@@ -91,20 +94,31 @@ const CountriesPage = () => {
     };
 
     const handleUploadDesign = async (values) => {
-        if (!selectedFile) { message.error('Select a file'); return; }
+        if (!selectedFile && !exportedDesign) { message.error('Upload a design first'); return; }
         setUploading(true);
         try {
             const formData = new FormData();
             formData.append('name', values.name);
             formData.append('country_id', values.country_id);
-            formData.append('design', selectedFile);
+            formData.append('design_size', exportedSize);
+
+            if (exportedDesign) {
+                // Convert base64 to blob
+                const res = await fetch(exportedDesign);
+                const blob = await res.blob();
+                formData.append('design', blob, `${values.name}.png`);
+            } else {
+                formData.append('design', selectedFile);
+            }
+
             await uploadLibraryDesign(formData);
             message.success('Design uploaded');
             setUploadModalOpen(false);
             uploadForm.resetFields();
             setSelectedFile(null);
             setSelectedPreview(null);
-            // Refresh designs for that country
+            setExportedDesign(null);
+            setExportedSize(100);
             setDesignsMap(prev => { const n = { ...prev }; delete n[values.country_id]; return n; });
             if (expandedRows.includes(values.country_id)) {
                 fetchDesignsForCountry(values.country_id);
@@ -141,6 +155,9 @@ const CountriesPage = () => {
                                     style={{ objectFit: 'contain', borderRadius: 6, border: '1px solid #f0f0f0', background: '#fff' }}
                                 />
                                 <Text ellipsis style={{ display: 'block', fontSize: 11, marginTop: 4 }}>{d.name}</Text>
+                                {d.design_size && (
+                                    <Tag color="blue" style={{ fontSize: 10, marginTop: 2 }}>{d.design_size}%</Tag>
+                                )}
                             </div>
                         ))}
                     </div>
@@ -244,8 +261,8 @@ const CountriesPage = () => {
 
             {/* Upload Design Modal */}
             <Modal title="Upload Library Design" open={uploadModalOpen}
-                onCancel={() => { setUploadModalOpen(false); uploadForm.resetFields(); setSelectedFile(null); setSelectedPreview(null); }}
-                footer={null} destroyOnHidden>
+                onCancel={() => { setUploadModalOpen(false); uploadForm.resetFields(); setSelectedFile(null); setSelectedPreview(null); setExportedDesign(null); }}
+                footer={null} destroyOnHidden width={900}>
                 <Form form={uploadForm} layout="vertical" onFinish={handleUploadDesign} style={{ marginTop: 16 }}>
                     <Form.Item name="name" label="Design Name" rules={[{ required: true }]}>
                         <Input placeholder="e.g. Rome Colosseum" />
@@ -253,18 +270,28 @@ const CountriesPage = () => {
                     <Form.Item name="country_id" label="Country" rules={[{ required: true }]}>
                         <Select placeholder="Select country" options={countries.map(c => ({ value: c.id, label: c.name }))} />
                     </Form.Item>
-                    <Form.Item label="Design File" required>
-                        <Upload beforeUpload={handleFileSelect} showUploadList={false} accept="image/*">
-                            <Button type="dashed" icon={<InboxOutlined />} block style={{ height: 80 }}>
-                                {selectedFile ? `✓ ${selectedFile.name}` : 'Click to select image'}
-                            </Button>
-                        </Upload>
-                        {selectedPreview && <img src={selectedPreview} alt="preview" style={{ marginTop: 8, maxWidth: '100%', maxHeight: 150, objectFit: 'contain' }} />}
+
+                    <Form.Item label="Design Editor" required>
+                        <AdminDesignEditor
+                            onExport={(dataUrl, props) => {
+                                setExportedDesign(dataUrl);
+                                setExportedSize(Math.round((props.width / 420) * 100));
+                                message.success('Design ready — fill in name & country then click Upload');
+                            }}
+                        />
+                        {exportedDesign && (
+                            <div style={{ marginTop: 8, padding: 8, background: '#f0fff8', borderRadius: 6, border: '1px solid #b7eb8f' }}>
+                                <Typography.Text type="success" style={{ fontSize: 12 }}>
+                                    ✓ Design ready ({exportedSize}% size) — click Upload to save
+                                </Typography.Text>
+                            </div>
+                        )}
                     </Form.Item>
+
                     <Form.Item style={{ textAlign: 'right', marginBottom: 0 }}>
                         <Space>
                             <Button onClick={() => setUploadModalOpen(false)}>Cancel</Button>
-                            <Button type="primary" htmlType="submit" loading={uploading}>Upload</Button>
+                            <Button type="primary" htmlType="submit" loading={uploading} disabled={!exportedDesign}>Upload</Button>
                         </Space>
                     </Form.Item>
                 </Form>
