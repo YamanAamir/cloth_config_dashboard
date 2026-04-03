@@ -20,6 +20,7 @@ export const createClassRep = (data) => api.post('/admin/class-rep/create', data
 export const updateClassRep = (id, data) => api.put(`/admin/class-rep/${id}/update`, data);
 export const deleteClassRep = (id) => api.delete(`/admin/class-rep/${id}/delete`);
 export const toggleClassRepStatus = (id, data) => api.patch(`/admin/class-rep/${id}/toggle-status`, data);
+export const resetUserPassword = (userId) => api.post(`/admin/user/${userId}/reset-password`);
 
 // Class APIs
 export const getAllClasses = (params = {}) => api.post('/admin/classes', params);
@@ -49,6 +50,7 @@ export const getAllNameLists = (params = {}) => api.get('/admin/namelist/list', 
 export const getClassNameListAdmin = (classId, params = {}) => api.get(`/admin/namelist/${classId}/class`, { params });
 export const approveNameList = (id) => api.put(`/admin/namelist/${id}/approve`);
 export const rejectNameList = (id) => api.put(`/admin/namelist/${id}/reject`);
+export const unlockNameList = (id) => api.put(`/admin/namelist/${id}/unlock`);
 
 // Class Rep Specific APIs
 export const getMyClass = () => api.get('/class-rep/get-class');

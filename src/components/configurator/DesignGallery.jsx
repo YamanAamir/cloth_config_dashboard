@@ -45,17 +45,6 @@ const DesignGallery = ({
                 label: 'Country Logos',
                 children: (
                     <div>
-                        <Select
-                            placeholder="Select study trip country"
-                            showSearch
-                            optionFilterProp="label"
-                            allowClear
-                            style={{ width: '100%', marginBottom: 12 }}
-                            value={myClass?.study_trip_country_id || undefined}
-                            loading={settingCountry}
-                            options={countries.map(c => ({ value: c.id, label: c.name }))}
-                            onChange={onSetCountry}
-                        />
                         {libraryLoading ? <Spin /> :
                             libraryDesigns.length === 0
                                 ? <Empty description="No library designs for your class country" image={Empty.PRESENTED_IMAGE_SIMPLE} />

@@ -83,7 +83,17 @@ const NameListManager = ({ classId, isAdmin = false }) => {
             }
         } catch (error) {
             console.error(error);
-            message.error('Error loading name list');
+            // Auto-create name list if not exists (404) and not admin
+            if (!isAdmin && error.response?.status === 404) {
+                try {
+                    await createNameList({ class_id: classId });
+                    fetchNameList(); // Retry after create
+                } catch (createErr) {
+                    message.error('Failed to create name list');
+                }
+            } else {
+                message.error('Error loading name list');
+            }
         } finally {
             setLoading(false);
         }
@@ -99,7 +109,7 @@ const NameListManager = ({ classId, isAdmin = false }) => {
                 fetchNameList();
             }
         } catch (error) {
-            message.error('Failed to add name');
+            message.error(error.response?.data?.message || 'Failed to add name');
         }
     };
 
@@ -110,7 +120,7 @@ const NameListManager = ({ classId, isAdmin = false }) => {
             setEditingItem(null);
             fetchNameList();
         } catch (error) {
-            message.error('Failed to update');
+            message.error(error.response?.data?.message || 'Failed to update');
         }
     };
 
@@ -120,7 +130,7 @@ const NameListManager = ({ classId, isAdmin = false }) => {
             message.success('Name removed');
             fetchNameList();
         } catch (error) {
-            message.error('Failed to delete');
+            message.error(error.response?.data?.message || 'Failed to delete');
         }
     };
 

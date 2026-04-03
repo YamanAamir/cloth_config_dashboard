@@ -15,8 +15,8 @@ import {
     Avatar,
     Tag
 } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined, MailOutlined } from '@ant-design/icons';
-import { getAllClassReps, createClassRep, updateClassRep, deleteClassRep, toggleClassRepStatus, getAllSchools } from '../api/api';
+import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined, MailOutlined, KeyOutlined } from '@ant-design/icons';
+import { getAllClassReps, createClassRep, updateClassRep, deleteClassRep, toggleClassRepStatus, getAllSchools, resetUserPassword } from '../api/api';
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -113,6 +113,15 @@ const ClassRepsPage = () => {
         }
     };
 
+    const handleResetPassword = async (id, name) => {
+        try {
+            await resetUserPassword(id);
+            message.success(`Password reset email sent to ${name}`);
+        } catch (error) {
+            message.error(error.response?.data?.message || 'Password reset failed');
+        }
+    };
+
     const handleToggleStatus = async (record) => {
         try {
             // Toggle logic: if 0 (active) -> set to 1 (inactive). if 1 -> set to 0.
@@ -188,17 +197,21 @@ const ClassRepsPage = () => {
                         }}
                     />
                     <Popconfirm
+                        title="Reset password?"
+                        description="A new password will be sent to their email."
+                        onConfirm={() => handleResetPassword(record.id, record.name)}
+                        okText="Yes" cancelText="No"
+                    >
+                        <Button type="text" icon={<KeyOutlined style={{ color: '#faad14' }} />} />
+                    </Popconfirm>
+                    <Popconfirm
                         title="Remove representative"
                         description="Are you sure?"
                         onConfirm={() => handleDelete(record.id)}
                         okText="Yes"
                         cancelText="No"
                     >
-                        <Button
-                            type="text"
-                            danger
-                            icon={<DeleteOutlined />}
-                        />
+                        <Button type="text" danger icon={<DeleteOutlined />} />
                     </Popconfirm>
                 </Space>
             ),

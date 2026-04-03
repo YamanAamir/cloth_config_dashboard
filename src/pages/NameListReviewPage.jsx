@@ -1,16 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
-    Table,
-    Button,
-    Card,
-    Typography,
-    Space,
-    Tag,
-    Modal,
-    Input,
-    Select,
-    message,
-    Tooltip
+    Table, Button, Card, Typography, Space, Tag,
+    Modal, Input, Select, message, Tooltip, Popconfirm
 } from 'antd';
 import {
     EyeOutlined,
@@ -18,9 +9,9 @@ import {
     CloseCircleOutlined,
     ClockCircleOutlined,
     FileTextOutlined,
-    EditOutlined
+    UnlockOutlined
 } from '@ant-design/icons';
-import { getAllNameLists } from '../api/api';
+import { getAllNameLists, unlockNameList } from '../api/api';
 import NameListManager from '../components/NameListManager';
 
 const { Title } = Typography;
@@ -77,6 +68,16 @@ const NameListReviewPage = () => {
         fetchNameLists();
     }, [pagination.current, pagination.limit, pagination.status, pagination.search]);
 
+    const handleUnlock = async (id, className) => {
+        try {
+            await unlockNameList(id);
+            message.success(`Name list unlocked for "${className}"`);
+            fetchNameLists();
+        } catch (error) {
+            message.error(error.response?.data?.message || 'Unlock failed');
+        }
+    };
+
     const handleView = (classId) => {
         setSelectedClassId(classId);
         setIsModalOpen(true);
@@ -88,13 +89,23 @@ const NameListReviewPage = () => {
         fetchNameLists(); // Refresh list after potential approval/rejection
     };
 
-    const getStatusTag = (status) => {
+    // Check if effectively locked (either status=locked OR deadline passed)
+    const isEffectivelyLocked = (record) => {
+        if (record.process_status === 'locked') return true;
+        const deadline = record.class?.change_deadline;
+        if (deadline && new Date() > new Date(deadline)) return true;
+        return false;
+    };
+
+    const getStatusTag = (record) => {
+        const status = record.process_status;
+        const deadlinePassed = record.class?.change_deadline && new Date() > new Date(record.class.change_deadline);
+        if (status === 'locked' || deadlinePassed) return <Tag color="orange">Locked</Tag>;
         switch (status) {
             case 'draft': return <Tag color="default">Draft</Tag>;
             case 'ready': return <Tag color="processing" icon={<ClockCircleOutlined />}>Ready for Review</Tag>;
             case 'approved': return <Tag color="success" icon={<CheckCircleOutlined />}>Approved</Tag>;
             case 'rejected': return <Tag color="error" icon={<CloseCircleOutlined />}>Rejected</Tag>;
-            case 'locked': return <Tag color="orange">Locked</Tag>;
             default: return <Tag>{status}</Tag>;
         }
     };
@@ -116,10 +127,19 @@ const NameListReviewPage = () => {
             render: (_, record) => <Tag>{record.items?.length || 0} students</Tag>,
         },
         {
+            title: 'Deadline',
+            key: 'deadline',
+            render: (_, record) => {
+                const d = record.class?.change_deadline;
+                if (!d) return <Typography.Text type="secondary">—</Typography.Text>;
+                const past = new Date() > new Date(d);
+                return <Tag color={past ? 'volcano' : 'blue'}>{new Date(d).toLocaleDateString()}</Tag>;
+            }
+        },
+        {
             title: 'Status',
-            dataIndex: 'process_status',
             key: 'status',
-            render: (status) => getStatusTag(status),
+            render: (_, record) => getStatusTag(record),
         },
         {
             title: 'Actions',
@@ -133,6 +153,21 @@ const NameListReviewPage = () => {
                             onClick={() => handleView(record.class_id)}
                         />
                     </Tooltip>
+                    {isEffectivelyLocked(record) && (
+                        <Tooltip title="Unlock name list">
+                            <Popconfirm
+                                title="Unlock this name list?"
+                                description="Class rep will be able to edit names again."
+                                onConfirm={() => handleUnlock(record.id, record.class?.name)}
+                                okText="Unlock" cancelText="Cancel"
+                            >
+                                <Button
+                                    type="text"
+                                    icon={<UnlockOutlined style={{ color: '#faad14' }} />}
+                                />
+                            </Popconfirm>
+                        </Tooltip>
+                    )}
                 </Space>
             ),
         },

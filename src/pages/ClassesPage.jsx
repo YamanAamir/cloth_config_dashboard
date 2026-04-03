@@ -9,7 +9,7 @@ import {
     toggleClassStatus, getAllSchools, getAllClassReps,
     assignClassRep, getClassBackDesign, lockClass, unlockClass,
     generateProductionFiles, sendStatusEmail, sendFollowupEmail,
-    updateClassProcessStatus
+    updateClassProcessStatus, sendDeadlineReminder
 } from '../api/api';
 import { Status, getUploadsUrl } from '../utils/constants';
 
@@ -473,6 +473,19 @@ const ClassesPage = () => {
                             },
                         ] : []),
                         { type: 'divider' },
+                        {
+                            key: 'reminder',
+                            label: 'Send Deadline Reminder',
+                            icon: <MailOutlined style={{ color: '#00b96b' }} />,
+                            onClick: async () => {
+                                try {
+                                    await sendDeadlineReminder(record.id);
+                                    message.success(`Deadline reminder sent for "${record.name}"`);
+                                } catch (err) {
+                                    message.error(err.response?.data?.message || 'Failed to send reminder');
+                                }
+                            },
+                        },
                         {
                             key: 'shipped',
                             label: 'Mark as Shipped',

@@ -29,7 +29,8 @@ import {
     InboxOutlined,
     CheckCircleOutlined,
     ClockCircleOutlined,
-    CloseCircleOutlined
+    CloseCircleOutlined,
+    GlobalOutlined
 } from '@ant-design/icons';
 import {
     getMyClass,
@@ -65,6 +66,7 @@ const MyClassPage = () => {
     const [registrationLinkModalOpen, setRegistrationLinkModalOpen] = useState(false);
     const [registrationLink, setRegistrationLink] = useState('');
     const [linkLoading, setLinkLoading] = useState(false);
+    const [studyTripModalOpen, setStudyTripModalOpen] = useState(false);
     
     // Logo Gallery
     const [logos, setLogos] = useState([]);
@@ -289,6 +291,13 @@ const MyClassPage = () => {
                 <Space>
                     <Button
                         type="default"
+                        icon={<GlobalOutlined />}
+                        onClick={() => setStudyTripModalOpen(true)}
+                    >
+                        Study Trip
+                    </Button>
+                    <Button
+                        type="default"
                         icon={<LinkOutlined />}
                         loading={linkLoading}
                         onClick={handleGenerateRegistrationLink}
@@ -376,21 +385,6 @@ const MyClassPage = () => {
                     </Card>
                 </Col>
             </Row>
-
-            {/* Study Trip Country */}
-            <Card className="glass-card" style={{ border: 'none', marginBottom: 24 }} title="Study Trip Country">
-                <Space direction="vertical" style={{ width: '100%' }}>
-                    <Select
-                        placeholder="Select study trip country"
-                        style={{ width: '100%', maxWidth: 400 }}
-                        value={myClass?.study_trip_country_id || undefined}
-                        onChange={handleSetStudyTripCountry}
-                        loading={settingCountry}
-                        allowClear
-                        options={studyTripCountries.map(c => ({ value: c.id, label: c.name }))}
-                    />
-                </Space>
-            </Card>
 
             {/* Current Back Design */}
             <Card 
@@ -672,6 +666,32 @@ const MyClassPage = () => {
                     value={registrationLink}
                     rows={3}
                     style={{ fontFamily: 'monospace', fontSize: 12 }}
+                />
+            </Modal>
+
+            {/* Study Trip Modal */}
+            <Modal
+                title="Study Trip Country"
+                open={studyTripModalOpen}
+                onCancel={() => setStudyTripModalOpen(false)}
+                footer={[
+                    <Button key="close" type="primary" onClick={() => setStudyTripModalOpen(false)}>Done</Button>
+                ]}
+                destroyOnHidden
+            >
+                <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
+                    Select the country your class is visiting. Only library designs for this country will be shown.
+                </Typography.Text>
+                <Select
+                    placeholder="Select study trip country"
+                    style={{ width: '100%' }}
+                    value={myClass?.study_trip_country_id || undefined}
+                    onChange={handleSetStudyTripCountry}
+                    loading={settingCountry}
+                    allowClear
+                    showSearch
+                    optionFilterProp="label"
+                    options={studyTripCountries.map(c => ({ value: c.id, label: c.name }))}
                 />
             </Modal>
 
