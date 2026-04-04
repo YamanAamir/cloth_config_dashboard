@@ -64,6 +64,13 @@ const SchoolsPage = () => {
         fetchSchools();
     }, [pagination.current, pagination.limit, pagination.search]);
 
+    // Refresh when window gets focus (e.g. after creating a class)
+    useEffect(() => {
+        const onFocus = () => fetchSchools();
+        window.addEventListener('focus', onFocus);
+        return () => window.removeEventListener('focus', onFocus);
+    }, []);
+
     const handleAddEdit = async (values) => {
         try {
             // New logic: 0 = active, 1 = inactive
@@ -124,16 +131,16 @@ const SchoolsPage = () => {
             key: 'education_type',
             render: (type) => <Tag color="blue">{type}</Tag>
         },
-        {
-            title: 'Classes',
-            dataIndex: 'class_count',
-            key: 'class_count',
-            render: (count) => (
-                <Tag color="cyan" style={{ fontSize: 13, padding: '2px 8px' }}>
-                    {count || 0}
-                </Tag>
-            ),
-        },
+        // {
+        //     title: 'Classes',
+        //     dataIndex: 'class_count',
+        //     key: 'class_count',
+        //     render: (count) => (
+        //         <Tag color="cyan" style={{ fontSize: 13, padding: '2px 8px' }}>
+        //             {count || 0}
+        //         </Tag>
+        //     ),
+        // },
         {
             title: 'Created At',
             dataIndex: 'created_at',

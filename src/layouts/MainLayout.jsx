@@ -88,6 +88,18 @@ const MainLayout = () => {
             roles: [Role.ADMIN],
         },
         {
+            key: '/school-overview',
+            icon: <BankOutlined />,
+            label: 'School Overview',
+            roles: [Role.ADMIN],
+        },
+        {
+            key: '/fonts',
+            icon: <FileZipOutlined />,
+            label: 'Font Management',
+            roles: [Role.ADMIN],
+        },
+        {
             key: '/name-list',
             icon: <OrderedListOutlined />,
             label: 'Name List',

@@ -89,14 +89,20 @@ const PreviewModal = ({ open, onClose, canvasRef, designColor = 'white' }) => {
         ctx.fillRect(0, 0, offCanvas.width, offCanvas.height);
         ctx.drawImage(canvas, 0, 0, offCanvas.width, offCanvas.height);
         const imgData = ctx.getImageData(0, 0, offCanvas.width, offCanvas.height);
-        for (let i = 0; i < imgData.data.length; i += 4) {
-            // Grayscale then invert: white bg → black, dark image → white
-            const gray = 255 - (0.299 * imgData.data[i] + 0.587 * imgData.data[i + 1] + 0.114 * imgData.data[i + 2]);
-            imgData.data[i]     = gray;
-            imgData.data[i + 1] = gray;
-            imgData.data[i + 2] = gray;
-            imgData.data[i + 3] = 255;
-        }
+       for (let i = 0; i < imgData.data.length; i += 4) {
+    const brightness =
+        0.299 * imgData.data[i] +
+        0.587 * imgData.data[i + 1] +
+        0.114 * imgData.data[i + 2];
+
+    // invert + pure black/white
+    const bw = brightness > 128 ? 0 : 255;
+
+    imgData.data[i] = bw;
+    imgData.data[i + 1] = bw;
+    imgData.data[i + 2] = bw;
+    imgData.data[i + 3] = 255;
+}
         ctx.putImageData(imgData, 0, 0);
         return offCanvas.toDataURL("image/png");
     };

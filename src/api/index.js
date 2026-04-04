@@ -15,7 +15,8 @@
     });
 
     const addAuthToken = (config) => {
-        const token = localStorage.getItem('token');
+        const tokenKey = localStorage.getItem('current_token_key') || 'token';
+        const token = localStorage.getItem(tokenKey);
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
@@ -33,15 +34,13 @@
     const handleUnauthorized = (error) => {
         if (error?.response?.status === 401) {
             console.log("Session expired. Logging out...");
-
-            // Clear storage
-            localStorage.removeItem("token");
+            // Only clear current session token, keep other role tokens
+            const tokenKey = localStorage.getItem('current_token_key');
+            if (tokenKey) localStorage.removeItem(tokenKey);
+            localStorage.removeItem("current_token_key");
             localStorage.removeItem("user");
-
-            // Redirect to login
             window.location.href = "/login";
         }
-
         return Promise.reject(error);
     };
 

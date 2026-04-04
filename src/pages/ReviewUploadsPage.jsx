@@ -1,33 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
-    Table,
-    Button,
-    Card,
-    Typography,
-    Space,
-    Tag,
-    Tabs,
-    message,
-    Image,
-    Popconfirm,
-    Tooltip,
-    Input,
-    Select
+    Table, Button, Card, Typography, Space, Tag, Tabs,
+    message, Image, Popconfirm, Tooltip, Input, Select, Modal, Upload, Form
 } from 'antd';
 import {
-    CheckCircleOutlined,
-    CloseCircleOutlined,
-    EyeOutlined,
-    FileImageOutlined,
-    ClockCircleOutlined
+    CheckCircleOutlined, CloseCircleOutlined, EyeOutlined,
+    FileImageOutlined, ClockCircleOutlined, PlusOutlined, InboxOutlined
 } from '@ant-design/icons';
 import {
-    getAllLogos,
-    approveLogo,
-    rejectLogo,
-    getAllBackDesigns,
-    approveBackDesign,
-    rejectBackDesign
+    getAllLogos, approveLogo, rejectLogo,
+    getAllBackDesigns, approveBackDesign, rejectBackDesign,
+    adminUploadLogo, adminUploadBackDesign,
+    getAllSchools, getAllClasses
 } from '../api/api';
 import { Status, getUploadsUrl } from '../utils/constants';
 
@@ -45,6 +29,17 @@ const ReviewUploadsPage = () => {
     const [backDesigns, setBackDesigns] = useState([]);
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState('1');
+
+    // Admin upload state
+    const [uploadLogoModal, setUploadLogoModal] = useState(false);
+    const [uploadDesignModal, setUploadDesignModal] = useState(false);
+    const [uploading, setUploading] = useState(false);
+    const [uploadFile, setUploadFile] = useState(null);
+    const [uploadPreview, setUploadPreview] = useState(null);
+    const [schools, setSchools] = useState([]);
+    const [classes, setClasses] = useState([]);
+    const [logoForm] = Form.useForm();
+    const [designForm] = Form.useForm();
     const [logoPagination, setLogoPagination] = useState({
         current: 1,
         limit: 10,
@@ -137,19 +132,90 @@ const ReviewUploadsPage = () => {
     };
 
     const handleReject = async (id, type) => {
-        try {
-            if (type === 'logo') {
-                await rejectLogo(id);
-                message.success('Logo rejected');
-                fetchLogos();
-            } else {
-                await rejectBackDesign(id);
-                message.success('Back design rejected');
-                fetchBackDesigns();
+        let reason = '';
+        Modal.confirm({
+            title: `Reject this ${type === 'logo' ? 'logo' : 'back design'}?`,
+            content: (
+                <div style={{ marginTop: 12 }}>
+                    <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
+                        Reason for rejection (optional — will be visible to class rep):
+                    </Typography.Text>
+                    <Input.TextArea
+                        rows={3}
+                        placeholder="e.g. Image resolution too low, please re-upload at 300dpi"
+                        onChange={e => { reason = e.target.value; }}
+                    />
+                </div>
+            ),
+            okText: 'Reject',
+            okType: 'danger',
+            cancelText: 'Cancel',
+            onOk: async () => {
+                try {
+                    const body = reason.trim() ? { comment: reason.trim() } : {};
+                    if (type === 'logo') {
+                        await rejectLogo(id, body);
+                        message.success('Logo rejected');
+                        fetchLogos();
+                    } else {
+                        await rejectBackDesign(id, body);
+                        message.success('Back design rejected');
+                        fetchBackDesigns();
+                    }
+                } catch (error) {
+                    message.error(error.response?.data?.error || 'Operation failed');
+                }
             }
-        } catch (error) {
-            message.error(error.response?.data?.error || 'Operation failed');
-        }
+        });
+    };
+
+    // Fetch schools and classes for upload modals
+    useEffect(() => {
+        getAllSchools({ limit: 100 }).then(r => setSchools(r.data.data || [])).catch(() => {});
+        getAllClasses({ limit: 100 }).then(r => setClasses(r.data.data || [])).catch(() => {});
+    }, []);
+
+    const handleFileSelect = (file) => {
+        setUploadFile(file);
+        setUploadPreview(URL.createObjectURL(file));
+        return false;
+    };
+
+    const handleAdminUploadLogo = async (values) => {
+        if (!uploadFile) { message.error('Select a file'); return; }
+        setUploading(true);
+        try {
+            const fd = new FormData();
+            fd.append('name', values.name);
+            fd.append('school_id', values.school_id);
+            fd.append('logo', uploadFile);
+            await adminUploadLogo(fd);
+            message.success('Logo uploaded & approved');
+            setUploadLogoModal(false);
+            logoForm.resetFields();
+            setUploadFile(null); setUploadPreview(null);
+            fetchLogos();
+        } catch (err) { message.error(err.response?.data?.message || 'Upload failed'); }
+        finally { setUploading(false); }
+    };
+
+    const handleAdminUploadDesign = async (values) => {
+        if (!uploadFile) { message.error('Select a file'); return; }
+        setUploading(true);
+        try {
+            const fd = new FormData();
+            fd.append('name', values.name);
+            if (values.class_id) fd.append('class_id', values.class_id);
+            if (values.country_id) fd.append('country_id', values.country_id);
+            fd.append('design', uploadFile);
+            await adminUploadBackDesign(fd);
+            message.success('Back design uploaded & approved');
+            setUploadDesignModal(false);
+            designForm.resetFields();
+            setUploadFile(null); setUploadPreview(null);
+            fetchBackDesigns();
+        } catch (err) { message.error(err.response?.data?.message || 'Upload failed'); }
+        finally { setUploading(false); }
     };
 
     const getStatusTag = (status) => {
@@ -217,20 +283,13 @@ const ReviewUploadsPage = () => {
                         </Popconfirm>
                     </Tooltip>
                     <Tooltip title="Reject">
-                        <Popconfirm
-                            title="Reject this logo?"
-                            onConfirm={() => handleReject(record.id, 'logo')}
-                            okText="Yes"
-                            cancelText="No"
-                            okType="danger"
-                        >
-                            <Button
+                        <Button
                                 type="text"
                                 shape="circle"
                                 icon={<CloseCircleOutlined style={{ color: '#ff4d4f' }} />}
                                 disabled={record.status === Status.DELETED}
+                                onClick={() => handleReject(record.id, 'logo')}
                             />
-                        </Popconfirm>
                     </Tooltip>
                 </Space>
             ),
@@ -285,20 +344,13 @@ const ReviewUploadsPage = () => {
                         </Popconfirm>
                     </Tooltip>
                     <Tooltip title="Reject">
-                        <Popconfirm
-                            title="Reject this design?"
-                            onConfirm={() => handleReject(record.id, 'design')}
-                            okText="Yes"
-                            cancelText="No"
-                            okType="danger"
-                        >
-                            <Button
+                        <Button
                                 type="text"
                                 shape="circle"
                                 icon={<CloseCircleOutlined style={{ color: '#ff4d4f' }} />}
                                 disabled={record.status === Status.DELETED}
+                                onClick={() => handleReject(record.id, 'design')}
                             />
-                        </Popconfirm>
                     </Tooltip>
                 </Space>
             ),
@@ -313,7 +365,24 @@ const ReviewUploadsPage = () => {
             </div>
 
             <Card className="glass-card" style={{ border: 'none' }}>
-                <Tabs activeKey={activeTab} onChange={setActiveTab} animated={{ inkBar: true, tabPane: true }}>
+                <Tabs
+                    activeKey={activeTab}
+                    onChange={setActiveTab}
+                    animated={{ inkBar: true, tabPane: true }}
+                    tabBarExtraContent={
+                        activeTab === '1' ? (
+                            <Button type="primary" size="small" icon={<PlusOutlined />}
+                                onClick={() => { setUploadFile(null); setUploadPreview(null); logoForm.resetFields(); setUploadLogoModal(true); }}>
+                                Upload Logo
+                            </Button>
+                        ) : (
+                            <Button size="small" icon={<PlusOutlined />}
+                                onClick={() => { setUploadFile(null); setUploadPreview(null); designForm.resetFields(); setUploadDesignModal(true); }}>
+                                Upload Back Design
+                            </Button>
+                        )
+                    }
+                >
                     <TabPane
                         tab={
                             <span>
@@ -412,6 +481,62 @@ const ReviewUploadsPage = () => {
                     </TabPane>
                 </Tabs>
             </Card>
+
+            {/* Admin Upload Logo Modal */}
+            <Modal title="Upload Logo (Auto-Approved)" open={uploadLogoModal}
+                onCancel={() => { setUploadLogoModal(false); setUploadFile(null); setUploadPreview(null); }}
+                footer={null} destroyOnHidden>
+                <Form form={logoForm} layout="vertical" onFinish={handleAdminUploadLogo} style={{ marginTop: 16 }}>
+                    <Form.Item name="name" label="Logo Name" rules={[{ required: true }]}>
+                        <Input placeholder="e.g. School Logo 2025" />
+                    </Form.Item>
+                    <Form.Item name="school_id" label="School" rules={[{ required: true }]}>
+                        <Select placeholder="Select school" options={schools.map(s => ({ value: s.id, label: s.name }))} showSearch optionFilterProp="label" />
+                    </Form.Item>
+                    <Form.Item label="Logo File" required>
+                        <Upload beforeUpload={handleFileSelect} showUploadList={false} accept="image/*">
+                            <Button type="dashed" icon={<InboxOutlined />} block style={{ height: 80 }}>
+                                {uploadFile ? `✓ ${uploadFile.name}` : 'Click to select image'}
+                            </Button>
+                        </Upload>
+                        {uploadPreview && <img src={uploadPreview} alt="preview" style={{ marginTop: 8, maxWidth: '100%', maxHeight: 150, objectFit: 'contain' }} />}
+                    </Form.Item>
+                    <Form.Item style={{ textAlign: 'right', marginBottom: 0 }}>
+                        <Space>
+                            <Button onClick={() => setUploadLogoModal(false)}>Cancel</Button>
+                            <Button type="primary" htmlType="submit" loading={uploading}>Upload & Approve</Button>
+                        </Space>
+                    </Form.Item>
+                </Form>
+            </Modal>
+
+            {/* Admin Upload Back Design Modal */}
+            <Modal title="Upload Back Design (Auto-Approved)" open={uploadDesignModal}
+                onCancel={() => { setUploadDesignModal(false); setUploadFile(null); setUploadPreview(null); }}
+                footer={null} destroyOnHidden>
+                <Form form={designForm} layout="vertical" onFinish={handleAdminUploadDesign} style={{ marginTop: 16 }}>
+                    <Form.Item name="name" label="Design Name" rules={[{ required: true }]}>
+                        <Input placeholder="e.g. Berlin Back Design" />
+                    </Form.Item>
+                    <Form.Item name="class_id" label="Assign to Class (optional)" tooltip="Leave empty for library design">
+                        <Select placeholder="Select class (optional)" allowClear options={classes.map(c => ({ value: c.id, label: `${c.name} — ${c.school?.name || ''}` }))} showSearch optionFilterProp="label" />
+                    </Form.Item>
+                    <Form.Item label="Design File" required>
+                        <Upload beforeUpload={handleFileSelect} showUploadList={false} accept="image/*">
+                            <Button type="dashed" icon={<InboxOutlined />} block style={{ height: 80 }}>
+                                {uploadFile ? `✓ ${uploadFile.name}` : 'Click to select image'}
+                            </Button>
+                        </Upload>
+                        {uploadPreview && <img src={uploadPreview} alt="preview" style={{ marginTop: 8, maxWidth: '100%', maxHeight: 150, objectFit: 'contain' }} />}
+                    </Form.Item>
+                    <Form.Item style={{ textAlign: 'right', marginBottom: 0 }}>
+                        <Space>
+                            <Button onClick={() => setUploadDesignModal(false)}>Cancel</Button>
+                            <Button type="primary" htmlType="submit" loading={uploading}>Upload & Approve</Button>
+                        </Space>
+                    </Form.Item>
+                </Form>
+            </Modal>
         </div>
     );
 };

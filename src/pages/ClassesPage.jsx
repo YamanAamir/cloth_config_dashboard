@@ -79,14 +79,24 @@ const ClassesPage = () => {
 
     const fetchDropdowns = async () => {
         try {
-            const [schoolsRes, repsRes] = await Promise.all([
-                getAllSchools({ limit: 1000 }),
-                getAllClassReps({ limit: 1000 })
-            ]);
+            const schoolsRes = await getAllSchools({ limit: 1000 });
             setSchools(schoolsRes.data.data || []);
-            setClassReps(repsRes.data.data || []);
         } catch (error) {
             message.error('Failed to fetch dropdown data');
+        }
+    };
+
+    const fetchFilteredReps = async (schoolId) => {
+        try {
+            const repsRes = await getAllClassReps({
+                // school_id: schoolId,
+                unassigned_only: true,
+                page: 1,
+                limit: 50
+            });
+            setClassReps(repsRes.data.data || []);
+        } catch (error) {
+            message.error('Failed to fetch representatives');
         }
     };
 
@@ -364,6 +374,7 @@ const ClassesPage = () => {
                                 setSelectedClass(record);
                                 assignForm.resetFields();
                                 setIsAssignModalOpen(true);
+                                fetchFilteredReps(record.school_id);
                             }}
                         >
                             Assign Rep
@@ -381,6 +392,7 @@ const ClassesPage = () => {
                                 class_rep_id: record.users?.[0]?.id
                             });
                             setIsAssignModalOpen(true);
+                            fetchFilteredReps(record.school_id);
                         }}
                     >
                         Assigned
@@ -667,14 +679,21 @@ const ClassesPage = () => {
                         <Select
                             placeholder="Search and select representative"
                             showSearch
-                            optionFilterProp="children"
-                        >
-                            {classReps.map(rep => (
-                                <Option key={rep.id} value={rep.id}>
-                                    {rep.name} ({rep.email}) - {rep.school?.name}
-                                </Option>
-                            ))}
-                        </Select>
+                            optionFilterProp="label"
+                            options={[
+                                // Currently assigned rep (if any) shown at top
+                                ...(selectedClass?.users?.length > 0 ? [{
+                                    value: selectedClass.users[0].id,
+                                    label: `${selectedClass.users[0].name} (${selectedClass.users[0].email}) — Currently Assigned`,
+                                    style: { color: '#00b96b' }
+                                }] : []),
+                                // Unassigned reps from backend
+                                ...classReps.map(rep => ({
+                                    value: rep.id,
+                                    label: `${rep.name} (${rep.email})`
+                                }))
+                            ]}
+                        />
                     </Form.Item>
 
                     <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>

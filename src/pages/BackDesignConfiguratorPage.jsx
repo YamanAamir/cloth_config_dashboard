@@ -10,7 +10,8 @@ import {
 import {
     getMyClass, uploadBackDesign, updateBackDesign,
     getMyBackDesigns, getClassBackDesign,
-    getClassRepLibraryDesigns, getStudyTripCountries, setStudyTripCountry
+    getClassRepLibraryDesigns, getStudyTripCountries, setStudyTripCountry,
+    getClassRepFonts
 } from '../api/api';
 import { getUploadsUrl } from '../utils/constants';
 import DesignGallery from '../components/configurator/DesignGallery';
@@ -45,7 +46,6 @@ const BackDesignConfiguratorPage = () => {
     const [textElements, setTextElements] = useState([]);
     const [currentText, setCurrentText] = useState('');
     const [currentFontSize, setCurrentFontSize] = useState(16);
-    const [currentFontFamily] = useState('Arial');
     const [selectedTextId, setSelectedTextId] = useState(null);
 
     // Drag
@@ -54,6 +54,8 @@ const BackDesignConfiguratorPage = () => {
 
     // Garment color
     const [designColor, setDesignColor] = useState('white');
+    const [fonts, setFonts] = useState([]);
+    const [currentFontFamily, setCurrentFontFamily] = useState('Arial');
 
     // Preview modal
     const [previewOpen, setPreviewOpen] = useState(false);
@@ -68,6 +70,7 @@ const BackDesignConfiguratorPage = () => {
         fetchBackDesigns();
         fetchLibraryDesigns();
         fetchCountries();
+        fetchFonts();
     }, []);
 
     const fetchMyClass = async () => {
@@ -105,6 +108,28 @@ const BackDesignConfiguratorPage = () => {
         try {
             const res = await getStudyTripCountries();
             setCountries(res.data.data || []);
+        } catch { /* silent */ }
+    };
+
+    const fetchFonts = async () => {
+        try {
+            const res = await getClassRepFonts();
+            const data = res.data.data || [];
+            setFonts(data);
+            if (data.length > 0) setCurrentFontFamily(data[0].name);
+            // Load each font's CSS
+            data.forEach(f => {
+                if (f.google_font_url) {
+                    const id = `gf-${f.id}`;
+                    if (!document.getElementById(id)) {
+                        const link = document.createElement('link');
+                        link.id = id;
+                        link.rel = 'stylesheet';
+                        link.href = f.google_font_url;
+                        document.head.appendChild(link);
+                    }
+                }
+            });
         } catch { /* silent */ }
     };
 
@@ -323,6 +348,25 @@ const BackDesignConfiguratorPage = () => {
                                                     />
                                                 </Col>
                                             </Row>
+                                            {fonts.length > 0 && (
+                                                <div style={{ marginTop: 4 }}>
+                                                    <Text type="secondary" style={{ fontSize: 11 }}>Font</Text>
+                                                    <Select
+                                                        size="small"
+                                                        value={el.fontFamily}
+                                                        disabled={el.locked}
+                                                        style={{ width: '100%', marginTop: 4 }}
+                                                        onChange={v => setTextElements(prev => prev.map(t => t.id === el.id ? { ...t, fontFamily: v } : t))}
+                                                        onClick={e => e.stopPropagation()}
+                                                    >
+                                                        {fonts.map(f => (
+                                                            <Select.Option key={f.id} value={f.name}>
+                                                                <span style={{ fontFamily: f.name }}>{f.name}</span>
+                                                            </Select.Option>
+                                                        ))}
+                                                    </Select>
+                                                </div>
+                                            )}
                                             <Space size="small" style={{ width: '100%', justifyContent: 'flex-end' }}>
                                                 <Tooltip title={el.locked ? 'Unlock' : 'Lock'}>
                                                     <Button size="small" type={el.locked ? 'primary' : 'default'}
@@ -352,6 +396,22 @@ const BackDesignConfiguratorPage = () => {
                             {[10, 12, 14, 16, 18, 20, 24, 28, 32, 40, 48].map(v =>
                                 <Select.Option key={v} value={v}>{v}px</Select.Option>
                             )}
+                        </Select>
+                        <Select
+                            value={currentFontFamily}
+                            onChange={setCurrentFontFamily}
+                            style={{ width: '100%', marginTop: 8 }}
+                            placeholder="Select font"
+                            showSearch
+                            optionFilterProp="label"
+                        >
+                            {fonts.map(f => (
+                                <Select.Option key={f.id} value={f.name} label={f.name}>
+                                    <span style={{ fontFamily: f.name, fontSize: 15 }}>
+                                        {f.name}
+                                    </span>
+                                </Select.Option>
+                            ))}
                         </Select>
                         <Button type="primary" icon={<PlusOutlined />} onClick={handleAddText} block style={{ marginTop: 8 }}>
                             Add Name

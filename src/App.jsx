@@ -24,6 +24,8 @@ import StudentOverview from './pages/StudentOverview';
 import ProfilePage from './pages/ProfilePage';
 import ProductionFilesPage from './pages/ProductionFilesPage';
 import CountriesPage from './pages/CountriesPage';
+import SchoolOverviewPage from './pages/SchoolOverviewPage';
+import FontsPage from './pages/FontsPage';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
@@ -89,6 +91,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={[Role.ADMIN]}>
               <ClassesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="school-overview"
+          element={
+            <ProtectedRoute allowedRoles={[Role.ADMIN]}>
+              <SchoolOverviewPage/>
             </ProtectedRoute>
           }
         />
@@ -185,6 +195,22 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={[Role.ADMIN]}>
               <CountriesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="school-overview"
+          element={
+            <ProtectedRoute allowedRoles={[Role.ADMIN]}>
+              <SchoolOverviewPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="fonts"
+          element={
+            <ProtectedRoute allowedRoles={[Role.ADMIN]}>
+              <FontsPage />
             </ProtectedRoute>
           }
         />

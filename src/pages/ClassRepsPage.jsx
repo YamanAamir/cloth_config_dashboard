@@ -27,6 +27,7 @@ const ClassRepsPage = () => {
     const [loading, setLoading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingRep, setEditingRep] = useState(null);
+    const [submitting, setSubmitting] = useState(false);
     const [form] = Form.useForm();
     const [pagination, setPagination] = useState({
         current: 1,
@@ -78,14 +79,11 @@ const ClassRepsPage = () => {
     }, []);
 
     const handleAddEdit = async (values) => {
+        if (submitting) return; // prevent double submit
+        setSubmitting(true);
         try {
-            // New logic: 0 = active, 1 = inactive
             const payload = { ...values, status: values.status ? 0 : 1 };
-
-            // Don't send empty password during update
-            if (editingRep && !payload.password) {
-                delete payload.password;
-            }
+            if (editingRep && !payload.password) delete payload.password;
 
             if (editingRep) {
                 await updateClassRep(editingRep.id, payload);
@@ -100,6 +98,8 @@ const ClassRepsPage = () => {
             fetchReps();
         } catch (error) {
             message.error(error.response?.data?.message || 'Operation failed');
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -158,7 +158,6 @@ const ClassRepsPage = () => {
             render: (school) => (
                 <Space direction="horizontal" size={0}>
                     <Tag color="blue">{school?.name || 'No School'}</Tag>
-                    <Tag color="black">{school?.education_type || 'No School'}</Tag>
                 </Space>
             )
         },
@@ -330,7 +329,7 @@ const ClassRepsPage = () => {
                     <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
                         <Space>
                             <Button onClick={() => setIsModalOpen(false)}>Cancel</Button>
-                            <Button type="primary" htmlType="submit">
+                            <Button type="primary" htmlType="submit" loading={submitting}>
                                 {editingRep ? 'Update Rep' : 'Create Rep'}
                             </Button>
                         </Space>

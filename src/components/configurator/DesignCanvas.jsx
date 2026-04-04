@@ -79,14 +79,15 @@ const DesignCanvas = ({
         const rect = canvas.getBoundingClientRect();
         const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
         const my = (e.clientY - rect.top) * (canvas.height / rect.height);
+        const PADDING = 12; // extra hit area around text
         for (let i = textElements.length - 1; i >= 0; i--) {
             const el = textElements[i];
             if (el.locked) continue;
             const ctx = canvas.getContext('2d');
             ctx.font = `${el.fontSize}px ${el.fontFamily}`;
-            const tw = ctx.measureText(el.text).width;
-            const th = el.fontSize;
-            if (mx >= el.x - tw / 2 && mx <= el.x + tw / 2 && my >= el.y - th / 2 && my <= el.y + th / 2) {
+            const tw = ctx.measureText(el.text).width / 2 + PADDING;
+            const th = el.fontSize / 2 + PADDING;
+            if (mx >= el.x - tw && mx <= el.x + tw && my >= el.y - th && my <= el.y + th) {
                 setSelectedTextId(el.id);
                 setIsDragging(true);
                 setDragOffset({ x: mx - el.x, y: my - el.y });
@@ -102,9 +103,12 @@ const DesignCanvas = ({
         const rect = canvas.getBoundingClientRect();
         const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
         const my = (e.clientY - rect.top) * (canvas.height / rect.height);
-        setTextElements(prev => prev.map(el =>
-            el.id === selectedTextId ? { ...el, x: mx - dragOffset.x, y: my - dragOffset.y } : el
-        ));
+        // Smooth: use requestAnimationFrame
+        requestAnimationFrame(() => {
+            setTextElements(prev => prev.map(el =>
+                el.id === selectedTextId ? { ...el, x: mx - dragOffset.x, y: my - dragOffset.y } : el
+            ));
+        });
     };
 
     if (!imagePreview) return (

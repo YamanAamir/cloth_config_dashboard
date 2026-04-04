@@ -25,6 +25,10 @@ export const resetUserPassword = (userId) => api.post(`/admin/user/${userId}/res
 // Class APIs
 export const getAllClasses = (params = {}) => api.post('/admin/classes', params);
 export const getAllOrders = (params = {}) => api.get('/admin/orders/list', params);
+export const getClassStudents = (classId, params = {}) => api.post(`/admin/class/${classId}/students`, params);
+export const getSchoolStats = (schoolId) => api.get(`/admin/school/${schoolId}/stats`);
+export const getSchoolClasses = (schoolId, params = {}) => api.post(`/admin/school/${schoolId}/classes`, params);
+export const getClassRep = (classId) => api.get(`/admin/class/${classId}/rep`);
 export const createClass = (data) => api.post('/admin/class/create', data);
 export const updateClass = (id, data) => api.put(`/admin/class/${id}/update`, data);
 export const deleteClass = (id) => api.delete(`/admin/class/${id}/delete`);
@@ -37,9 +41,10 @@ export const approveLogo = (logoId, body = {}) => api.put(`/admin/approve-logo/$
 export const rejectLogo = (logoId, body = {}) => api.put(`/admin/reject-logo/${logoId}`, body);
 export const getAllBackDesigns = (params = {}) => api.post('/admin/back-designs', params);
 export const approveBackDesign = (id) => api.put(`/admin/approve-back-design/${id}`);
-export const rejectBackDesign = (id) => api.put(`/admin/reject-back-design/${id}`);
+export const rejectBackDesign = (id, body = {}) => api.put(`/admin/reject-back-design/${id}`, body);
 
-// Back Design Templates (Library) - Admin
+export const adminUploadLogo = (formData) => apiFormdata.post('/admin/logo/upload', formData);
+export const adminUploadBackDesign = (formData) => apiFormdata.post('/admin/back-design/upload', formData);
 export const getAllBackDesignTemplates = (params = {}) => api.post('/admin/back-design-templates', params);
 export const uploadBackDesignTemplate = (formData) => apiFormdata.post('/admin/back-design-templates/upload', formData);
 export const deleteBackDesignTemplate = (id) => api.delete(`/admin/back-design-templates/${id}`);
@@ -62,6 +67,8 @@ export const deleteStudent = (id) => api.delete(`/rep/student/${id}/delete`);
 export const uploadLogo = (formData) => apiFormdata.post('/class-rep/upload-logo', formData);
 export const uploadBackDesign = (formData) => apiFormdata.post('/class-rep/upload-back-design', formData);
 export const updateBackDesign = (id, formData) => apiFormdata.post(`/class-rep/upload-back-design/${id}`, formData);
+export const deleteLogo = (id) => api.delete(`/class-rep/logo/${id}/delete`);
+export const deleteMyBackDesign = (id) => api.delete(`/class-rep/back-design/${id}/delete`);
 export const getMyLogos = (params = {}) => api.post('/class-rep/my-logos', params);
 export const getMyBackDesigns = (params = {}) => api.post('/class-rep/back-designs', params);
 export const getConfiguratorBackDesign = () => api.get('/class-rep/configurator-back-design');
@@ -76,7 +83,13 @@ export const reorderNameListItems = (nameListId, items) => api.put(`/class-rep/n
 export const markNameListReady = (nameListId) => api.put(`/class-rep/namelist/${nameListId}/ready`);
 export const deleteNameListItem = (itemId) => api.delete(`/class-rep/namelist/item/${itemId}`);
 
-// Country APIs (Admin)
+// Font APIs (Admin)
+export const getAdminFonts = (params = {}) => api.post('/admin/fonts', params);
+export const createFont = (data) => api.post('/admin/font/create', data);
+export const deleteFont = (id) => api.delete(`/admin/font/${id}/delete`);
+
+// Font APIs (Class Rep)
+export const getClassRepFonts = () => api.get('/class-rep/fonts');
 export const getAllCountries = (params = {}) => api.post('/admin/countries', params);
 export const createCountry = (data) => api.post('/admin/country/create', data);
 export const updateCountry = (id, data) => api.put(`/admin/country/${id}/update`, data);

@@ -1,32 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import {
-    Card,
-    Typography,
-    Tabs,
-    Upload,
-    Button,
-    Tag,
-    message,
-    Empty,
-    Row,
-    Col,
-    Spin,
-    Space,
-    Modal
+    Card, Typography, Tabs, Upload, Button, Tag,
+    message, Empty, Row, Col, Spin, Space, Modal, Popconfirm,
+    Input
 } from 'antd';
 import {
-    UploadOutlined,
-    FileImageOutlined,
-    PictureOutlined,
-    InboxOutlined,
-    CheckCircleOutlined,
-    ClockCircleOutlined,
-    CloseCircleOutlined
+    UploadOutlined, FileImageOutlined, PictureOutlined,
+    InboxOutlined, CheckCircleOutlined, ClockCircleOutlined,
+    CloseCircleOutlined, DeleteOutlined
 } from '@ant-design/icons';
 import {
     getMyClass,
     uploadLogo,
     uploadBackDesign,
+    deleteLogo,
+    deleteMyBackDesign,
     getMyLogos,
     getMyBackDesigns
 } from '../api/api';
@@ -55,11 +43,18 @@ const UploadFilesPage = () => {
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState('logos');
     const [uploadModalOpen, setUploadModalOpen] = useState(false);
-    const [uploadType, setUploadType] = useState('logo'); // 'logo' or 'design'
+    const [uploadType, setUploadType] = useState('logo');
     const [selectedLogoFile, setSelectedLogoFile] = useState(null);
     const [selectedLogoPreview, setSelectedLogoPreview] = useState(null);
     const [selectedDesignFile, setSelectedDesignFile] = useState(null);
     const [selectedDesignPreview, setSelectedDesignPreview] = useState(null);
+
+    // Rejected files modal
+    const [rejectedModalOpen, setRejectedModalOpen] = useState(false);
+    const [rejectedLogos, setRejectedLogos] = useState([]);
+    const [rejectedDesigns, setRejectedDesigns] = useState([]);
+    const [rejectedLoading, setRejectedLoading] = useState(false);
+    const [customName, setCustomName] = useState('');
 
     const fetchMyClass = async () => {
         setLoading(true);
@@ -80,9 +75,10 @@ const UploadFilesPage = () => {
                 getMyLogos({ page: 1, limit: 50 }),
                 getMyBackDesigns({ page: 1, limit: 50 })
             ]);
-            setMyLogos(logoRes.data?.data ?? []);
-            // Only show designs NOT from configurator (direct uploads)
-            const filteredDesigns = designRes.data?.data?.filter(design => design.isFromConfigurator !== true) ?? [];
+            const logos = (logoRes.data?.data ?? []).filter(l => l.process_status !== 'rejected' && l.status !== 2);
+            setMyLogos(logos);
+            const filteredDesigns = (designRes.data?.data ?? [])
+                .filter(d => d.isFromConfigurator !== true && d.process_status !== 'rejected' && d.status !== 2);
             setMyDesigns(filteredDesigns);
         } catch (error) {
             message.error('Failed to load your uploads');
@@ -133,7 +129,11 @@ const UploadFilesPage = () => {
             setSelectedDesignFile(file);
             setSelectedDesignPreview(URL.createObjectURL(file));
         }
-        return false; // prevent Upload from auto-uploading
+        // Auto-fill name from filename (user can change it)
+        if (!customName) {
+            setCustomName(file.name.replace(/\.[^/.]+$/, ''));
+        }
+        return false;
     };
 
     const handleUploadClick = async (type) => {
@@ -142,10 +142,13 @@ const UploadFilesPage = () => {
             message.error('Please select a file');
             return;
         }
-        
+        if (!customName.trim()) {
+            message.error('Please enter a name');
+            return;
+        }
+
         const formData = new FormData();
-        const name = file.name ? file.name.replace(/\.[^/.]+$/, '') : (type === 'logo' ? 'logo' : 'back_design');
-        formData.append('name', name);
+        formData.append('name', customName.trim());
         if (type === 'logo') {
             formData.append('logo', file);
         } else {
@@ -163,6 +166,7 @@ const UploadFilesPage = () => {
                 message.success('Back design uploaded');
                 clearDesignSelection();
             }
+            setCustomName('');
             setUploadModalOpen(false);
             fetchMyLibrary();
         } catch (error) {
@@ -175,6 +179,39 @@ const UploadFilesPage = () => {
     const openUploadModal = (type) => {
         setUploadType(type);
         setUploadModalOpen(true);
+    };
+
+    const fetchRejectedFiles = async () => {
+        setRejectedLoading(true);
+        try {
+            const [logoRes, designRes] = await Promise.all([
+                getMyLogos({ page: 1, limit: 50, process_status: 'rejected' }),
+                getMyBackDesigns({ page: 1, limit: 50, process_status: 'rejected' })
+            ]);
+            setRejectedLogos(logoRes.data?.data ?? []);
+            setRejectedDesigns((designRes.data?.data ?? []).filter(d => d.isFromConfigurator !== true));
+        } catch { message.error('Failed to load rejected files'); }
+        finally { setRejectedLoading(false); }
+    };
+
+    const handleDeleteLogo = async (id) => {
+        try {
+            await deleteLogo(id);
+            message.success('Logo deleted');
+            fetchMyLibrary();
+        } catch (err) {
+            message.error(err.response?.data?.message || 'Delete failed');
+        }
+    };
+
+    const handleDeleteDesign = async (id) => {
+        try {
+            await deleteMyBackDesign(id);
+            message.success('Back design deleted');
+            fetchMyLibrary();
+        } catch (err) {
+            message.error(err.response?.data?.message || 'Delete failed');
+        }
     };
 
     if (!myClass && !uploading) {
@@ -197,11 +234,18 @@ const UploadFilesPage = () => {
                         Manage your class logos and back designs
                     </Typography.Text>
                 </div>
+                <Button
+                    icon={<CloseCircleOutlined />}
+                    danger
+                    onClick={() => { setRejectedModalOpen(true); fetchRejectedFiles(); }}
+                >
+                    Rejected Files
+                </Button>
             </div>
 
             <Card className="glass-card" style={{ border: 'none' }}>
-                <Tabs 
-                    activeKey={activeTab} 
+                <Tabs
+                    activeKey={activeTab}
                     onChange={setActiveTab}
                     tabBarExtraContent={
                         <Button
@@ -213,8 +257,8 @@ const UploadFilesPage = () => {
                         </Button>
                     }
                 >
-                    <TabPane 
-                        tab={<span><FileImageOutlined /> Logos ({myLogos.length})</span>} 
+                    <TabPane
+                        tab={<span><FileImageOutlined /> Logos ({myLogos.length})</span>}
                         key="logos"
                     >
                         {libraryLoading ? (
@@ -222,13 +266,13 @@ const UploadFilesPage = () => {
                                 <Spin size="large" />
                             </div>
                         ) : myLogos.length === 0 ? (
-                            <Empty 
-                                description="No logos uploaded yet" 
+                            <Empty
+                                description="No logos uploaded yet"
                                 style={{ padding: 48 }}
                                 image={Empty.PRESENTED_IMAGE_SIMPLE}
                             >
-                                <Button 
-                                    type="primary" 
+                                <Button
+                                    type="primary"
                                     icon={<UploadOutlined />}
                                     onClick={() => openUploadModal('logo')}
                                 >
@@ -253,16 +297,29 @@ const UploadFilesPage = () => {
                                             style={{ borderRadius: 8 }}
                                         >
                                             <Typography.Text strong ellipsis style={{ display: 'block' }}>{item.name}</Typography.Text>
-                                            <div style={{ marginTop: 8 }}>{getStatusTag(item.status)}</div>
+                                            <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                {getStatusTag(item.status)}
+                                                <Popconfirm title="Delete this logo?" onConfirm={() => handleDeleteLogo(item.id)} okText="Yes" cancelText="No" okType="danger">
+                                                    <Button type="text" danger size="small" icon={<DeleteOutlined />} />
+                                                </Popconfirm>
+                                            </div>
+                                            {item.status === Status.DELETED && item.admin_comment && (
+                                                <div style={{ marginTop: 6, padding: '6px 8px', background: '#fff2f0', borderRadius: 4, border: '1px solid #ffccc7' }}>
+                                                    <Typography.Text type="danger" style={{ fontSize: 11 }}>
+                                                        <CloseCircleOutlined style={{ marginRight: 4 }} />
+                                                        {item.admin_comment}
+                                                    </Typography.Text>
+                                                </div>
+                                            )}
                                         </Card>
                                     </Col>
                                 ))}
                             </Row>
                         )}
                     </TabPane>
-                    
-                    <TabPane 
-                        tab={<span><PictureOutlined /> Back Designs ({myDesigns.length})</span>} 
+
+                    <TabPane
+                        tab={<span><PictureOutlined /> Back Designs ({myDesigns.length})</span>}
                         key="designs"
                     >
                         {libraryLoading ? (
@@ -270,13 +327,13 @@ const UploadFilesPage = () => {
                                 <Spin size="large" />
                             </div>
                         ) : myDesigns.length === 0 ? (
-                            <Empty 
-                                description="No back designs uploaded yet" 
+                            <Empty
+                                description="No back designs uploaded yet"
                                 style={{ padding: 48 }}
                                 image={Empty.PRESENTED_IMAGE_SIMPLE}
                             >
-                                <Button 
-                                    type="primary" 
+                                <Button
+                                    type="primary"
                                     icon={<UploadOutlined />}
                                     onClick={() => openUploadModal('design')}
                                 >
@@ -299,10 +356,23 @@ const UploadFilesPage = () => {
                                                 </div>
                                             }
                                             style={{ borderRadius: 8 }}
-                                            >
+                                        >
                                             {console.log(getUploadsUrl(item.file_path))}
                                             <Typography.Text strong ellipsis style={{ display: 'block' }}>{item.name}</Typography.Text>
-                                            <div style={{ marginTop: 8 }}>{getStatusTag(item.status)}</div>
+                                            <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                {getStatusTag(item.status)}
+                                                <Popconfirm title="Delete this design?" onConfirm={() => handleDeleteDesign(item.id)} okText="Yes" cancelText="No" okType="danger">
+                                                    <Button type="text" danger size="small" icon={<DeleteOutlined />} />
+                                                </Popconfirm>
+                                            </div>
+                                            {item.status === Status.DELETED && item.admin_comment && (
+                                                <div style={{ marginTop: 6, padding: '6px 8px', background: '#fff2f0', borderRadius: 4, border: '1px solid #ffccc7' }}>
+                                                    <Typography.Text type="danger" style={{ fontSize: 11 }}>
+                                                        <CloseCircleOutlined style={{ marginRight: 4 }} />
+                                                        {item.admin_comment}
+                                                    </Typography.Text>
+                                                </div>
+                                            )}
                                         </Card>
                                     </Col>
                                 ))}
@@ -320,14 +390,16 @@ const UploadFilesPage = () => {
                     setUploadModalOpen(false);
                     clearLogoSelection();
                     clearDesignSelection();
+                    setCustomName('');
                 }}
                 footer={[
-                    <Button 
-                        key="cancel" 
+                    <Button
+                        key="cancel"
                         onClick={() => {
                             setUploadModalOpen(false);
                             clearLogoSelection();
                             clearDesignSelection();
+                            setCustomName('');
                         }}
                     >
                         Cancel
@@ -337,7 +409,7 @@ const UploadFilesPage = () => {
                         type="primary"
                         loading={uploading}
                         onClick={() => handleUploadClick(uploadType)}
-                        disabled={uploadType === 'logo' ? !selectedLogoFile : !selectedDesignFile}
+                        disabled={!customName.trim() || (uploadType === 'logo' ? !selectedLogoFile : !selectedDesignFile)}
                     >
                         Upload
                     </Button>
@@ -346,9 +418,21 @@ const UploadFilesPage = () => {
             >
                 <Space direction="vertical" size="large" style={{ width: '100%' }}>
                     <div>
+                        <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>
+                            Name <span style={{ color: '#ff4d4f' }}>*</span>
+                        </Typography.Text>
+                        <Input
+                            placeholder={uploadType === 'logo' ? 'e.g. School Logo 2025' : 'e.g. Berlin Back Design'}
+                            value={customName}
+                            onChange={e => setCustomName(e.target.value)}
+                            maxLength={100}
+                            showCount
+                        />
+                    </div>
+                    <div>
                         <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
-                            {uploadType === 'logo' 
-                                ? 'Select logo file (PNG, JPG up to 2MB)' 
+                            {uploadType === 'logo'
+                                ? 'Select logo file (PNG, JPG up to 2MB)'
                                 : 'Select back design file (PNG, JPG up to 5MB)'}
                         </Typography.Text>
                         <Upload
@@ -369,8 +453,8 @@ const UploadFilesPage = () => {
                                     borderColor: (uploadType === 'logo' ? selectedLogoFile : selectedDesignFile) ? '#00b96b' : '#d9d9d9'
                                 }}
                             >
-                                {(uploadType === 'logo' ? selectedLogoFile : selectedDesignFile) 
-                                    ? '✓ File Selected - Click to Change' 
+                                {(uploadType === 'logo' ? selectedLogoFile : selectedDesignFile)
+                                    ? '✓ File Selected - Click to Change'
                                     : 'Click to Select File'}
                             </Button>
                         </Upload>
@@ -381,10 +465,10 @@ const UploadFilesPage = () => {
                             <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
                                 Preview
                             </Typography.Text>
-                            <div style={{ 
-                                padding: 16, 
-                                background: '#fafafa', 
-                                borderRadius: 8, 
+                            <div style={{
+                                padding: 16,
+                                background: '#fafafa',
+                                borderRadius: 8,
                                 textAlign: 'center',
                                 border: '1px solid #f0f0f0'
                             }}>
@@ -400,6 +484,81 @@ const UploadFilesPage = () => {
                         </div>
                     )}
                 </Space>
+            </Modal>
+
+            {/* Rejected Files Modal */}
+            <Modal
+                title={<span><CloseCircleOutlined style={{ color: '#ff4d4f', marginRight: 8 }} />Rejected Files</span>}
+                open={rejectedModalOpen}
+                onCancel={() => setRejectedModalOpen(false)}
+                footer={null}
+                width={800}
+                destroyOnHidden
+            >
+                {rejectedLoading ? <Spin style={{ display: 'block', margin: '24px auto' }} /> : (
+                    <Tabs defaultActiveKey="logos">
+                        <TabPane tab={`Logos (${rejectedLogos.length})`} key="logos">
+                            {rejectedLogos.length === 0 ? (
+                                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No rejected logos" />
+                            ) : (
+                                <Row gutter={[16, 16]}>
+                                    {rejectedLogos.map(item => (
+                                        <Col xs={12} sm={8} key={item.id}>
+                                            <Card
+                                                cover={
+                                                    <div style={{ padding: 12, background: '#fafafa', height: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                        <img src={getUploadsUrl(item.file_path)} alt={item.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                                                    </div>
+                                                }
+                                                size="small"
+                                            >
+                                                <Typography.Text strong ellipsis style={{ display: 'block' }}>{item.name}</Typography.Text>
+                                                {item.admin_comment && (
+                                                    <div style={{ marginTop: 6, padding: '6px 8px', background: '#fff2f0', borderRadius: 4, border: '1px solid #ffccc7' }}>
+                                                        <Typography.Text type="danger" style={{ fontSize: 11 }}>
+                                                            <CloseCircleOutlined style={{ marginRight: 4 }} />
+                                                            {item.admin_comment}
+                                                        </Typography.Text>
+                                                    </div>
+                                                )}
+                                            </Card>
+                                        </Col>
+                                    ))}
+                                </Row>
+                            )}
+                        </TabPane>
+                        <TabPane tab={`Back Designs (${rejectedDesigns.length})`} key="designs">
+                            {rejectedDesigns.length === 0 ? (
+                                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No rejected back designs" />
+                            ) : (
+                                <Row gutter={[16, 16]}>
+                                    {rejectedDesigns.map(item => (
+                                        <Col xs={12} sm={8} key={item.id}>
+                                            <Card
+                                                cover={
+                                                    <div style={{ padding: 12, background: '#fafafa', height: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                        <img src={getUploadsUrl(item.file_path)} alt={item.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                                                    </div>
+                                                }
+                                                size="small"
+                                            >
+                                                <Typography.Text strong ellipsis style={{ display: 'block' }}>{item.name}</Typography.Text>
+                                                {item.admin_comment && (
+                                                    <div style={{ marginTop: 6, padding: '6px 8px', background: '#fff2f0', borderRadius: 4, border: '1px solid #ffccc7' }}>
+                                                        <Typography.Text type="danger" style={{ fontSize: 11 }}>
+                                                            <CloseCircleOutlined style={{ marginRight: 4 }} />
+                                                            {item.admin_comment}
+                                                        </Typography.Text>
+                                                    </div>
+                                                )}
+                                            </Card>
+                                        </Col>
+                                    ))}
+                                </Row>
+                            )}
+                        </TabPane>
+                    </Tabs>
+                )}
             </Modal>
         </div>
     );
