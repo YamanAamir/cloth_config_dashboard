@@ -26,6 +26,7 @@ import ProductionFilesPage from './pages/ProductionFilesPage';
 import CountriesPage from './pages/CountriesPage';
 import SchoolOverviewPage from './pages/SchoolOverviewPage';
 import FontsPage from './pages/FontsPage';
+import SettingsPage from './pages/SettingsPage';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
@@ -206,14 +207,8 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="fonts"
-          element={
-            <ProtectedRoute allowedRoles={[Role.ADMIN]}>
-              <FontsPage />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="fonts" element={<ProtectedRoute allowedRoles={[Role.ADMIN]}><FontsPage /></ProtectedRoute>} />
+        <Route path="settings" element={<ProtectedRoute allowedRoles={[Role.ADMIN]}><SettingsPage /></ProtectedRoute>} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

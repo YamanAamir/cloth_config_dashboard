@@ -40,6 +40,9 @@ const BackDesignConfiguratorPage = () => {
     const [imagePreview, setImagePreview] = useState(null);
     const [selectedDesignId, setSelectedDesignId] = useState(null);
     const [existingConfiguratorDesign, setExistingConfiguratorDesign] = useState(null);
+
+    // Image position & size on canvas (draggable/resizable)
+    const [imageLayout, setImageLayout] = useState({ x: 0, y: 0, w: 800, h: 800 });
     const [isEditMode, setIsEditMode] = useState(false);
 
     // Text/names
@@ -159,6 +162,7 @@ const BackDesignConfiguratorPage = () => {
     const loadDesignForEditing = (design) => {
         const url = `${getUploadsUrl(design.file_path)}?t=${Date.now()}`;
         setSelectedDesignId(design.id);
+        setImageLayout({ x: 0, y: 0, w: 800, h: 800 }); // reset to full canvas
         setImagePreview(url);
         fetch(url)
             .then(r => { if (!r.ok) throw new Error(r.statusText); return r.blob(); })
@@ -220,14 +224,6 @@ const BackDesignConfiguratorPage = () => {
         <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                 <Title level={4} style={{ margin: 0 }}>Back Design Configurator</Title>
-                <Button
-                    type="default"
-                    icon={<EyeOutlined />}
-                    disabled={!imagePreview}
-                    onClick={() => setPreviewOpen(true)}
-                >
-                    Preview in 3D
-                </Button>
             </div>
 
             <Row gutter={[24, 24]}>
@@ -433,6 +429,7 @@ const BackDesignConfiguratorPage = () => {
                 <Col xs={24} lg={14}>
                     <Card style={{ position: 'sticky', top: 24 }}>
                         <DesignCanvas
+                            setPreviewOpen={setPreviewOpen}
                             imagePreview={imagePreview}
                             textElements={textElements}
                             designColor={designColor}
@@ -444,6 +441,8 @@ const BackDesignConfiguratorPage = () => {
                             setDragOffset={setDragOffset}
                             setTextElements={setTextElements}
                             canvasRef={canvasRef}
+                            imageLayout={imageLayout}
+                            setImageLayout={setImageLayout}
                         />
                     </Card>
                 </Col>
@@ -456,6 +455,7 @@ const BackDesignConfiguratorPage = () => {
                 canvasRef={canvasRef}
                 designColor={designColor}
             />
+
         </div>
     );
 };

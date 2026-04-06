@@ -1,31 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { Layout, Menu, Button, theme, Avatar, Dropdown, Space, Tag, Spin } from 'antd';
 import {
-    MenuFoldOutlined,
-    MenuUnfoldOutlined,
-    DashboardOutlined,
-    BankOutlined,
-    UserOutlined,
-    LogoutOutlined,
-    SettingOutlined,
-    TeamOutlined,
-    SolutionOutlined,
-    AppstoreOutlined,
-    PictureOutlined,
-    FileImageOutlined,
-    CloudUploadOutlined,
-    OrderedListOutlined,
-    FileZipOutlined,
+    MenuFoldOutlined, MenuUnfoldOutlined,
+    DashboardOutlined, BankOutlined, UserOutlined, LogoutOutlined,
+    SettingOutlined, TeamOutlined, SolutionOutlined, AppstoreOutlined,
+    PictureOutlined, FileImageOutlined, CloudUploadOutlined,
+    OrderedListOutlined, FileZipOutlined, ShoppingCartOutlined,
+    PrinterOutlined, GlobalOutlined, FontColorsOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { adminDashboard, sidebarMenus } from '../api/api';
-import { Role } from '../utils/constants';
-import { use } from 'react';
+import { sidebarMenus } from '../api/api';
 
 const { Header, Sider, Content } = Layout;
 
-// Map icon names from backend to Ant Design icons
 const iconMap = {
     'DashboardIcon': <DashboardOutlined />,
     'SchoolIcon': <BankOutlined />,
@@ -33,15 +21,24 @@ const iconMap = {
     'ClassIcon': <AppstoreOutlined />,
     'ImageIcon': <PictureOutlined />,
     'SettingsIcon': <SettingOutlined />,
-    // Compatibility names
+    'SettingIcon': <SettingOutlined />,
+    'GroupIcon': <SolutionOutlined />,
+    'CloudUploadIcon': <CloudUploadOutlined />,
+    'BrushIcon': <PictureOutlined />,
+    'PeopleAltIcon': <TeamOutlined />,
+    'ShoppingCartIcon': <ShoppingCartOutlined />,
+    'PrintIcon': <PrinterOutlined />,
+    'FolderZipIcon': <FileZipOutlined />,
+    'FormatListBulletedIcon': <OrderedListOutlined />,
+    'ReviewIcon': <FileImageOutlined />,
+    'GlobalIcon': <GlobalOutlined />,
+    'FontIcon': <FontColorsOutlined />,
+    // Compat
     'DashboardOutlined': <DashboardOutlined />,
     'BankOutlined': <BankOutlined />,
     'UserOutlined': <UserOutlined />,
     'TeamOutlined': <TeamOutlined />,
     'SolutionOutlined': <SolutionOutlined />,
-    'ReviewIcon': <FileImageOutlined />,
-    'FormatListBulletedIcon': <OrderedListOutlined />,
-    'FolderZipIcon': <FileZipOutlined />,
 };
 
 const MainLayout = () => {
@@ -52,143 +49,42 @@ const MainLayout = () => {
     const location = useLocation();
     const { logout, user } = useAuth();
 
-    const {
-        token: { colorBgContainer, borderRadiusLG },
-    } = theme.useToken();
-
-    const allMenuItems = [
-        {
-            key: '/',
-            icon: <DashboardOutlined />,
-            label: 'Dashboard',
-            roles: [Role.ADMIN, Role.STUDENT],
-        },
-        {
-            key: '/schools',
-            icon: <BankOutlined />,
-            label: 'Schools',
-            roles: [Role.ADMIN],
-        },
-        {
-            key: '/class-reps',
-            icon: <UserOutlined />,
-            label: 'Class Representatives',
-            roles: [Role.ADMIN],
-        },
-        {
-            key: '/all-classes',
-            icon: <AppstoreOutlined />,
-            label: 'All Classes',
-            roles: [Role.ADMIN],
-        },
-        {
-            key: '/review-uploads',
-            icon: <FileImageOutlined />,
-            label: 'Review Uploads',
-            roles: [Role.ADMIN],
-        },
-        {
-            key: '/school-overview',
-            icon: <BankOutlined />,
-            label: 'School Overview',
-            roles: [Role.ADMIN],
-        },
-        {
-            key: '/fonts',
-            icon: <FileZipOutlined />,
-            label: 'Font Management',
-            roles: [Role.ADMIN],
-        },
-        {
-            key: '/name-list',
-            icon: <OrderedListOutlined />,
-            label: 'Name List',
-            roles: [Role.ADMIN],
-        },
-        {
-            key: '/my-class',
-            icon: <SolutionOutlined />,
-            label: 'My Class',
-            roles: [Role.CLASS_REPRESENTATIVE],
-        },
-        {
-            key: '/upload-files',
-            icon: <CloudUploadOutlined />,
-            label: 'Upload Files',
-            roles: [Role.CLASS_REPRESENTATIVE],
-        },
-        {
-            key: '/namelist',
-            icon: <OrderedListOutlined />,
-            label: 'Name List',
-            roles: [Role.CLASS_REPRESENTATIVE],
-        },
-        {
-            key: '/back-design-configurator',
-            icon: <PictureOutlined />,
-            label: 'Back Design Configurator',
-            roles: [Role.CLASS_REPRESENTATIVE],
-        },
-        {
-            key: '/student-overview',
-            icon: <UserOutlined />,
-            label: 'Student Overview',
-            roles: [Role.CLASS_REPRESENTATIVE],
-        },
-        {
-            key: '/orders-list',
-            icon: <OrderedListOutlined />,
-            label: 'Orders List',
-            roles: [Role.ADMIN, Role.CLASS_REPRESENTATIVE],
-        },
-        {
-            key: '/production-files',
-            icon: <FileZipOutlined />,
-            label: 'Production Files',
-            roles: [Role.ADMIN],
-        },
-        {
-            key: '/countries',
-            icon: <BankOutlined />,
-            label: 'Study Trip Countries',
-            roles: [Role.ADMIN],
-        },
-    ];
-
+    const { token: { colorBgContainer, borderRadiusLG } } = theme.useToken();
 
     useEffect(() => {
         const fetchMenus = async () => {
             try {
                 const response = await sidebarMenus();
-                const menusData = response.data?.menus || (Array.isArray(response.data) ? response.data : null);
+                const menus = response.data?.menus || [];
 
-                if (menusData && menusData.length > 0) {
-                    const mappedItems = menusData.map(item => ({
+                if (menus.length > 0 && menus[0]?.module) {
+                    // Module-wise structure from backend
+                    const mapped = menus.map((module, idx) => ({
+                        key: `module-${idx}`,
+                        label: module.module,
+                        type: 'group',
+                        children: (module.children || []).map(item => ({
+                            key: item.path,
+                            label: item.title,
+                            icon: iconMap[item.icon] || <DashboardOutlined />,
+                        }))
+                    }));
+                    setMenuItems(mapped);
+                } else if (Array.isArray(menus) && menus.length > 0) {
+                    // Flat structure fallback
+                    const mapped = menus.map(item => ({
                         key: item.path || item.key,
                         label: item.title || item.label,
                         icon: iconMap[item.icon] || <DashboardOutlined />,
-                        children: item.children ? item.children.map(child => ({
-                            key: child.path || child.key,
-                            label: child.title || child.label,
-                            icon: iconMap[child.icon]
-                        })) : undefined
                     }));
-                    setMenuItems(mappedItems);
-                } else {
-                    setMenuItems(allMenuItems.filter(item =>
-                        !item.roles || item.roles.includes(user?.role)
-                    ));
+                    setMenuItems(mapped);
                 }
             } catch (error) {
                 console.error('Failed to fetch sidebar menus:', error);
-                setMenuItems(allMenuItems.filter(item =>
-                    !item.roles || item.roles.includes(user?.role)
-                ));
             } finally {
                 setLoading(false);
             }
         };
-
         fetchMenus();
     }, []);
 
@@ -203,36 +99,30 @@ const MainLayout = () => {
             key: 'logout',
             label: 'Logout',
             icon: <LogoutOutlined />,
-            onClick: () => {
-                logout();
-                navigate('/login');
-            },
+            onClick: () => { logout(); navigate('/login'); },
         },
     ];
 
     return (
         <Layout style={{ minHeight: '100vh' }}>
-            <Sider trigger={null} collapsible collapsed={collapsed} theme="light">
+            <Sider trigger={null} collapsible collapsed={collapsed} theme="light" width={220}>
                 <div style={{
-                    height: 64,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: '0 16px',
+                    height: 64, display: 'flex', alignItems: 'center',
+                    justifyContent: 'center', padding: '0 16px',
                     borderBottom: '1px solid #f0f0f0'
                 }}>
                     <h2 style={{
-                        fontSize: collapsed ? '1.2rem' : '1.5rem',
+                        fontSize: collapsed ? '1.2rem' : '1.4rem',
                         fontWeight: 'bold',
                         background: 'linear-gradient(135deg, #00b96b 0%, #006d75 100%)',
                         WebkitBackgroundClip: 'text',
                         WebkitTextFillColor: 'transparent',
-                        margin: 0,
-                        transition: '0.3s'
+                        margin: 0, transition: '0.3s'
                     }}>
                         {collapsed ? 'CC' : 'ClothConfig'}
                     </h2>
                 </div>
+
                 {loading ? (
                     <div style={{ display: 'flex', justifyContent: 'center', padding: '20px' }}>
                         <Spin size="small" />
@@ -241,23 +131,19 @@ const MainLayout = () => {
                     <Menu
                         theme="light"
                         mode="inline"
-                        defaultSelectedKeys={[location.pathname]}
                         selectedKeys={[location.pathname]}
                         items={menuItems}
                         onClick={({ key }) => navigate(key)}
-                        style={{ padding: '16px 0' }}
+                        style={{ padding: '8px 0', borderRight: 0 }}
                     />
                 )}
             </Sider>
+
             <Layout>
                 <Header style={{
-                    padding: '0 24px',
-                    background: colorBgContainer,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-                    zIndex: 1
+                    padding: '0 24px', background: colorBgContainer,
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.05)', zIndex: 1
                 }}>
                     <Button
                         type="text"
@@ -265,28 +151,20 @@ const MainLayout = () => {
                         onClick={() => setCollapsed(!collapsed)}
                         style={{ fontSize: '16px', width: 64, height: 64 }}
                     />
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                        <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-                            <Space style={{ cursor: 'pointer' }}>
-                                <Avatar style={{ backgroundColor: '#00b96b' }} icon={<UserOutlined />} />
-                                <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
-                                    <span style={{ fontWeight: 600 }}>{user?.name || 'User'}</span>
-                                    <Tag color="cyan" style={{ fontSize: '10px', margin: 0, border: 'none' }}>
-                                        {user?.role?.toUpperCase() || 'NO ROLE'}
-                                    </Tag>
-                                </div>
-                            </Space>
-                        </Dropdown>
-                    </div>
+                    <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
+                        <Space style={{ cursor: 'pointer' }}>
+                            <Avatar style={{ backgroundColor: '#00b96b' }} icon={<UserOutlined />} />
+                            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
+                                <span style={{ fontWeight: 600 }}>{user?.name || 'User'}</span>
+                                <Tag color="cyan" style={{ fontSize: '10px', margin: 0, border: 'none' }}>
+                                    {user?.role?.replace(/_/g, ' ').toUpperCase() || 'NO ROLE'}
+                                </Tag>
+                            </div>
+                        </Space>
+                    </Dropdown>
                 </Header>
-                <Content
-                    style={{
-                        margin: '24px',
-                        minHeight: 280,
-                        borderRadius: borderRadiusLG,
-                        overflow: 'initial'
-                    }}
-                >
+
+                <Content style={{ margin: '24px', minHeight: 280, borderRadius: borderRadiusLG, overflow: 'initial' }}>
                     <div className="fade-in">
                         <Outlet />
                     </div>

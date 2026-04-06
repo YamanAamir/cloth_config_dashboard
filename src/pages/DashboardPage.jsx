@@ -1,239 +1,233 @@
-import React from 'react';
-import { Row, Col, Card, Statistic, Typography, Avatar, Tag, Space, Spin } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Card, Row, Col, Statistic, Typography, Tag, Avatar, Spin, Badge } from 'antd';
 import {
-    BankOutlined,
-    UserOutlined,
-    ShoppingOutlined,
-    ArrowUpOutlined,
-    CheckCircleOutlined,
-    ClockCircleOutlined,
-    AppstoreOutlined,
-    PictureOutlined,
-    ShoppingCartOutlined
+    BankOutlined, AppstoreOutlined, TeamOutlined, ShoppingCartOutlined,
+    DollarOutlined, ClockCircleOutlined, UserOutlined, CheckCircleOutlined
 } from '@ant-design/icons';
-import { useEffect } from 'react';
+import {
+    BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
+    XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
+} from 'recharts';
 import { adminDashboard } from '../api/api';
-import { useState } from 'react';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
+
+const STATUS_COLORS = {
+    in_progress: '#1890ff',
+    completed: '#52c41a',
+    saved: '#faad14',
+    partial_paid: '#13c2c2',
+    cancelled: '#ff4d4f',
+};
+
+const STAT_CARDS = [
+    { key: 'schools', label: 'Schools', icon: <BankOutlined />, color: '#1890ff', bg: '#e6f7ff' },
+    { key: 'classes', label: 'Classes', icon: <AppstoreOutlined />, color: '#722ed1', bg: '#f9f0ff' },
+    { key: 'students', label: 'Students', icon: <TeamOutlined />, color: '#52c41a', bg: '#f6ffed' },
+    { key: 'orders', label: 'Orders', icon: <ShoppingCartOutlined />, color: '#fa8c16', bg: '#fff7e6' },
+    { key: 'total_revenue', label: 'Revenue', icon: <DollarOutlined />, color: '#00b96b', bg: '#f0fff8', suffix: ' DKK' },
+    { key: 'pending_approvals', label: 'Pending Approvals', icon: <ClockCircleOutlined />, color: '#ff4d4f', bg: '#fff2f0' },
+];
 
 const DashboardPage = () => {
-    const [dashboard, setDashboard] = useState(null);
+    const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    const stats = [
-        { title: 'Total Schools', value: 12, icon: <BankOutlined />, color: '#00b96b', trend: '+2 this month' },
-        { title: 'Active Class Reps', value: 45, icon: <UserOutlined />, color: '#006d75', trend: '+5 this month' },
-        { title: 'New Orders', value: 128, icon: <ShoppingOutlined />, color: '#237804', trend: '+12% from last week' },
-    ];
-
-    const recentActivities = [
-        { id: 1, action: 'New school added', item: 'Springfield High', time: '2 hours ago', status: 'success' },
-        { id: 2, action: 'Class rep registered', item: 'John Doe', time: '5 hours ago', status: 'processing' },
-        { id: 3, action: 'School status updated', item: 'Riverdale Academy', time: '1 day ago', status: 'warning' },
-        { id: 4, action: 'New order placed', item: 'Order #1234', time: '2 days ago', status: 'success' },
-    ];
-    // const fetchStats = async () => {
-    //     try {
-    //         const res = await getDashboardStats();
-    //         const data = res.data?.data;
-
-    //         const updatedStats = [
-    //             {
-    //                 title: "Total Schools",
-    //                 value: data.schoolCount,
-    //                 icon: <BankOutlined />,
-    //                 color: "#00b96b",
-    //             },
-    //             {
-    //                 title: "Total Classes",
-    //                 value: data.classCount,
-    //                 icon: <AppstoreOutlined />,
-    //                 color: "#006d75",
-    //             },
-    //             {
-    //                 title: "Total Users",
-    //                 value: data.userCount,
-    //                 icon: <UserOutlined />,
-    //                 color: "#237804",
-    //             },
-    //             {
-    //                 title: "Logos",
-    //                 value: data.logoCount,
-    //                 icon: <PictureOutlined />,
-    //                 color: "#722ed1",
-    //             },
-    //             {
-    //                 title: "Back Designs",
-    //                 value: data.backDesignCount,
-    //                 icon: <PictureOutlined />,
-    //                 color: "#d46b08",
-    //             },
-    //         ];
-
-    //         setStats(updatedStats);
-
-    //     } catch (error) {
-    //         console.error("Failed to fetch dashboard stats:", error);
-    //     }
-    // };
-
     useEffect(() => {
-        const fetchDashboard = async () => {
+        const fetch = async () => {
             try {
-                const response = await adminDashboard();
-                const { data } = response.data || {};
-                console.log('Dashboard response:', data);
-                if (response.data.success) {
-                    const updatedStats = [
-                        {
-                            title: "Total Schools",
-                            value: data.schoolCount,
-                            icon: <BankOutlined />,
-                            color: "#a38a00",
-                        },
-                        {
-                            title: "Total Classes",
-                            value: data.classCount,
-                            icon: <AppstoreOutlined />,
-                            color: "#7f00a3",
-                        },
-                        {
-                            title: "Total Users",
-                            value: data.userCount,
-                            icon: <UserOutlined />,
-                            color: "#008aa5",
-                        },
-                        {
-                            title: "Orders",
-                            value: data.ordersCount,
-                            icon: <ShoppingCartOutlined />,
-                            color: "#22d1f4",
-                        },
-                        // {
-                        //     title: "Logos",
-                        //     value: data.logoCount,
-                        //     icon: <PictureOutlined />,
-                        //     color: "#722ed1",
-                        // },
-                        // {
-                        //     title: "Back Designs",
-                        //     value: data.backDesignCount,
-                        //     icon: <PictureOutlined />,
-                        //     color: "#d46b08",
-                        // },
-                    ];
-                    setDashboard(updatedStats)
-                }
-
-            } catch (error) {
-                console.error('Failed to fetch dashboard stats:', error);
-            } finally {
-                setLoading(false);
-            }
+                const res = await adminDashboard();
+                setData(res.data.data);
+            } catch { /* silent */ }
+            finally { setLoading(false); }
         };
-        fetchDashboard();
+        fetch();
     }, []);
 
-    if (loading) {
-        return (
-            <div style={{ textAlign: 'center', padding: '50px' }}>
-                <Spin size="normal" />
-            </div>
-        )
-    };
+    if (loading) return <Spin size="large" style={{ display: 'block', margin: '80px auto' }} />;
+    if (!data) return null;
 
-    if (!dashboard) {
-        return (
-            <div style={{ textAlign: 'center', padding: '50px' }}>
-                <Typography.Text type="danger">Failed to load dashboard data.</Typography.Text>
-            </div>
-        )
-    };
-    console.log("dashboard", dashboard);
-    console.log("stats  ", stats);
+    const monthlyLabels = (data.monthly_data || []).map(d => {
+        const [y, m] = d.month.split('-');
+        return new Date(y, m - 1).toLocaleString('en-DK', { month: 'short', year: '2-digit' });
+    });
+
+    const ordersData = (data.monthly_data || []).map((d, i) => ({
+        month: monthlyLabels[i], orders: d.orders
+    }));
+
+    const revenueData = (data.monthly_data || []).map((d, i) => ({
+        month: monthlyLabels[i], revenue: d.revenue
+    }));
+
+    const pieData = (data.order_status_distribution || []).map(d => ({
+        name: d.status.replace(/_/g, ' '),
+        value: d.count,
+        color: STATUS_COLORS[d.status] || '#d9d9d9'
+    }));
+
+    const schoolData = (data.top_schools || []).map(s => ({
+        name: s.name.length > 15 ? s.name.substring(0, 15) + '…' : s.name,
+        students: s.student_count
+    }));
 
     return (
-        <div>
-            <div style={{ marginBottom: 24 }}>
-                <Title level={2}>Welcome to Dashboard</Title>
-                <Typography.Text type="secondary">Here's what's happening today in your dashboard.</Typography.Text>
+        <div className="fade-in">
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                <div>
+                    <Title level={4} style={{ margin: 0 }}>Dashboard</Title>
+                    <Text type="secondary">Welcome back, Admin</Text>
+                </div>
             </div>
 
-            <Row gutter={[24, 24]}>
-                {dashboard.map((stat, index) => (
-                    <Col xs={24} sm={6} key={index}>
-                        <Card
-                            className="glass-card fade-in"
-                            style={{
-                                border: 'none',
-                                borderLeft: `4px solid ${stat.color}`,
-                                transition: 'all 0.3s ease'
-                            }}
-                            hoverable
-                        >
-                            <Statistic
-                                title={<span style={{ fontWeight: 500, color: '#666' }}>{stat.title}</span>}
-                                value={stat.value}
-                                prefix={
-                                    <div style={{
-                                        background: `${stat.color}15`,
-                                        padding: '8px',
-                                        borderRadius: '12px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        marginRight: '12px'
-                                    }}>
-                                        {React.cloneElement(stat.icon, { style: { color: stat.color, fontSize: '24px' } })}
+            {/* Stats Cards */}
+            <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+                {STAT_CARDS.map(card => (
+                    <Col xs={12} sm={8} md={4} key={card.key}>
+                        <Card bodyStyle={{ padding: 16 }} style={{ borderRadius: 12, border: 'none', background: card.bg }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <div style={{ fontSize: 24, color: card.color }}>{card.icon}</div>
+                                <div>
+                                    <div style={{ fontSize: 22, fontWeight: 700, color: card.color, lineHeight: 1.2 }}>
+                                        {data.stats[card.key]}{card.suffix || ''}
                                     </div>
-                                }
-                                valueStyle={{ color: '#006d75', fontWeight: '800', fontSize: '28px' }}
-                            />
-                            {/* <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                <Tag color="success" style={{ border: 'none', borderRadius: '4px' }}>
-                                    <ArrowUpOutlined />
-                                </Tag>
-                                <Typography.Text type="secondary" style={{ fontSize: '12px' }}>{stat.trend.split(' ').slice(1).join(' ')}</Typography.Text>
-                            </div> */}
+                                    <div style={{ fontSize: 11, color: '#888' }}>{card.label}</div>
+                                </div>
+                            </div>
                         </Card>
                     </Col>
                 ))}
             </Row>
 
-            <Row gutter={[24, 24]} style={{ marginTop: 24 }}>
-                <Col span={24}>
-                    <Card
-                        title="Recent Activity"
-                        className="glass-card"
-                        style={{ border: 'none' }}
-                        extra={<a href="#">View All</a>}
-                    >
-                        <div style={{ maxHeight: 400, overflowY: 'auto' }}>
-                            {recentActivities.map((item) => (
-                                <div key={item.id} style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    padding: '12px 16px',
-                                    borderBottom: '1px solid #f0f0f0',
-                                    justifyContent: 'space-between'
-                                }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                                        <Avatar
-                                            style={{ backgroundColor: item.status === 'success' ? '#f6ffed' : '#e6f7ff' }}
-                                            icon={item.status === 'success' ? <CheckCircleOutlined style={{ color: '#52c41a' }} /> : <ClockCircleOutlined style={{ color: '#1890ff' }} />}
-                                        />
-                                        <div>
-                                            <div style={{ fontWeight: 600 }}>{item.action}</div>
-                                            <Space>
-                                                <Typography.Text type="secondary">{item.item}</Typography.Text>
-                                                <Tag color="cyan">{item.time}</Tag>
-                                            </Space>
+            {/* Charts Row 1 */}
+            <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+                {/* Orders Bar Chart */}
+                <Col xs={24} md={12}>
+                    <Card title="Orders per Month" style={{ borderRadius: 12, border: 'none' }} className="glass-card">
+                        <ResponsiveContainer width="100%" height={220}>
+                            <BarChart data={ordersData}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                                <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                                <Tooltip />
+                                <Bar dataKey="orders" fill="#00b96b" radius={[4, 4, 0, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </Card>
+                </Col>
+
+                {/* Revenue Line Chart */}
+                <Col xs={24} md={12}>
+                    <Card title="Revenue per Month (DKK)" style={{ borderRadius: 12, border: 'none' }} className="glass-card">
+                        <ResponsiveContainer width="100%" height={220}>
+                            <LineChart data={revenueData}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                                <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                                <YAxis tick={{ fontSize: 11 }} />
+                                <Tooltip formatter={v => `${v} DKK`} />
+                                <Line type="monotone" dataKey="revenue" stroke="#1890ff" strokeWidth={2} dot={{ r: 4 }} />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    </Card>
+                </Col>
+            </Row>
+
+            {/* Charts Row 2 */}
+            <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+                {/* Order Status Pie */}
+                <Col xs={24} md={8}>
+                    <Card title="Order Status" style={{ borderRadius: 12, border: 'none' }} className="glass-card">
+                        {pieData.length === 0 ? (
+                            <div style={{ textAlign: 'center', padding: 40, color: '#bbb' }}>No orders yet</div>
+                        ) : (
+                            <ResponsiveContainer width="100%" height={220}>
+                                <PieChart>
+                                    <Pie data={pieData} cx="50%" cy="50%" innerRadius={55} outerRadius={85}
+                                        dataKey="value" label={({ name, value }) => `${name}: ${value}`}
+                                        labelLine={false}>
+                                        {pieData.map((entry, i) => (
+                                            <Cell key={i} fill={entry.color} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        )}
+                    </Card>
+                </Col>
+
+                {/* Top Schools Bar */}
+                <Col xs={24} md={16}>
+                    <Card title="Top Schools by Students" style={{ borderRadius: 12, border: 'none' }} className="glass-card">
+                        <ResponsiveContainer width="100%" height={220}>
+                            <BarChart data={schoolData} layout="vertical">
+                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                                <XAxis type="number" tick={{ fontSize: 11 }} allowDecimals={false} />
+                                <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={110} />
+                                <Tooltip />
+                                <Bar dataKey="students" fill="#722ed1" radius={[0, 4, 4, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </Card>
+                </Col>
+            </Row>
+
+            {/* Recent Activity */}
+            <Row gutter={[16, 16]}>
+                {/* Recent Orders */}
+                <Col xs={24} md={12}>
+                    <Card title="Recent Orders" style={{ borderRadius: 12, border: 'none' }} className="glass-card">
+                        {(data.recent_orders || []).length === 0 ? (
+                            <Text type="secondary">No recent orders</Text>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                {data.recent_orders.map(order => (
+                                    <div key={order.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #f0f0f0' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                            <Avatar size={32} style={{ background: '#00b96b' }} icon={<ShoppingCartOutlined />} />
+                                            <div>
+                                                <Text strong style={{ fontSize: 13 }}>{order.student}</Text>
+                                                <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{order.class}</Text>
+                                            </div>
+                                        </div>
+                                        <div style={{ textAlign: 'right' }}>
+                                            <Text strong style={{ color: '#00b96b', fontSize: 13 }}>{order.amount} DKK</Text>
+                                            <Tag color={STATUS_COLORS[order.status] ? undefined : 'default'}
+                                                style={{ display: 'block', marginTop: 2, fontSize: 10, background: STATUS_COLORS[order.status] + '20', color: STATUS_COLORS[order.status], border: 'none' }}>
+                                                {order.status.replace(/_/g, ' ')}
+                                            </Tag>
                                         </div>
                                     </div>
-                                </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
+                        )}
+                    </Card>
+                </Col>
+
+                {/* Recent Students */}
+                <Col xs={24} md={12}>
+                    <Card title="Recent Registrations" style={{ borderRadius: 12, border: 'none' }} className="glass-card">
+                        {(data.recent_students || []).length === 0 ? (
+                            <Text type="secondary">No recent registrations</Text>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                {data.recent_students.map(student => (
+                                    <div key={student.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #f0f0f0' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                            <Avatar size={32} style={{ background: '#1890ff' }} icon={<UserOutlined />} />
+                                            <div>
+                                                <Text strong style={{ fontSize: 13 }}>{student.name}</Text>
+                                                <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{student.class}</Text>
+                                            </div>
+                                        </div>
+                                        <Text type="secondary" style={{ fontSize: 11 }}>
+                                            {new Date(student.time).toLocaleDateString('da-DK')}
+                                        </Text>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </Card>
                 </Col>
             </Row>
