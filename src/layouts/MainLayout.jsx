@@ -6,7 +6,8 @@ import {
     SettingOutlined, TeamOutlined, SolutionOutlined, AppstoreOutlined,
     PictureOutlined, FileImageOutlined, CloudUploadOutlined,
     OrderedListOutlined, FileZipOutlined, ShoppingCartOutlined,
-    PrinterOutlined, GlobalOutlined, FontColorsOutlined,
+    PrinterOutlined, GlobalOutlined, FontColorsOutlined, MailOutlined,
+    FontSizeOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -33,6 +34,10 @@ const iconMap = {
     'ReviewIcon': <FileImageOutlined />,
     'GlobalIcon': <GlobalOutlined />,
     'FontIcon': <FontColorsOutlined />,
+    'FontDownloadIcon': <FontSizeOutlined />,
+    'MailIcon': <MailOutlined />,
+    'EmailIcon': <MailOutlined />,
+    'CampaignIcon': <MailOutlined />,
     // Compat
     'DashboardOutlined': <DashboardOutlined />,
     'BankOutlined': <BankOutlined />,

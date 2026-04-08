@@ -115,3 +115,19 @@ export const sendFollowupEmail = (classId) => api.post(`/admin/class/${classId}/
 export const updateClassProcessStatus = (classId, data) => api.put(`/admin/class/${classId}/process-status`, data);
 export const generateProductionFiles = (classId) => api.post(`/admin/generate-files/${classId}`);
 export const getProductionPackages = () => api.post('/admin/production-packages');
+
+// Campaign APIs (Admin)
+export const getCampaigns = (params = {}) => api.get('/campaign/list', { params });
+export const getCampaign = (id) => api.get(`/campaign/${id}`);
+export const createCampaign = (data) => api.post('/campaign/create', data);
+export const updateCampaign = (id, data) => api.put(`/campaign/${id}/update`, data);
+export const deleteCampaign = (id) => api.delete(`/campaign/${id}/delete`);
+export const sendCampaign = (id) => api.post(`/campaign/${id}/send`);
+export const getCampaignTargets = () => api.get('/campaign/targets');
+
+// Email Template APIs (Admin)
+export const getTemplates = (params = {}) => api.get('/template/list', { params });
+export const getTemplate = (id) => api.get(`/template/${id}`);
+export const createTemplate = (data) => api.post('/template/create', data);
+export const updateTemplate = (id, data) => api.put(`/template/${id}/update`, data);
+export const deleteTemplate = (id) => api.delete(`/template/${id}/delete`);

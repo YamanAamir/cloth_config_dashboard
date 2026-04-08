@@ -27,6 +27,8 @@ import CountriesPage from './pages/CountriesPage';
 import SchoolOverviewPage from './pages/SchoolOverviewPage';
 import FontsPage from './pages/FontsPage';
 import SettingsPage from './pages/SettingsPage';
+import CampaignPage from './pages/CampaignPage';
+import CreateTemplatePage from './pages/CreateTemplatePage';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
@@ -209,6 +211,8 @@ const AppRoutes = () => {
         />
         <Route path="fonts" element={<ProtectedRoute allowedRoles={[Role.ADMIN]}><FontsPage /></ProtectedRoute>} />
         <Route path="settings" element={<ProtectedRoute allowedRoles={[Role.ADMIN]}><SettingsPage /></ProtectedRoute>} />
+        <Route path="campaigns" element={<ProtectedRoute allowedRoles={[Role.ADMIN]}><CampaignPage /></ProtectedRoute>} />
+        <Route path="create-template" element={<ProtectedRoute allowedRoles={[Role.ADMIN]}><CreateTemplatePage /></ProtectedRoute>} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
