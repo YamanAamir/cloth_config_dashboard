@@ -57,7 +57,7 @@ const CreateTemplatePage = () => {
             name: record.name,
             subject: record.subject,
             category: record.category,
-            body: record.html_body || record.body,
+            html_body: record.html_body || record.body,
         });
         setModalOpen(true);
     };
@@ -73,7 +73,7 @@ const CreateTemplatePage = () => {
             name: `${record.name} (Copy)`,
             subject: record.subject,
             category: record.category,
-            body: record.html_body || record.body,
+            html_body: record.html_body || record.body,
         });
         setModalOpen(true);
     };
@@ -203,7 +203,7 @@ const CreateTemplatePage = () => {
 
                     <Form.Item
                         label="HTML Body"
-                        name="body"
+                        name="html_body"
                         rules={[{ required: true }]}
                         extra={<Text type="secondary" style={{ fontSize: 11 }}>Supports {'{{name}}'}, {'{{class}}'}, {'{{school}}'} placeholders</Text>}
                     >

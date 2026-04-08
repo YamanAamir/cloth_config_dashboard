@@ -27,6 +27,8 @@ import CountriesPage from './pages/CountriesPage';
 import SchoolOverviewPage from './pages/SchoolOverviewPage';
 import FontsPage from './pages/FontsPage';
 import SettingsPage from './pages/SettingsPage';
+import MarketingPage from './pages/MarketingPage';
+import TemplateEditorPage from './pages/TemplateEditorPage';
 import CampaignPage from './pages/CampaignPage';
 import CreateTemplatePage from './pages/CreateTemplatePage';
 
@@ -209,10 +211,26 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="email-template"
+          element={
+            <ProtectedRoute allowedRoles={[Role.ADMIN]}>
+              <CreateTemplatePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="campaigns"
+          element={
+            <ProtectedRoute allowedRoles={[Role.ADMIN]}>
+              <MarketingPage />
+            </ProtectedRoute>
+          }
+        />
         <Route path="fonts" element={<ProtectedRoute allowedRoles={[Role.ADMIN]}><FontsPage /></ProtectedRoute>} />
         <Route path="settings" element={<ProtectedRoute allowedRoles={[Role.ADMIN]}><SettingsPage /></ProtectedRoute>} />
-        <Route path="campaigns" element={<ProtectedRoute allowedRoles={[Role.ADMIN]}><CampaignPage /></ProtectedRoute>} />
-        <Route path="create-template" element={<ProtectedRoute allowedRoles={[Role.ADMIN]}><CreateTemplatePage /></ProtectedRoute>} />
+        <Route path="marketing" element={<ProtectedRoute allowedRoles={[Role.ADMIN]}><MarketingPage /></ProtectedRoute>} />
+        <Route path="template-editor" element={<ProtectedRoute allowedRoles={[Role.ADMIN]}><TemplateEditorPage /></ProtectedRoute>} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

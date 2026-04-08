@@ -42,10 +42,24 @@ const GARMENTS = [
     },
 ];
 
+// Color palettes matching student configurator
+const COLORS = [
+    { key: 'red', label: 'Red', hex: '#cc0000', border: '#cc0000' },
+    { key: 'black', label: 'Black', hex: '#1a1a1a', border: '#1a1a1a' },
+    { key: 'white', label: 'White', hex: '#ffffff', border: '#d9d9d9' },
+    { key: 'natural', label: 'Natural', hex: '#faf0dc', border: '#e0d5b0' },
+    { key: 'navy', label: 'Dark Blue', hex: '#0a1628', border: '#0a1628' },
+    { key: 'heatherGrey', label: 'Heather Grey', hex: '#c8c8c8', border: '#c8c8c8' },
+    { key: 'oliveGreen', label: 'Olive Green', hex: '#6b6b3a', border: '#6b6b3a' },
+    { key: 'blue', label: 'Blue', hex: '#0000ee', border: '#0000ee' },
+    { key: 'purple', label: 'Purple', hex: '#4b0082', border: '#4b0082' },
+];
+
 const PreviewModal = ({ open, onClose, canvasRef, designColor = 'white' }) => {
     const iframeRef = useRef(null);
 
     const [garmentType, setGarmentType] = useState("tshirt");
+    const [selectedColor, setSelectedColor] = useState("white");
     const [isAppReady, setIsAppReady] = useState(false);
     const [sending, setSending] = useState(false);
 
@@ -177,7 +191,7 @@ const PreviewModal = ({ open, onClose, canvasRef, designColor = 'white' }) => {
 
                 if (g) {
                     sendToIframe(`Page : ${g.page}`);
-                    sendToIframe(`${g.prefix}:${designColor}`);
+                    sendToIframe(`${g.prefix}:${selectedColor}`);
                     setTimeout(() => sendDesign(g), 400);
                 }
             }
@@ -193,10 +207,16 @@ const PreviewModal = ({ open, onClose, canvasRef, designColor = 'white' }) => {
     const handleGarmentSwitch = (g) => {
         setGarmentType(g.key);
         sendToIframe(`Page : ${g.page}`);
-        sendToIframe(`${g.prefix}:${designColor}`);
+        sendToIframe(`${g.prefix}:${selectedColor}`);
         setTimeout(() => {
             sendDesign(g);
         }, 300);
+    };
+
+    const handleColorChange = (colorKey) => {
+        setSelectedColor(colorKey);
+        const g = GARMENTS.find(item => item.key === garmentType);
+        if (g) sendToIframe(`${g.prefix}:${colorKey}`);
     };
 
     useEffect(() => {
@@ -250,6 +270,31 @@ const PreviewModal = ({ open, onClose, canvasRef, designColor = 'white' }) => {
                 banner
                 style={{ fontSize: 12 }}
             />
+
+            {/* Color Palette */}
+            <div style={{ padding: '10px 16px', borderBottom: '1px solid #f0f0f0' }}>
+                <Typography.Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 8 }}>
+                    Garment Color
+                </Typography.Text>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {COLORS.map(c => (
+                        <div
+                            key={c.key}
+                            onClick={() => handleColorChange(c.key)}
+                            title={c.label}
+                            style={{
+                                width: 28, height: 28,
+                                borderRadius: 6,
+                                background: c.hex,
+                                border: selectedColor === c.key ? '3px solid #00b96b' : `2px solid ${c.border}`,
+                                cursor: 'pointer',
+                                boxShadow: selectedColor === c.key ? '0 0 0 2px #00b96b40' : 'none',
+                                transition: 'all 0.15s',
+                            }}
+                        />
+                    ))}
+                </div>
+            </div>
 
             <div style={{ position: "relative" }}>
                 {!isAppReady && (
