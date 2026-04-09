@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
     Card, Typography, Button, message, Space, Spin,
-    Select, Row, Col, Divider, Input, Tooltip
+    Select, Row, Col, Divider, Input, Tooltip, Tabs, Badge
 } from 'antd';
 import {
     PlusOutlined, SaveOutlined, DeleteOutlined,
@@ -11,7 +11,7 @@ import {
     getMyClass, uploadBackDesign, updateBackDesign,
     getMyBackDesigns, getClassBackDesign,
     getClassRepLibraryDesigns, getStudyTripCountries, setStudyTripCountry,
-    getClassRepFonts
+    getClassRepFonts, saveConfiguratorState, loadConfiguratorState, getStudents
 } from '../api/api';
 import { getUploadsUrl } from '../utils/constants';
 import DesignGallery from '../components/configurator/DesignGallery';
@@ -63,13 +63,20 @@ const BackDesignConfiguratorPage = () => {
     // Preview modal
     const [previewOpen, setPreviewOpen] = useState(false);
 
+    // Names tab
+    const [namesTab, setNamesTab] = useState('manual');
+    const [students, setStudents] = useState([]);
+    const [studentsLoading, setStudentsLoading] = useState(false);
+    const [selectedStudents, setSelectedStudents] = useState(new Set());
+
     const canvasRef = useRef(null);
+    const autoSaveTimer = useRef(null);
+    const [autoSaving, setAutoSaving] = useState(false);
     const user = localStorage.getItem('user');
     const classId = user ? JSON.parse(user)?.class_id : null;
 
     useEffect(() => {
         fetchMyClass();
-        fetchConfiguratorDesign();
         fetchBackDesigns();
         fetchLibraryDesigns();
         fetchCountries();
@@ -92,7 +99,8 @@ const BackDesignConfiguratorPage = () => {
             if (res.data?.success && res.data?.data) {
                 const filtered = res.data.data.filter(d => d.isFromConfigurator !== true && d.process_status === 'approved');
                 setBackDesigns(filtered);
-                if (filtered.length > 0 && !selectedDesignId) loadDesignForEditing(filtered[0]);
+                // loadState will handle design selection - pass filtered as fallback
+                loadState(filtered);
             } else setBackDesigns([]);
         } catch { setBackDesigns([]); }
         finally { setDesignsLoading(false); }
@@ -136,6 +144,80 @@ const BackDesignConfiguratorPage = () => {
         } catch { /* silent */ }
     };
 
+    // Load saved configurator state from existing configurator design
+    const loadState = async (backDesignsList = []) => {
+        try {
+            // Use getClassBackDesign which already has configurator_state
+            const res = await getClassBackDesign(classId);
+            if (res.data?.success && res.data?.data) {
+                const design = res.data.data;
+                setExistingConfiguratorDesign(design);
+                setIsEditMode(true);
+
+                const state = design.configurator_state;
+
+                if (state?.baseDesignId) {
+                    // Restore text elements, color, layout
+                    if (state.textElements?.length > 0) setTextElements(state.textElements);
+                    if (state.designColor) setDesignColor(state.designColor);
+                    if (state.imageLayout) setImageLayout(state.imageLayout);
+
+                    // Load base design by ID
+                    const found = backDesignsList.find(d => d.id === state.baseDesignId);
+                    if (found) { loadDesignForEditing(found, true); return; }
+
+                    // Try library designs
+                    try {
+                        const lRes = await getClassRepLibraryDesigns();
+                        const libFound = (lRes.data?.data || []).find(d => d.id === state.baseDesignId);
+                        if (libFound) { loadDesignForEditing(libFound, true); return; }
+                    } catch { /* silent */ }
+                }
+
+                // No state or baseDesignId not found - fallback to first design
+                if (backDesignsList.length > 0) loadDesignForEditing(backDesignsList[0]);
+            } else {
+                // No existing configurator design - auto-select first
+                if (backDesignsList.length > 0) loadDesignForEditing(backDesignsList[0]);
+            }
+        } catch {
+            // No configurator design exists yet - auto-select first
+            if (backDesignsList.length > 0) loadDesignForEditing(backDesignsList[0]);
+        }
+    };
+
+    // Auto-save debounced
+    const triggerAutoSave = (newTextElements, newDesignColor, newImageLayout, newSelectedDesignId) => {
+        if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+        autoSaveTimer.current = setTimeout(async () => {
+            try {
+                setAutoSaving(true);
+                await saveConfiguratorState({
+                    configurator_state: {
+                        textElements: newTextElements,
+                        designColor: newDesignColor,
+                        imageLayout: newImageLayout,
+                        baseDesignId: newSelectedDesignId,
+                    },
+                    designColor: newDesignColor,
+                    name: `design_draft_${Date.now()}`,
+                });
+            } catch { /* silent */ }
+            finally { setAutoSaving(false); }
+        }, 2000);
+    };
+
+    const fetchStudents = async () => {
+        setStudentsLoading(true);
+        try {
+            const res = await getStudents({ page: 1, limit: 100 });
+            // Sort by name alphabetically
+            const sorted = (res.data.data || []).sort((a, b) => a.name.localeCompare(b.name));
+            setStudents(sorted);
+        } catch { /* silent */ }
+        finally { setStudentsLoading(false); }
+    };
+
     const handleSetCountry = async (countryId) => {
         setSettingCountry(true);
         try {
@@ -154,15 +236,15 @@ const BackDesignConfiguratorPage = () => {
                 const design = res.data.data;
                 setExistingConfiguratorDesign(design);
                 setIsEditMode(true);
-                loadDesignForEditing(design);
+                // Only set edit mode - loadState handles the actual loading
             }
         } catch { /* no existing design */ }
     };
 
-    const loadDesignForEditing = (design) => {
+    const loadDesignForEditing = (design, keepLayout = false) => {
         const url = `${getUploadsUrl(design.file_path)}?t=${Date.now()}`;
         setSelectedDesignId(design.id);
-        setImageLayout({ x: 0, y: 0, w: 800, h: 800 }); // reset to full canvas
+        if (!keepLayout) setImageLayout({ x: 0, y: 0, w: 800, h: 800 });
         setImagePreview(url);
         fetch(url)
             .then(r => { if (!r.ok) throw new Error(r.statusText); return r.blob(); })
@@ -172,17 +254,19 @@ const BackDesignConfiguratorPage = () => {
 
     const handleAddText = () => {
         if (!currentText.trim()) return message.warning('Enter a name');
-        setTextElements(prev => [...prev, {
+        const newElements = [...textElements, {
             id: Date.now(),
             text: currentText,
             fontSize: currentFontSize,
             fontFamily: currentFontFamily,
             x: 680,
-            y: 80 + prev.length * (currentFontSize + 8),
+            y: 80 + textElements.length * (currentFontSize + 8),
             rotation: 0,
             locked: false,
-        }]);
+        }];
+        setTextElements(newElements);
         setCurrentText('');
+        triggerAutoSave(newElements, designColor, imageLayout, selectedDesignId);
     };
 
     const handleRemoveText = (id) => {
@@ -195,6 +279,8 @@ const BackDesignConfiguratorPage = () => {
         if (textElements.length === 0) return message.warning('Add at least one name');
         setUploading(true);
         try {
+            // Force canvas redraw with current imageLayout before export
+            await new Promise(resolve => setTimeout(resolve, 100));
             const blob = await new Promise(resolve => canvasRef.current.toBlob(resolve, 'image/png'));
             const formData = new FormData();
             const fileName = selectedImage.name.replace(/\.[^/.]+$/, '');
@@ -202,6 +288,13 @@ const BackDesignConfiguratorPage = () => {
             formData.append('backDesign', blob, `${fileName}_configured.png`);
             formData.append('isFromConfigurator', 'true');
             formData.append('designColor', designColor);
+            // Save configurator state so it can be restored later
+            formData.append('configurator_state', JSON.stringify({
+                textElements,
+                designColor,
+                imageLayout,
+                baseDesignId: selectedDesignId,
+            }));
             let res;
             if (isEditMode && existingConfiguratorDesign?.id) {
                 res = await updateBackDesign(existingConfiguratorDesign.id, formData);
@@ -209,10 +302,10 @@ const BackDesignConfiguratorPage = () => {
                 res = await uploadBackDesign(formData);
             }
             message.success(res.data?.message || 'Saved!');
-            setSelectedImage(null); setImagePreview(null);
-            setTextElements([]); setSelectedTextId(null);
-            setIsEditMode(false); setExistingConfiguratorDesign(null);
-            fetchBackDesigns(); fetchConfiguratorDesign();
+            // Keep editor state - don't reset
+            setIsEditMode(true);
+            if (res.data?.data) setExistingConfiguratorDesign(res.data.data);
+            // Don't call fetchBackDesigns - it triggers loadState which resets gallery tab
         } catch (err) {
             message.error(err?.response?.data?.message || 'Failed');
         } finally { setUploading(false); }
@@ -223,7 +316,11 @@ const BackDesignConfiguratorPage = () => {
     return (
         <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                <Title level={4} style={{ margin: 0 }}>Back Design Configurator</Title>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <Title level={4} style={{ margin: 0 }}>Back Design Configurator</Title>
+                    {autoSaving && <Text type="secondary" style={{ fontSize: 12 }}>💾 Saving...</Text>}
+                    {!autoSaving && textElements.length > 0 && <Text type="secondary" style={{ fontSize: 12 }}>✓ Draft saved</Text>}
+                </div>
             </div>
 
             <Row gutter={[24, 24]}>
@@ -277,141 +374,178 @@ const BackDesignConfiguratorPage = () => {
                             </Space>
                         </div>
                         <Divider />
-                        <Title level={5}>2. Names</Title>
-
-                        {textElements.map(el => (
-                            <Card
-                                key={el.id}
-                                size="small"
-                                style={{ marginBottom: 8, border: selectedTextId === el.id ? '2px solid #00b96b' : '1px solid #f0f0f0', cursor: 'pointer' }}
-                                onClick={() => setSelectedTextId(el.id)}
-                            >
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <div>
-                                        <Text strong>{el.text}</Text>
-                                        <br />
-                                        <Text type="secondary" style={{ fontSize: 11 }}>
-                                            {el.fontSize}px · {el.rotation}° · {el.locked ? '🔒' : 'Unlocked'}
-                                        </Text>
-                                    </div>
-                                </div>
-
-                                {selectedTextId === el.id && (
-                                    <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid #f0f0f0' }}>
-                                        <Space direction="vertical" style={{ width: '100%' }} size="small">
-                                            {!el.locked && (
-                                                <div>
-                                                    <Text type="secondary" style={{ fontSize: 11 }}>Edit Name</Text>
-                                                    <Input
-                                                        key={`edit-${el.id}`}
-                                                        size="small"
-                                                        defaultValue={el.text}
-                                                        style={{ marginTop: 4 }}
-                                                        onClick={e => e.stopPropagation()}
-                                                        onBlur={e => {
-                                                            const v = e.target.value.trim();
-                                                            if (v) setTextElements(prev => prev.map(t => t.id === el.id ? { ...t, text: v } : t));
-                                                        }}
-                                                        onPressEnter={e => {
-                                                            const v = e.target.value.trim();
-                                                            if (v) setTextElements(prev => prev.map(t => t.id === el.id ? { ...t, text: v } : t));
-                                                        }}
-                                                    />
-                                                </div>
-                                            )}
-                                            <Row gutter={8}>
-                                                <Col span={14}>
-                                                    <Text type="secondary" style={{ fontSize: 11 }}>Font Size</Text>
-                                                    <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
-                                                        <Button size="small" icon={<MinusCircleOutlined />} disabled={el.locked}
-                                                            onClick={e => { e.stopPropagation(); setTextElements(prev => prev.map(t => t.id === el.id ? { ...t, fontSize: Math.max(10, t.fontSize - 2) } : t)); }} />
-                                                        <Input size="small" value={el.fontSize} style={{ width: 50, textAlign: 'center' }} readOnly />
-                                                        <Button size="small" icon={<PlusCircleOutlined />} disabled={el.locked}
-                                                            onClick={e => { e.stopPropagation(); setTextElements(prev => prev.map(t => t.id === el.id ? { ...t, fontSize: Math.min(72, t.fontSize + 2) } : t)); }} />
+                        <Tabs
+                            activeKey={namesTab}
+                            onChange={(key) => {
+                                setNamesTab(key);
+                                if (key === 'students' && students.length === 0) fetchStudents();
+                            }}
+                            size="small"
+                            items={[
+                                {
+                                    key: 'manual',
+                                    label: <span>Names {textElements.length > 0 && <Badge count={textElements.length} color="#00b96b" style={{ marginLeft: 4 }} />}</span>,
+                                    children: (
+                                        <>
+                                            {textElements.map(el => (
+                                                <Card
+                                                    key={el.id}
+                                                    size="small"
+                                                    style={{ marginBottom: 8, border: selectedTextId === el.id ? '2px solid #00b96b' : '1px solid #f0f0f0', cursor: 'pointer' }}
+                                                    onClick={() => setSelectedTextId(el.id)}
+                                                >
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                        <div>
+                                                            <Text strong>{el.text}</Text>
+                                                            <br />
+                                                            <Text type="secondary" style={{ fontSize: 11 }}>
+                                                                {el.fontSize}px · {el.rotation}° · {el.locked ? '🔒' : 'Unlocked'}
+                                                            </Text>
+                                                        </div>
                                                     </div>
-                                                </Col>
-                                                <Col span={10}>
-                                                    <Text type="secondary" style={{ fontSize: 11 }}>Rotation (°)</Text>
-                                                    <Input
-                                                        size="small" type="number" min={-359} max={359}
-                                                        value={el.rotation} disabled={el.locked}
-                                                        style={{ marginTop: 4 }}
-                                                        onClick={e => e.stopPropagation()}
-                                                        onChange={e => {
-                                                            const v = Math.min(359, Math.max(-359, Number(e.target.value) || 0));
-                                                            setTextElements(prev => prev.map(t => t.id === el.id ? { ...t, rotation: v } : t));
-                                                        }}
-                                                    />
-                                                </Col>
-                                            </Row>
-                                            {fonts.length > 0 && (
-                                                <div style={{ marginTop: 4 }}>
-                                                    <Text type="secondary" style={{ fontSize: 11 }}>Font</Text>
-                                                    <Select
-                                                        size="small"
-                                                        value={el.fontFamily}
-                                                        disabled={el.locked}
-                                                        style={{ width: '100%', marginTop: 4 }}
-                                                        onChange={v => setTextElements(prev => prev.map(t => t.id === el.id ? { ...t, fontFamily: v } : t))}
-                                                        onClick={e => e.stopPropagation()}
-                                                    >
-                                                        {fonts.map(f => (
-                                                            <Select.Option key={f.id} value={f.name}>
-                                                                <span style={{ fontFamily: f.name }}>{f.name}</span>
-                                                            </Select.Option>
-                                                        ))}
-                                                    </Select>
-                                                </div>
+                                                    {selectedTextId === el.id && (
+                                                        <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid #f0f0f0' }}>
+                                                            <Space direction="vertical" style={{ width: '100%' }} size="small">
+                                                                {!el.locked && (
+                                                                    <div>
+                                                                        <Text type="secondary" style={{ fontSize: 11 }}>Edit Name</Text>
+                                                                        <Input key={`edit-${el.id}`} size="small" defaultValue={el.text} style={{ marginTop: 4 }}
+                                                                            onClick={e => e.stopPropagation()}
+                                                                            onBlur={e => { const v = e.target.value.trim(); if (v) setTextElements(prev => prev.map(t => t.id === el.id ? { ...t, text: v } : t)); }}
+                                                                            onPressEnter={e => { const v = e.target.value.trim(); if (v) setTextElements(prev => prev.map(t => t.id === el.id ? { ...t, text: v } : t)); }}
+                                                                        />
+                                                                    </div>
+                                                                )}
+                                                                <Row gutter={8}>
+                                                                    <Col span={14}>
+                                                                        <Text type="secondary" style={{ fontSize: 11 }}>Font Size</Text>
+                                                                        <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+                                                                            <Button size="small" icon={<MinusCircleOutlined />} disabled={el.locked}
+                                                                                onClick={e => { e.stopPropagation(); setTextElements(prev => prev.map(t => t.id === el.id ? { ...t, fontSize: Math.max(10, t.fontSize - 2) } : t)); }} />
+                                                                            <Input size="small" value={el.fontSize} style={{ width: 50, textAlign: 'center' }} readOnly />
+                                                                            <Button size="small" icon={<PlusCircleOutlined />} disabled={el.locked}
+                                                                                onClick={e => { e.stopPropagation(); setTextElements(prev => prev.map(t => t.id === el.id ? { ...t, fontSize: Math.min(72, t.fontSize + 2) } : t)); }} />
+                                                                        </div>
+                                                                    </Col>
+                                                                    <Col span={10}>
+                                                                        <Text type="secondary" style={{ fontSize: 11 }}>Rotation (°)</Text>
+                                                                        <Input size="small" type="number" min={-359} max={359} value={el.rotation} disabled={el.locked} style={{ marginTop: 4 }}
+                                                                            onClick={e => e.stopPropagation()}
+                                                                            onChange={e => { const v = Math.min(359, Math.max(-359, Number(e.target.value) || 0)); setTextElements(prev => prev.map(t => t.id === el.id ? { ...t, rotation: v } : t)); }}
+                                                                        />
+                                                                    </Col>
+                                                                </Row>
+                                                                {fonts.length > 0 && (
+                                                                    <div style={{ marginTop: 4 }}>
+                                                                        <Text type="secondary" style={{ fontSize: 11 }}>Font</Text>
+                                                                        <Select size="small" value={el.fontFamily} disabled={el.locked} style={{ width: '100%', marginTop: 4 }}
+                                                                            onChange={v => setTextElements(prev => prev.map(t => t.id === el.id ? { ...t, fontFamily: v } : t))}
+                                                                            onClick={e => e.stopPropagation()}>
+                                                                            {fonts.map(f => <Select.Option key={f.id} value={f.name}><span style={{ fontFamily: f.name }}>{f.name}</span></Select.Option>)}
+                                                                        </Select>
+                                                                    </div>
+                                                                )}
+                                                                <Space size="small" style={{ width: '100%', justifyContent: 'flex-end' }}>
+                                                                    <Tooltip title={el.locked ? 'Unlock' : 'Lock'}>
+                                                                        <Button size="small" type={el.locked ? 'primary' : 'default'}
+                                                                            onClick={e => { e.stopPropagation(); setTextElements(prev => prev.map(t => t.id === el.id ? { ...t, locked: !t.locked } : t)); }}
+                                                                            icon={el.locked ? <LockOutlined /> : <UnlockOutlined />} />
+                                                                    </Tooltip>
+                                                                    <Tooltip title="Delete">
+                                                                        <Button size="small" danger onClick={e => { e.stopPropagation(); handleRemoveText(el.id); }} icon={<DeleteOutlined />} />
+                                                                    </Tooltip>
+                                                                </Space>
+                                                            </Space>
+                                                        </div>
+                                                    )}
+                                                </Card>
+                                            ))}
+                                            <TextArea placeholder="Enter name" value={currentText} onChange={e => setCurrentText(e.target.value)}
+                                                onPressEnter={e => { e.preventDefault(); handleAddText(); }} rows={2} style={{ marginTop: 8 }} />
+                                            <Select value={currentFontSize} onChange={setCurrentFontSize} style={{ width: '100%', marginTop: 8 }}>
+                                                {[10, 12, 14, 16, 18, 20, 24, 28, 32, 40, 48].map(v => <Select.Option key={v} value={v}>{v}px</Select.Option>)}
+                                            </Select>
+                                            <Select value={currentFontFamily} onChange={setCurrentFontFamily} style={{ width: '100%', marginTop: 8 }} placeholder="Select font" showSearch optionFilterProp="label">
+                                                {fonts.map(f => <Select.Option key={f.id} value={f.name} label={f.name}><span style={{ fontFamily: f.name, fontSize: 15 }}>{f.name}</span></Select.Option>)}
+                                            </Select>
+                                            <Button type="primary" icon={<PlusOutlined />} onClick={handleAddText} block style={{ marginTop: 8 }}>Add Name</Button>
+                                        </>
+                                    )
+                                },
+                                {
+                                    key: 'students',
+                                    label: <span>Students {students.length > 0 && <Badge count={students.length} color="#1890ff" style={{ marginLeft: 4 }} />}</span>,
+                                    children: studentsLoading ? <Spin style={{ display: 'block', margin: '20px auto' }} /> : (
+                                        <>
+                                            {students.length === 0 ? (
+                                                <Text type="secondary" style={{ display: 'block', textAlign: 'center', padding: 20 }}>No registered students yet</Text>
+                                            ) : (
+                                                <>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                                        <Text type="secondary" style={{ fontSize: 12 }}>
+                                                            {selectedStudents.size} selected
+                                                        </Text>
+                                                        <Space size="small">
+                                                            <Button size="small" onClick={() => setSelectedStudents(new Set(students.map(s => s.id)))}>All</Button>
+                                                            <Button size="small" onClick={() => setSelectedStudents(new Set())}>None</Button>
+                                                        </Space>
+                                                    </div>
+                                                    {students.map((s, idx) => {
+                                                        const isAdded = textElements.some(el => el.text === s.name);
+                                                        const isSelected = selectedStudents.has(s.id);
+                                                        return (
+                                                            <div key={s.id}
+                                                                onClick={() => {
+                                                                    setSelectedStudents(prev => {
+                                                                        const n = new Set(prev);
+                                                                        n.has(s.id) ? n.delete(s.id) : n.add(s.id);
+                                                                        return n;
+                                                                    });
+                                                                }}
+                                                                style={{
+                                                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                                                    padding: '8px 12px', marginBottom: 4, borderRadius: 6, cursor: 'pointer',
+                                                                    background: isSelected ? '#f0fff8' : '#fafafa',
+                                                                    border: isSelected ? '1px solid #00b96b' : '1px solid #f0f0f0',
+                                                                }}>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                                    <div style={{ width: 16, height: 16, borderRadius: 3, border: `2px solid ${isSelected ? '#00b96b' : '#d9d9d9'}`, background: isSelected ? '#00b96b' : 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                                        {isSelected && <span style={{ color: 'white', fontSize: 10, lineHeight: 1 }}>✓</span>}
+                                                                    </div>
+                                                                    <Text strong style={{ fontSize: 13 }}>{idx + 1}. {s.name}</Text>
+                                                                </div>
+                                                                {isAdded && <Text type="success" style={{ fontSize: 11 }}>✓ Added</Text>}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                    <Button type="primary" block style={{ marginTop: 10 }}
+                                                        disabled={selectedStudents.size === 0}
+                                                        onClick={() => {
+                                                            const toAdd = students.filter(s => selectedStudents.has(s.id));
+                                                            const newEls = toAdd.map((s, i) => ({
+                                                                id: Date.now() + i,
+                                                                text: s.name,
+                                                                fontSize: currentFontSize,
+                                                                fontFamily: currentFontFamily,
+                                                                x: 680,
+                                                                y: 80 + (textElements.length + i) * (currentFontSize + 8),
+                                                                rotation: 0,
+                                                                locked: false,
+                                                            }));
+                                                            setTextElements(prev => [...prev, ...newEls]);
+                                                            setSelectedStudents(new Set());
+                                                            setNamesTab('manual');
+                                                        }}>
+                                                        Add {selectedStudents.size > 0 ? `${selectedStudents.size} ` : ''}to Canvas
+                                                    </Button>
+                                                </>
                                             )}
-                                            <Space size="small" style={{ width: '100%', justifyContent: 'flex-end' }}>
-                                                <Tooltip title={el.locked ? 'Unlock' : 'Lock'}>
-                                                    <Button size="small" type={el.locked ? 'primary' : 'default'}
-                                                        onClick={e => { e.stopPropagation(); setTextElements(prev => prev.map(t => t.id === el.id ? { ...t, locked: !t.locked } : t)); }}
-                                                        icon={el.locked ? <LockOutlined /> : <UnlockOutlined />} />
-                                                </Tooltip>
-                                                <Tooltip title="Delete">
-                                                    <Button size="small" danger
-                                                        onClick={e => { e.stopPropagation(); handleRemoveText(el.id); }}
-                                                        icon={<DeleteOutlined />} />
-                                                </Tooltip>
-                                            </Space>
-                                        </Space>
-                                    </div>
-                                )}
-                            </Card>
-                        ))}
-
-                        <TextArea
-                            placeholder="Enter name"
-                            value={currentText}
-                            onChange={e => setCurrentText(e.target.value)}
-                            onPressEnter={e => { e.preventDefault(); handleAddText(); }}
-                            rows={2}
+                                            <Button type="default" block style={{ marginTop: 8 }} onClick={fetchStudents}>Refresh</Button>
+                                        </>
+                                    )
+                                }
+                            ]}
                         />
-                        <Select value={currentFontSize} onChange={setCurrentFontSize} style={{ width: '100%', marginTop: 8 }}>
-                            {[10, 12, 14, 16, 18, 20, 24, 28, 32, 40, 48].map(v =>
-                                <Select.Option key={v} value={v}>{v}px</Select.Option>
-                            )}
-                        </Select>
-                        <Select
-                            value={currentFontFamily}
-                            onChange={setCurrentFontFamily}
-                            style={{ width: '100%', marginTop: 8 }}
-                            placeholder="Select font"
-                            showSearch
-                            optionFilterProp="label"
-                        >
-                            {fonts.map(f => (
-                                <Select.Option key={f.id} value={f.name} label={f.name}>
-                                    <span style={{ fontFamily: f.name, fontSize: 15 }}>
-                                        {f.name}
-                                    </span>
-                                </Select.Option>
-                            ))}
-                        </Select>
-                        <Button type="primary" icon={<PlusOutlined />} onClick={handleAddText} block style={{ marginTop: 8 }}>
-                            Add Name
-                        </Button>
 
                         <Divider />
                         <Title level={5}>3. {isEditMode ? 'Update' : 'Submit'} Design</Title>

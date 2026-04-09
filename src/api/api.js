@@ -72,6 +72,8 @@ export const deleteMyBackDesign = (id) => api.delete(`/class-rep/back-design/${i
 export const getMyLogos = (params = {}) => api.post('/class-rep/my-logos', params);
 export const getMyBackDesigns = (params = {}) => api.post('/class-rep/back-designs', params);
 export const getConfiguratorBackDesign = () => api.get('/class-rep/configurator-back-design');
+export const saveConfiguratorState = (data) => api.post('/class-rep/configurator/save-state', data);
+export const loadConfiguratorState = () => api.get('/class-rep/configurator/load-state');
 export const selectBackDesignForClass = (data) => api.post('/class-rep/select-back-design', data);
 
 // Name List APIs (Class Rep)

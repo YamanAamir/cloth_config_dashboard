@@ -67,6 +67,7 @@ const MyClassPage = () => {
     const [registrationLink, setRegistrationLink] = useState('');
     const [linkLoading, setLinkLoading] = useState(false);
     const [studyTripModalOpen, setStudyTripModalOpen] = useState(false);
+    const [selectedCountryTemp, setSelectedCountryTemp] = useState(null);
     
     // Logo Gallery
     const [logos, setLogos] = useState([]);
@@ -157,6 +158,18 @@ const MyClassPage = () => {
             setSettingCountry(false);
         }
     };
+
+    const handleSaveStudyTripCountry = async () => {
+        await handleSetStudyTripCountry(selectedCountryTemp);
+        setStudyTripModalOpen(false);
+    };
+
+    // Sync temp state when modal opens
+    useEffect(() => {
+        if (studyTripModalOpen) {
+            setSelectedCountryTemp(myClass?.study_trip_country_id || myClass?.country_id || null);
+        }
+    }, [studyTripModalOpen]);
 
     useEffect(() => {
         fetchMyClass();
@@ -675,7 +688,7 @@ const MyClassPage = () => {
                 open={studyTripModalOpen}
                 onCancel={() => setStudyTripModalOpen(false)}
                 footer={[
-                    <Button key="close" type="primary" onClick={() => setStudyTripModalOpen(false)}>Done</Button>
+                    <Button key="close" type="primary" loading={settingCountry} onClick={handleSaveStudyTripCountry}>Done</Button>
                 ]}
                 destroyOnHidden
             >
@@ -685,9 +698,8 @@ const MyClassPage = () => {
                 <Select
                     placeholder="Select study trip country"
                     style={{ width: '100%' }}
-                    value={myClass?.study_trip_country_id || undefined}
-                    onChange={handleSetStudyTripCountry}
-                    loading={settingCountry}
+                    value={selectedCountryTemp}
+                    onChange={(value) => setSelectedCountryTemp(value)}
                     allowClear
                     showSearch
                     optionFilterProp="label"
