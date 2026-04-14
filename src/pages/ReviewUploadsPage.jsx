@@ -5,11 +5,11 @@ import {
 } from 'antd';
 import {
     CheckCircleOutlined, CloseCircleOutlined, EyeOutlined,
-    FileImageOutlined, ClockCircleOutlined, PlusOutlined, InboxOutlined
+    FileImageOutlined, ClockCircleOutlined, PlusOutlined, InboxOutlined, DeleteOutlined
 } from '@ant-design/icons';
 import {
-    getAllLogos, approveLogo, rejectLogo,
-    getAllBackDesigns, approveBackDesign, rejectBackDesign,
+    getAllLogos, approveLogo, rejectLogo, adminPermanentDeleteLogo,
+    getAllBackDesigns, approveBackDesign, rejectBackDesign, adminPermanentDeleteBackDesign,
     adminUploadLogo, adminUploadBackDesign,
     getAllSchools, getAllClasses
 } from '../api/api';
@@ -169,6 +169,42 @@ const ReviewUploadsPage = () => {
         });
     };
 
+    const handlePermanentDelete = async (id, type, name) => {
+        Modal.confirm({
+            title: `Permanently delete this ${type === 'logo' ? 'logo' : 'back design'}?`,
+            content: (
+                <div>
+                    <Typography.Text type="danger" strong>
+                        ⚠️ This action cannot be undone!
+                    </Typography.Text>
+                    <br />
+                    <Typography.Text>
+                        This will permanently remove "{name}" and its file from the system. 
+                        This action is irreversible.
+                    </Typography.Text>
+                </div>
+            ),
+            okText: 'Permanently Delete',
+            okType: 'danger',
+            cancelText: 'Cancel',
+            onOk: async () => {
+                try {
+                    if (type === 'logo') {
+                        await adminPermanentDeleteLogo(id);
+                        message.success('Logo permanently deleted');
+                        fetchLogos();
+                    } else {
+                        await adminPermanentDeleteBackDesign(id);
+                        message.success('Back design permanently deleted');
+                        fetchBackDesigns();
+                    }
+                } catch (error) {
+                    message.error(error.response?.data?.message || 'Permanent delete failed');
+                }
+            }
+        });
+    };
+
     // Fetch schools and classes for upload modals
     useEffect(() => {
         getAllSchools({ limit: 100 }).then(r => setSchools(r.data.data || [])).catch(() => {});
@@ -291,6 +327,23 @@ const ReviewUploadsPage = () => {
                                 onClick={() => handleReject(record.id, 'logo')}
                             />
                     </Tooltip>
+                    <Tooltip title="Permanent Delete">
+                        <Popconfirm
+                            title="Permanently delete this logo?"
+                            description="This action cannot be undone!"
+                            onConfirm={() => handlePermanentDelete(record.id, 'logo', record.name)}
+                            okText="Delete Forever"
+                            okType="danger"
+                            cancelText="Cancel"
+                        >
+                            <Button
+                                type="text"
+                                shape="circle"
+                                icon={<DeleteOutlined style={{ color: '#ff4d4f' }} />}
+                                danger
+                            />
+                        </Popconfirm>
+                    </Tooltip>
                 </Space>
             ),
         },
@@ -351,6 +404,23 @@ const ReviewUploadsPage = () => {
                                 disabled={record.status === Status.DELETED}
                                 onClick={() => handleReject(record.id, 'design')}
                             />
+                    </Tooltip>
+                    <Tooltip title="Permanent Delete">
+                        <Popconfirm
+                            title="Permanently delete this design?"
+                            description="This action cannot be undone!"
+                            onConfirm={() => handlePermanentDelete(record.id, 'design', record.name)}
+                            okText="Delete Forever"
+                            okType="danger"
+                            cancelText="Cancel"
+                        >
+                            <Button
+                                type="text"
+                                shape="circle"
+                                icon={<DeleteOutlined style={{ color: '#ff4d4f' }} />}
+                                danger
+                            />
+                        </Popconfirm>
                     </Tooltip>
                 </Space>
             ),

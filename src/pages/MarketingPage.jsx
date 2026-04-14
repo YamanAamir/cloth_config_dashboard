@@ -8,11 +8,7 @@ import {
     MailOutlined, FileTextOutlined, CheckCircleOutlined, ClockCircleOutlined, EyeOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import {
-    getTemplates, createTemplate, updateTemplate, deleteTemplate,
-    getCampaigns, createCampaign, updateCampaign, deleteCampaign, sendCampaign
-} from '../api/marketing';
-import { getAllSchools, getAllClasses } from '../api/api';
+import { getAllSchools, getAllClasses, getTemplates, createTemplate, updateTemplate, deleteTemplate, getCampaigns, createCampaign, updateCampaign, deleteCampaign, sendCampaign } from '../api/api';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -46,6 +42,41 @@ const MarketingPage = () => {
     const [editingCampaign, setEditingCampaign] = useState(null);
     const [campaignForm] = Form.useForm();
     const [targetType, setTargetType] = useState('all');
+
+    // Helper function to display target information
+    const getTargetDisplay = (campaign) => {
+        if (campaign.target_object) {
+            if (campaign.target_type === 'school') {
+                return `School: ${campaign.target_object.name}`;
+            } else if (campaign.target_type === 'class') {
+                return `Class: ${campaign.target_object.name} (${campaign.target_object.school?.name || 'Unknown School'})`;
+            }
+        }
+
+        // Fallback for 'all' or when no target_object
+        if (campaign.target_type === 'all') return 'All Students';
+        if (campaign.target_type === 'school') return `School ID: ${campaign.target_id}`;
+        if (campaign.target_type === 'class') return `Class ID: ${campaign.target_id}`;
+        return campaign.target_type || 'Unknown';
+    };
+
+    // Preview campaign content
+    const handlePreviewCampaign = (campaign) => {
+        setPreviewTemplate({
+            id: campaign.id,
+            name: campaign.title,
+            subject: campaign.subject,
+            html_body: campaign.html_body,
+            target_info: getTargetDisplay(campaign),
+            template_name: campaign.template?.name,
+            template_id: campaign.template_id,
+            sent_count: campaign.sent_count,
+            failed_count: campaign.failed_count,
+            status: campaign.status,
+            created_at: campaign.created_at,
+            sent_at: campaign.sent_at
+        });
+    };
 
     const fetchAll = async () => {
         setLoading(true);
@@ -98,11 +129,10 @@ const MarketingPage = () => {
     const handleSaveCampaign = async (values) => {
         try {
             const payload = {
-                name: values.title,
                 title: values.title,
                 subject: values.subject,
                 template_id: values.template_id || null,
-                body: values.body || null,
+                body: values.body || "",
                 target_type: values.target || 'all',
                 target_id: values.target_value || null,
             };
@@ -162,14 +192,41 @@ const MarketingPage = () => {
         { title: 'Campaign', dataIndex: 'title', key: 'title', render: t => <Text strong>{t}</Text> },
         { title: 'Subject', dataIndex: 'subject', key: 'subject' },
         {
-            title: 'Target', dataIndex: 'target', key: 'target',
-            render: (t, r) => (
+            title: 'Template', key: 'template',
+            render: (_, r) => (
                 <Space direction="vertical" size={0}>
-                    <Tag color="blue">{t}</Tag>
-                    {r.target_value && <Text type="secondary" style={{ fontSize: 11 }}>{r.target_value}</Text>}
+                    <Text style={{ fontSize: 13 }}>{r.template?.name || 'No Template'}</Text>
                 </Space>
             )
         },
+        // {
+        //     title: 'Target', dataIndex: 'target', key: 'target',
+        //     render: (t, r) => (
+        //         <Space direction="vertical" size={0}>
+        //             <Tag color="blue">{r.target_type}</Tag>
+        //             <Text type="secondary" style={{ fontSize: 11 }}>
+        //                 {r.target_object ? (
+        //                     <>
+        //                         {r.target_type === 'school' && r.target_object.name}
+        //                         {r.target_type === 'class' && `${r.target_object.name}`}
+        //                         {r.target_type === 'all' && 'All consented students'}
+        //                     </>
+        //                 ) : (
+        //                     <>
+        //                         {r.target_type === 'all' && 'All consented students'}
+        //                         {r.target_type === 'school' && `School ID: ${r.target_id}`}
+        //                         {r.target_type === 'class' && `Class ID: ${r.target_id}`}
+        //                     </>
+        //                 )}
+        //             </Text>
+        //             {r.target_object?.school && (
+        //                 <Text type="secondary" style={{ fontSize: 10, fontStyle: 'italic' }}>
+        //                     {r.target_object.school.name}
+        //                 </Text>
+        //             )}
+        //         </Space>
+        //     )
+        // },
         {
             title: 'Status', dataIndex: 'status', key: 'status',
             render: s => {
@@ -178,59 +235,74 @@ const MarketingPage = () => {
             }
         },
         {
-            title: 'Sent', dataIndex: 'sent_count', key: 'sent_count',
-            render: v => v ? <Badge count={v} color="#00b96b" /> : '—'
-        },
-        {
-            title: 'Actions', key: 'action', render: (_, r) => (
-                <Space>
-                    <Tooltip title="Send to consented students only">
-                        <Popconfirm
-                            title={`Send "${r.title}" to all eligible students?`}
-                            description="Only students with marketing consent will receive this."
-                            onConfirm={() => handleSendCampaign(r.id, r.title, false)}
-                            okText="Send" cancelText="Cancel"
-                        >
-                            <Button type="primary" size="small" icon={<SendOutlined />}
-                                loading={sending[r.id] === 'send'}>
-                                Send
-                            </Button>
+            title: 'Actions', key: 'action', render: (_, r) => {
+                const isSent = r.status === 'sent';
+
+                return (
+                    <Space>
+                        {!isSent && (
+                            <>
+                                <Tooltip title="Send to consented students only">
+                                    <Popconfirm
+                                        title={`Send "${r.title}" to all eligible students?`}
+                                        description="Only students with marketing consent will receive this."
+                                        onConfirm={() => handleSendCampaign(r.id, r.title, false)}
+                                        okText="Send" cancelText="Cancel"
+                                    >
+                                        <Button type="primary" size="small" icon={<SendOutlined />}
+                                            loading={sending[r.id] === 'send'}>
+                                            Send
+                                        </Button>
+                                    </Popconfirm>
+                                </Tooltip>
+                                <Tooltip title="Force send to ALL students (ignore consent)">
+                                    <Popconfirm
+                                        title={`Force send "${r.title}"?`}
+                                        description="This will send to ALL students, ignoring marketing consent."
+                                        onConfirm={() => handleSendCampaign(r.id, r.title, true)}
+                                        okText="Force Send" cancelText="Cancel"
+                                        okButtonProps={{ danger: true }}
+                                    >
+                                        <Button size="small" icon={<SendOutlined />}
+                                            loading={sending[r.id] === 'force'}
+                                            style={{ borderColor: '#faad14', color: '#faad14' }}>
+                                            Force
+                                        </Button>
+                                    </Popconfirm>
+                                </Tooltip>
+                            </>
+                        )}
+
+                        <Tooltip title="Preview Campaign">
+                            <Button type="text" icon={<EyeOutlined style={{ color: '#1890ff' }} />}
+                                onClick={() => handlePreviewCampaign(r)} />
+                        </Tooltip>
+
+                        {!isSent && (
+                            <Tooltip title="Edit Campaign">
+                                <Button type="text" icon={<EditOutlined style={{ color: '#00b96b' }} />}
+                                    onClick={() => {
+                                        setEditingCampaign(r);
+                                        setTargetType(r.target_type || r.target || 'all');
+                                        campaignForm.setFieldsValue({
+                                            title: r.title || r.name,
+                                            subject: r.subject,
+                                            body: r.body || r.html_body,
+                                            template_id: r.template_id,
+                                            target: r.target_type || r.target || 'all',
+                                            target_value: r.target_id || r.target_value,
+                                        });
+                                        setCampaignModal(true);
+                                    }} />
+                            </Tooltip>
+                        )}
+
+                        <Popconfirm title="Delete campaign?" onConfirm={() => handleDeleteCampaign(r.id)} okText="Yes" cancelText="No">
+                            <Button type="text" danger icon={<DeleteOutlined />} />
                         </Popconfirm>
-                    </Tooltip>
-                    <Tooltip title="Force send to ALL students (ignore consent)">
-                        <Popconfirm
-                            title={`Force send "${r.title}"?`}
-                            description="This will send to ALL students, ignoring marketing consent."
-                            onConfirm={() => handleSendCampaign(r.id, r.title, true)}
-                            okText="Force Send" cancelText="Cancel"
-                            okButtonProps={{ danger: true }}
-                        >
-                            <Button size="small" icon={<SendOutlined />}
-                                loading={sending[r.id] === 'force'}
-                                style={{ borderColor: '#faad14', color: '#faad14' }}>
-                                Force
-                            </Button>
-                        </Popconfirm>
-                    </Tooltip>
-                    <Button type="text" icon={<EditOutlined style={{ color: '#00b96b' }} />}
-                        onClick={() => {
-                            setEditingCampaign(r);
-                            setTargetType(r.target_type || r.target || 'all');
-                            campaignForm.setFieldsValue({
-                                title: r.title || r.name,
-                                subject: r.subject,
-                                body: r.body || r.html_body,
-                                template_id: r.template_id,
-                                target: r.target_type || r.target || 'all',
-                                target_value: r.target_id || r.target_value,
-                            });
-                            setCampaignModal(true);
-                        }} />
-                    <Popconfirm title="Delete campaign?" onConfirm={() => handleDeleteCampaign(r.id)} okText="Yes" cancelText="No">
-                        <Button type="text" danger icon={<DeleteOutlined />} />
-                    </Popconfirm>
-                </Space>
-            )
+                    </Space>
+                );
+            }
         }
     ];
 
@@ -318,7 +390,7 @@ const MarketingPage = () => {
                             <Select
                                 showSearch optionFilterProp="label"
                                 placeholder="Select school"
-                                options={schools.map(s => ({ value: String(s.id), label: s.name }))}
+                                options={schools.map(s => ({ value: s.id, label: s.name }))}
                             />
                         </Form.Item>
                     )}
@@ -341,7 +413,7 @@ const MarketingPage = () => {
                 </Form>
             </Modal>
 
-            {/* Template Preview Modal */}
+            {/* Campaign Preview Modal */}
             <Modal
                 title={previewTemplate ? `Preview: ${previewTemplate.name}` : 'Preview'}
                 open={!!previewTemplate}
@@ -354,10 +426,63 @@ const MarketingPage = () => {
             >
                 {previewTemplate && (
                     <div>
-                        <div style={{ marginBottom: 12, padding: '8px 12px', background: '#f5f5f5', borderRadius: 6 }}>
-                            <Text type="secondary" style={{ fontSize: 12 }}>Subject: </Text>
-                            <Text strong>{previewTemplate.subject}</Text>
+                        {/* Campaign Info */}
+                        <div style={{ marginBottom: 16, padding: '12px 16px', background: '#f5f5f5', borderRadius: 6 }}>
+                            <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                                <div style={{ display: 'flex', gap: '10px' }}>
+                                    <Text type="secondary" style={{ fontSize: 12 }}>Subject:</Text>
+                                    <Text strong>{previewTemplate.subject}</Text>
+                                </div>
+                                {previewTemplate.template_name && (
+                                    <div style={{ display: 'flex', gap: '10px' }}>
+                                        <Text type="secondary" style={{ fontSize: 12 }}>Template:</Text>
+                                        <Text>{previewTemplate.template_name}</Text>
+                                    </div>
+                                )}
+                                {previewTemplate.target_info && (
+                                    <div style={{ display: 'flex', gap: '10px' }}>
+                                        <Text type="secondary" style={{ fontSize: 12 }}>Target:</Text>
+                                        <Text>{previewTemplate.target_info}</Text>
+                                    </div>
+                                )}
+                                {previewTemplate.status && (
+                                    <div style={{ display: 'flex', gap: '10px' }}>
+                                        <Text type="secondary" style={{ fontSize: 12 }}>Status:</Text>
+                                        <Tag color={STATUS_MAP[previewTemplate.status]?.color || 'default'}>
+                                            {STATUS_MAP[previewTemplate.status]?.label || previewTemplate.status}
+                                        </Tag>
+                                    </div>
+                                )}
+                                <div style={{ display: 'flex', gap: '10px' }}>
+                                    <Text type="secondary" style={{ fontSize: 12 }}>Sent Count:</Text>
+                                    <Badge count={previewTemplate.sent_count || 0} color="#00b96b" />
+                                </div>
+                                {previewTemplate.failed_count > 0 && (
+                                    <div style={{ display: 'flex', gap: '10px' }}>
+                                        <Text type="secondary" style={{ fontSize: 12 }}>Failed Count:</Text>
+                                        <Badge count={previewTemplate.failed_count} color="#ff4d4f" />
+                                    </div>
+                                )}
+                                {/* {previewTemplate.created_at && (
+                                    <div style={{ display: 'flex', gap: '10px' }}>
+                                        <Text type="secondary" style={{ fontSize: 12 }}>Created:</Text>
+                                        <Text style={{ fontSize: 12 }}>
+                                            {new Date(previewTemplate.created_at).toLocaleString('da-DK')}
+                                        </Text>
+                                    </div>
+                                )}
+                                {previewTemplate.sent_at && (
+                                    <div style={{ display: 'flex', gap: '10px' }}>
+                                        <Text type="secondary" style={{ fontSize: 12 }}>Sent At:</Text>
+                                        <Text style={{ fontSize: 12 }}>
+                                            {new Date(previewTemplate.sent_at).toLocaleString('da-DK')}
+                                        </Text>
+                                    </div>
+                                )} */}
+                            </Space>
                         </div>
+
+                        {/* Email Content */}
                         <div
                             style={{ border: '1px solid #f0f0f0', borderRadius: 8, padding: 16, minHeight: 200, background: '#fff' }}
                             dangerouslySetInnerHTML={{ __html: previewTemplate.html_body || '<p style="color:#bbb">No content</p>' }}

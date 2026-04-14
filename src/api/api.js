@@ -39,9 +39,13 @@ export const assignClassRep = (data) => api.post('/admin/class/assign-rep', data
 export const getAllLogos = (params = {}) => api.post('/admin/logos', params);
 export const approveLogo = (logoId, body = {}) => api.put(`/admin/approve-logo/${logoId}`, body);
 export const rejectLogo = (logoId, body = {}) => api.put(`/admin/reject-logo/${logoId}`, body);
+export const adminDeleteLogo = (logoId) => api.delete(`/admin/logo/${logoId}/delete`);
+export const adminPermanentDeleteLogo = (logoId) => api.delete(`/admin/logo/${logoId}/permanent-delete`, { data: { confirm: "DELETE" } });
 export const getAllBackDesigns = (params = {}) => api.post('/admin/back-designs', params);
 export const approveBackDesign = (id) => api.put(`/admin/approve-back-design/${id}`);
 export const rejectBackDesign = (id, body = {}) => api.put(`/admin/reject-back-design/${id}`, body);
+export const adminDeleteBackDesign = (designId) => api.delete(`/admin/back-design/${designId}/delete`);
+export const adminPermanentDeleteBackDesign = (designId) => api.delete(`/admin/back-design/${designId}/permanent-delete`, { data: { confirm: "DELETE" } });
 
 export const adminUploadLogo = (formData) => apiFormdata.post('/admin/logo/upload', formData);
 export const adminUploadBackDesign = (formData) => apiFormdata.post('/admin/back-design/upload', formData);
@@ -89,6 +93,7 @@ export const deleteNameListItem = (itemId) => api.delete(`/class-rep/namelist/it
 export const getAdminFonts = (params = {}) => api.post('/admin/fonts', params);
 export const createFont = (data) => api.post('/admin/font/create', data);
 export const deleteFont = (id) => api.delete(`/admin/font/${id}/delete`);
+export const permanentDeleteFont = (id) => api.delete(`/admin/font/${id}/permanent-delete`, { data: { confirm: "DELETE" } });
 
 // Font APIs (Class Rep)
 export const getClassRepFonts = () => api.get('/class-rep/fonts');
@@ -96,10 +101,12 @@ export const getAllCountries = (params = {}) => api.post('/admin/countries', par
 export const createCountry = (data) => api.post('/admin/country/create', data);
 export const updateCountry = (id, data) => api.put(`/admin/country/${id}/update`, data);
 export const deleteCountry = (id) => api.delete(`/admin/country/${id}/delete`);
+export const permanentDeleteCountry = (id) => api.delete(`/admin/country/${id}/permanent-delete`, { data: { confirm: "DELETE" } });
 
 // Library Design APIs (Admin)
 export const uploadLibraryDesign = (formData) => apiFormdata.post('/admin/library-design/upload', formData);
 export const getLibraryDesigns = (params = {}) => api.get('/admin/library-designs', { params });
+export const deleteLibraryDesign = (id) => api.delete(`/admin/library-design/${id}/delete`);
 
 // Class Rep - Study Trip
 export const getStudyTripCountries = () => api.get('/class-rep/study-trip-countries');

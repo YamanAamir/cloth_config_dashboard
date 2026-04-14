@@ -4,7 +4,7 @@ import {
     Form, Input, message, Popconfirm, Alert
 } from 'antd';
 import { PlusOutlined, DeleteOutlined, LinkOutlined } from '@ant-design/icons';
-import { getAdminFonts, createFont, deleteFont } from '../api/api';
+import { getAdminFonts, createFont, deleteFont, permanentDeleteFont } from '../api/api';
 
 const { Title, Text } = Typography;
 const PREVIEW_TEXT = 'AaBbCc 123';
@@ -77,6 +77,36 @@ const FontsPage = () => {
         } catch { message.error('Delete failed'); }
     };
 
+    const handlePermanentDelete = async (id, name) => {
+        Modal.confirm({
+            title: 'Permanently delete this font?',
+            content: (
+                <div>
+                    <Typography.Text type="danger" strong>
+                        ⚠️ This action cannot be undone!
+                    </Typography.Text>
+                    <br />
+                    <Typography.Text>
+                        This will permanently remove "{name}" from the system. 
+                        This action is irreversible.
+                    </Typography.Text>
+                </div>
+            ),
+            okText: 'Permanently Delete',
+            okType: 'danger',
+            cancelText: 'Cancel',
+            onOk: async () => {
+                try {
+                    await permanentDeleteFont(id);
+                    message.success('Font permanently deleted');
+                    fetchFonts();
+                } catch (error) {
+                    message.error(error.response?.data?.message || 'Permanent delete failed');
+                }
+            }
+        });
+    };
+
     const columns = [
         {
             title: 'Font Name',
@@ -105,7 +135,14 @@ const FontsPage = () => {
             title: 'Action',
             key: 'action',
             render: (_, r) => (
-                <Popconfirm title="Remove this font?" onConfirm={() => handleDelete(r.id)} okText="Yes" cancelText="No">
+                <Popconfirm 
+                    title="Permanently delete this font?" 
+                    description="This action cannot be undone!"
+                    onConfirm={() => handlePermanentDelete(r.id, r.name)} 
+                    okText="Delete Forever" 
+                    okType="danger"
+                    cancelText="Cancel"
+                >
                     <Button type="text" danger icon={<DeleteOutlined />} />
                 </Popconfirm>
             )

@@ -23,10 +23,11 @@ const STATUS_COLORS = {
 const STAT_CARDS = [
     { key: 'schools', label: 'Schools', icon: <BankOutlined />, color: '#1890ff', bg: '#e6f7ff' },
     { key: 'classes', label: 'Classes', icon: <AppstoreOutlined />, color: '#722ed1', bg: '#f9f0ff' },
-    { key: 'students', label: 'Students', icon: <TeamOutlined />, color: '#52c41a', bg: '#f6ffed' },
+    { key: 'class_reps', label: 'Class Reps', icon: <TeamOutlined />, color: '#722ed1', bg: '#f9f0ff' },
+    { key: 'students', label: 'Students', icon: <UserOutlined />, color: '#52c41a', bg: '#f6ffed' },
     { key: 'orders', label: 'Orders', icon: <ShoppingCartOutlined />, color: '#fa8c16', bg: '#fff7e6' },
     { key: 'total_revenue', label: 'Revenue', icon: <DollarOutlined />, color: '#00b96b', bg: '#f0fff8', suffix: ' DKK' },
-    { key: 'pending_approvals', label: 'Pending Approvals', icon: <ClockCircleOutlined />, color: '#ff4d4f', bg: '#fff2f0' },
+    // { key: 'pending_approvals', label: 'Pending Approvals', icon: <ClockCircleOutlined />, color: '#ff4d4f', bg: '#fff2f0' },
 ];
 
 const DashboardPage = () => {
@@ -84,13 +85,13 @@ const DashboardPage = () => {
             {/* Stats Cards */}
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
                 {STAT_CARDS.map(card => (
-                    <Col xs={12} sm={8} md={4} key={card.key}>
+                    <Col xs={12} sm={8} md={6} lg={4} xl={4} key={card.key}>
                         <Card bodyStyle={{ padding: 16 }} style={{ borderRadius: 12, border: 'none', background: card.bg }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                 <div style={{ fontSize: 24, color: card.color }}>{card.icon}</div>
                                 <div>
                                     <div style={{ fontSize: 22, fontWeight: 700, color: card.color, lineHeight: 1.2 }}>
-                                        {data.stats[card.key]}{card.suffix || ''}
+                                        {data.stats[card.key] || 0}{card.suffix || ''}
                                     </div>
                                     <div style={{ fontSize: 11, color: '#888' }}>{card.label}</div>
                                 </div>
@@ -176,7 +177,7 @@ const DashboardPage = () => {
             {/* Recent Activity */}
             <Row gutter={[16, 16]}>
                 {/* Recent Orders */}
-                <Col xs={24} md={12}>
+                <Col xs={24} lg={8}>
                     <Card title="Recent Orders" style={{ borderRadius: 12, border: 'none' }} className="glass-card">
                         {(data.recent_orders || []).length === 0 ? (
                             <Text type="secondary">No recent orders</Text>
@@ -205,11 +206,37 @@ const DashboardPage = () => {
                     </Card>
                 </Col>
 
+                {/* Recent Class Reps */}
+                <Col xs={24} lg={8}>
+                    <Card title="Recent Class Reps" style={{ borderRadius: 12, border: 'none' }} className="glass-card">
+                        {(data.recent_class_reps || []).length === 0 ? (
+                            <Text type="secondary">No recent class reps</Text>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                {data.recent_class_reps.map(rep => (
+                                    <div key={rep.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #f0f0f0' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                            <Avatar size={32} style={{ background: '#722ed1' }} icon={<UserOutlined />} />
+                                            <div>
+                                                <Text strong style={{ fontSize: 13 }}>{rep.name}</Text>
+                                                <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{rep.class || ''}</Text>
+                                            </div>
+                                        </div>
+                                        <Text type="secondary" style={{ fontSize: 11 }}>
+                                            {new Date(rep.created_at || rep.time).toLocaleDateString('da-DK')}
+                                        </Text>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </Card>
+                </Col>
+
                 {/* Recent Students */}
-                <Col xs={24} md={12}>
-                    <Card title="Recent Registrations" style={{ borderRadius: 12, border: 'none' }} className="glass-card">
+                <Col xs={24} lg={8}>
+                    <Card title="Recent Students" style={{ borderRadius: 12, border: 'none' }} className="glass-card">
                         {(data.recent_students || []).length === 0 ? (
-                            <Text type="secondary">No recent registrations</Text>
+                            <Text type="secondary">No recent students</Text>
                         ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                                 {data.recent_students.map(student => (
@@ -222,7 +249,7 @@ const DashboardPage = () => {
                                             </div>
                                         </div>
                                         <Text type="secondary" style={{ fontSize: 11 }}>
-                                            {new Date(student.time).toLocaleDateString('da-DK')}
+                                            {new Date(student.created_at || student.time).toLocaleDateString('da-DK')}
                                         </Text>
                                     </div>
                                 ))}

@@ -5,8 +5,8 @@ import {
 } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, InboxOutlined } from '@ant-design/icons';
 import {
-    getAllCountries, createCountry, updateCountry, deleteCountry,
-    uploadLibraryDesign, getLibraryDesigns
+    getAllCountries, createCountry, updateCountry, deleteCountry, permanentDeleteCountry,
+    uploadLibraryDesign, getLibraryDesigns, deleteLibraryDesign
 } from '../api/api';
 import { getUploadsUrl } from '../utils/constants';
 
@@ -43,8 +43,8 @@ const CountriesPage = () => {
         finally { setLoading(false); }
     };
 
-    const fetchDesignsForCountry = async (countryId) => {
-        if (designsMap[countryId]) return; // already loaded
+    const fetchDesignsForCountry = async (countryId, forceRefresh = false) => {
+        if (designsMap[countryId] && !forceRefresh) return; // already loaded and not forcing refresh
         setLoadingDesigns(prev => ({ ...prev, [countryId]: true }));
         try {
             const res = await getLibraryDesigns({ country_id: countryId });
@@ -82,6 +82,74 @@ const CountriesPage = () => {
         } catch { message.error('Delete failed'); }
     };
 
+    const handlePermanentDelete = async (id, name) => {
+        Modal.confirm({
+            title: 'Permanently delete this country?',
+            content: (
+                <div>
+                    <Typography.Text type="danger" strong>
+                        ⚠️ This action cannot be undone!
+                    </Typography.Text>
+                    <br />
+                    <Typography.Text>
+                        This will permanently remove "{name}" and all associated data from the system. 
+                        This action is irreversible.
+                    </Typography.Text>
+                </div>
+            ),
+            okText: 'Permanently Delete',
+            okType: 'danger',
+            cancelText: 'Cancel',
+            onOk: async () => {
+                try {
+                    await permanentDeleteCountry(id);
+                    message.success('Country permanently deleted');
+                    fetchCountries();
+                } catch (error) {
+                    message.error(error.response?.data?.message || 'Permanent delete failed');
+                }
+            }
+        });
+    };
+
+    const handleDeleteLibraryDesign = async (designId, designName, countryId) => {
+        Modal.confirm({
+            title: 'Delete this library design?',
+            content: (
+                <div>
+                    <Typography.Text type="danger" strong>
+                        ⚠️ This action cannot be undone!
+                    </Typography.Text>
+                    <br />
+                    <Typography.Text>
+                        This will permanently remove "{designName}" from the library. 
+                        This action is irreversible.
+                    </Typography.Text>
+                </div>
+            ),
+            okText: 'Delete Forever',
+            okType: 'danger',
+            cancelText: 'Cancel',
+            onOk: async () => {
+                try {
+                    await deleteLibraryDesign(designId);
+                    message.success('Library design deleted');
+                    
+                    // Ensure the country row stays expanded
+                    if (!expandedRows.includes(countryId)) {
+                        setExpandedRows(prev => [...prev, countryId]);
+                    }
+                    
+                    // Force refetch the designs for this specific country
+                    await fetchDesignsForCountry(countryId, true);
+                    
+                } catch (error) {
+                    message.error(error.response?.data?.message || 'Delete failed');
+                }
+            }
+        });
+    };
+
     const handleFileSelect = (file) => {
         if (!file.type.startsWith('image/')) { message.error('Select an image'); return false; }
         if (selectedPreview) URL.revokeObjectURL(selectedPreview);
@@ -104,10 +172,15 @@ const CountriesPage = () => {
             uploadForm.resetFields();
             setSelectedFile(null);
             setSelectedPreview(null);
-            setDesignsMap(prev => { const n = { ...prev }; delete n[values.country_id]; return n; });
-            if (expandedRows.includes(values.country_id)) {
-                fetchDesignsForCountry(values.country_id);
+            
+            // Ensure the country row stays expanded
+            if (!expandedRows.includes(values.country_id)) {
+                setExpandedRows(prev => [...prev, values.country_id]);
             }
+            
+            // Force refetch the designs for this country
+            await fetchDesignsForCountry(values.country_id, true);
+            
         } catch (error) {
             message.error(error.response?.data?.message || 'Upload failed');
         } finally { setUploading(false); }
@@ -133,12 +206,34 @@ const CountriesPage = () => {
                 ) : (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
                         {designs.map(d => (
-                            <div key={d.id} style={{ width: 120, textAlign: 'center' }}>
-                                <Image
-                                    src={getUploadsUrl(d.file_path)}
-                                    width={100} height={100}
-                                    style={{ objectFit: 'contain', borderRadius: 6, border: '1px solid #f0f0f0', background: '#fff' }}
-                                />
+                            <div key={d.id} style={{ width: 120, textAlign: 'center', position: 'relative' }}>
+                                <div style={{ position: 'relative' }}>
+                                    <Image
+                                        src={getUploadsUrl(d.file_path)}
+                                        width={100} height={100}
+                                        style={{ objectFit: 'contain', borderRadius: 6, border: '1px solid #f0f0f0', background: '#fff' }}
+                                    />
+                                    <Button
+                                        type="text"
+                                        danger
+                                        size="small"
+                                        icon={<DeleteOutlined />}
+                                        style={{ 
+                                            position: 'absolute', 
+                                            top: 2, 
+                                            right: 2, 
+                                            background: 'rgba(255,255,255,0.9)',
+                                            border: '1px solid #ff4d4f',
+                                            borderRadius: 4,
+                                            width: 24,
+                                            height: 24,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center'
+                                        }}
+                                        onClick={() => handleDeleteLibraryDesign(d.id, d.name, record.id)}
+                                    />
+                                </div>
                                 <Text ellipsis style={{ display: 'block', fontSize: 11, marginTop: 4 }}>{d.name}</Text>
                                 {d.design_size && (
                                     <Tag color="blue" style={{ fontSize: 10, marginTop: 2 }}>{d.design_size}%</Tag>
@@ -160,7 +255,14 @@ const CountriesPage = () => {
                 <Space>
                     <Button type="text" size="small" icon={<EditOutlined style={{ color: '#00b96b' }} />}
                         onClick={() => { setEditingCountry(record); form.setFieldsValue(record); setIsModalOpen(true); }} />
-                    <Popconfirm title="Delete country?" onConfirm={() => handleDelete(record.id)} okText="Yes" cancelText="No">
+                    <Popconfirm 
+                        title="Permanently delete this country?" 
+                        description="This action cannot be undone!"
+                        onConfirm={() => handlePermanentDelete(record.id, record.name)} 
+                        okText="Delete Forever" 
+                        okType="danger"
+                        cancelText="Cancel"
+                    >
                         <Button type="text" size="small" danger icon={<DeleteOutlined />} />
                     </Popconfirm>
                 </Space>
