@@ -7,18 +7,18 @@ import {
     Input,
     Tag,
     message,
+    Spin,
+    Empty
 } from 'antd';
 import { UserOutlined } from '@ant-design/icons';
 import { getStudents } from '../api/api';
-import { Role } from '../utils/constants';
-import { useAuth } from '../context/AuthContext';
 
 const { Title } = Typography;
 
 const StudentOverview = () => {
-    const { user } = useAuth();
     const [students, setStudents] = useState([]);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true); // Start with true to prevent flash
+    const [initialLoad, setInitialLoad] = useState(true); // Track first load
     const [pagination, setPagination] = useState({
         current: 1,
         limit: 10,
@@ -28,7 +28,7 @@ const StudentOverview = () => {
     });
 
     const fetchStudents = async () => {
-        setLoading(true);
+        if (!initialLoad) setLoading(true); // Only show loading for subsequent calls
         try {
             const response = await getStudents({
                 page: pagination.current,
@@ -48,6 +48,7 @@ const StudentOverview = () => {
             message.error('Failed to fetch registered students');
         } finally {
             setLoading(false);
+            if (initialLoad) setInitialLoad(false);
         }
     };
 
@@ -56,6 +57,18 @@ const StudentOverview = () => {
     }, [pagination.current, pagination.limit, pagination.search]);
 
     const columns = [
+        {
+            title: 'S.No',
+            key: 'sno',
+            width: 80,
+            render: (_, record, index) => (
+                <Space>
+                    <span style={{ fontWeight: 600 }}>
+                        {(pagination.current - 1) * pagination.limit + index + 1}
+                    </span>
+                </Space>
+            ),
+        },
         {
             title: 'Student Name',
             dataIndex: 'name',
@@ -81,6 +94,18 @@ const StudentOverview = () => {
             },
         }
     ];
+
+    // Show initial loading screen
+    if (initialLoad && loading) {
+        return (
+            <div className="fade-in" style={{ textAlign: 'center', padding: '100px 0' }}>
+                <Spin size="large" />
+                <div style={{ marginTop: 16 }}>
+                    <Typography.Text type="secondary">Loading students...</Typography.Text>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="fade-in">
@@ -109,7 +134,15 @@ const StudentOverview = () => {
                     columns={columns}
                     dataSource={students}
                     rowKey="id"
-                    loading={loading}
+                    loading={loading && !initialLoad} // Only show table loading for subsequent loads
+                    locale={{
+                        emptyText: (
+                            <Empty
+                                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                                description="No students have registered yet"
+                            />
+                        )
+                    }}
                     pagination={{
                         current: pagination.current,
                         pageSize: pagination.limit,

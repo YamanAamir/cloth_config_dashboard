@@ -9,7 +9,8 @@ import {
     message,
     Popconfirm,
     Image,
-    Upload
+    Upload,
+    Input
 } from 'antd';
 import { PlusOutlined, DeleteOutlined, InboxOutlined } from '@ant-design/icons';
 import {
@@ -27,6 +28,7 @@ const BackDesignTemplatesPage = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedFile, setSelectedFile] = useState(null);
     const [selectedPreview, setSelectedPreview] = useState(null);
+    const [templateName, setTemplateName] = useState('');
     const [uploading, setUploading] = useState(false);
     const [pagination, setPagination] = useState({
         current: 1,
@@ -83,9 +85,17 @@ const BackDesignTemplatesPage = () => {
             return false;
         }
 
+        // No dimension restrictions - proceed with file selection
         if (selectedPreview) URL.revokeObjectURL(selectedPreview);
         setSelectedFile(file);
         setSelectedPreview(URL.createObjectURL(file));
+        
+        // Auto-fill template name if empty
+        if (!templateName) {
+            setTemplateName(file.name.replace(/\.[^/.]+$/, ''));
+        }
+        
+        message.success(`Template selected: ${file.name}`);
         return false;
     };
 
@@ -94,24 +104,31 @@ const BackDesignTemplatesPage = () => {
             message.error('Please select a template file');
             return;
         }
+        if (!templateName.trim()) {
+            message.error('Please enter a template name');
+            return;
+        }
 
         setUploading(true);
         try {
             const formData = new FormData();
-            const name = selectedFile.name ? selectedFile.name.replace(/\.[^/.]+$/, '') : 'template';
-            formData.append('name', name);
+            formData.append('name', templateName.trim());
             formData.append('template', selectedFile);
 
             await uploadBackDesignTemplate(formData);
             message.success('Template uploaded successfully');
             
+            // Reset form
             if (selectedPreview) URL.revokeObjectURL(selectedPreview);
             setSelectedFile(null);
             setSelectedPreview(null);
+            setTemplateName('');
             setIsModalOpen(false);
             fetchTemplates();
         } catch (error) {
-            message.error(error.response?.data?.message || 'Upload failed');
+            console.error('Upload error:', error);
+            const errorMessage = error.response?.data?.message || error.message || 'Upload failed';
+            message.error(errorMessage);
         } finally {
             setUploading(false);
         }
@@ -232,6 +249,7 @@ const BackDesignTemplatesPage = () => {
                     if (selectedPreview) URL.revokeObjectURL(selectedPreview);
                     setSelectedFile(null);
                     setSelectedPreview(null);
+                    setTemplateName('');
                 }}
                 footer={[
                     <Button 
@@ -241,6 +259,7 @@ const BackDesignTemplatesPage = () => {
                             if (selectedPreview) URL.revokeObjectURL(selectedPreview);
                             setSelectedFile(null);
                             setSelectedPreview(null);
+                            setTemplateName('');
                         }}
                     >
                         Cancel
@@ -250,7 +269,7 @@ const BackDesignTemplatesPage = () => {
                         type="primary"
                         loading={uploading}
                         onClick={handleUpload}
-                        disabled={!selectedFile}
+                        disabled={!selectedFile || !templateName.trim()}
                     >
                         Upload Template
                     </Button>
@@ -258,10 +277,45 @@ const BackDesignTemplatesPage = () => {
                 destroyOnHidden
             >
                 <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                    {/* Template Name Input */}
                     <div>
-                        <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
-                            Select template file (PNG, JPG up to 5MB)
+                        <Typography.Text strong style={{ display: 'block', marginBottom: 8 }}>
+                            Template Name *
                         </Typography.Text>
+                        <Input
+                            placeholder="Enter template name (e.g. Berlin Back Design)"
+                            value={templateName}
+                            onChange={(e) => setTemplateName(e.target.value)}
+                            maxLength={100}
+                            showCount
+                            disabled={uploading}
+                        />
+                    </div>
+                    
+                    <div>
+                        <Typography.Text strong style={{ display: 'block', marginBottom: 8 }}>
+                            Select Template File *
+                        </Typography.Text>
+                        <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
+                            PNG, JPG up to 5MB
+                        </Typography.Text>
+                        
+                        {/* <div style={{ 
+                            background: '#f6ffed', 
+                            border: '1px solid #b7eb8f', 
+                            borderRadius: 6, 
+                            padding: 12, 
+                            marginBottom: 12 
+                        }}>
+                            <Typography.Text strong style={{ color: '#389e0d', display: 'block', marginBottom: 4 }}>
+                                📏 A3 Size Requirements
+                            </Typography.Text>
+                            <Typography.Text style={{ fontSize: 12, color: '#52c41a' }}>
+                                • Maximum: 4000 × 5600 pixels (A3 at 300 DPI)<br/>
+                                • Recommended: 2480 × 3508 pixels (A3 at 210 DPI)<br/>
+                                • How to check: Right-click image → Properties → Details
+                            </Typography.Text>
+                        </div> */}
                         <Upload
                             beforeUpload={handleFileSelect}
                             showUploadList={false}
@@ -283,6 +337,15 @@ const BackDesignTemplatesPage = () => {
                                 {selectedFile ? '✓ Template Selected - Click to Change' : 'Click to Select Template'}
                             </Button>
                         </Upload>
+                        
+                        {/* File Name Display */}
+                        {selectedFile && (
+                            <div style={{ marginTop: 8, textAlign: 'center' }}>
+                                <Typography.Text type="success" style={{ fontSize: 14 }}>
+                                    📁 {selectedFile.name}
+                                </Typography.Text>
+                            </div>
+                        )}
                     </div>
 
                     {selectedPreview && (

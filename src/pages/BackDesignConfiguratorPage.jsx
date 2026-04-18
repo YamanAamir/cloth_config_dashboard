@@ -5,7 +5,7 @@ import {
 } from 'antd';
 import {
     PlusOutlined, SaveOutlined, DeleteOutlined,
-    LockOutlined, UnlockOutlined, PlusCircleOutlined, MinusCircleOutlined, EyeOutlined
+    LockOutlined, UnlockOutlined, PlusCircleOutlined, MinusCircleOutlined, EyeOutlined, CheckCircleOutlined
 } from '@ant-design/icons';
 import {
     getMyClass, uploadBackDesign, updateBackDesign,
@@ -22,6 +22,10 @@ const { Title, Text } = Typography;
 const { TextArea } = Input;
 
 const BackDesignConfiguratorPage = () => {
+    // State for tracking name edits
+    const [editingNameId, setEditingNameId] = useState(null);
+    const [editingNameValue, setEditingNameValue] = useState('');
+    const [hasNameChanged, setHasNameChanged] = useState(false);
     const [myClass, setMyClass] = useState(null);
     const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
@@ -74,6 +78,45 @@ const BackDesignConfiguratorPage = () => {
     const [autoSaving, setAutoSaving] = useState(false);
     const user = localStorage.getItem('user');
     const classId = user ? JSON.parse(user)?.class_id : null;
+
+    // Handle name edit start
+    const handleStartEditName = (element) => {
+        setEditingNameId(element.id);
+        setEditingNameValue(element.text);
+        setHasNameChanged(false);
+    };
+
+    // Handle name change
+    const handleNameChange = (value, originalText) => {
+        setEditingNameValue(value);
+        setHasNameChanged(value.trim() !== originalText && value.trim() !== '');
+    };
+
+    // Handle save name
+    const handleSaveName = () => {
+        if (editingNameValue.trim() && hasNameChanged) {
+            setTextElements(prev => prev.map(t => 
+                t.id === editingNameId ? { ...t, text: editingNameValue.trim() } : t
+            ));
+            triggerAutoSave(
+                textElements.map(t => t.id === editingNameId ? { ...t, text: editingNameValue.trim() } : t),
+                designColor, 
+                imageLayout, 
+                selectedDesignId
+            );
+        }
+        // Reset editing state
+        setEditingNameId(null);
+        setEditingNameValue('');
+        setHasNameChanged(false);
+    };
+
+    // Handle cancel edit
+    const handleCancelEdit = () => {
+        setEditingNameId(null);
+        setEditingNameValue('');
+        setHasNameChanged(false);
+    };
 
     useEffect(() => {
         fetchMyClass();
@@ -246,9 +289,29 @@ const BackDesignConfiguratorPage = () => {
         setSelectedDesignId(design.id);
         if (!keepLayout) setImageLayout({ x: 0, y: 0, w: 800, h: 800 });
         setImagePreview(url);
+        
         fetch(url)
             .then(r => { if (!r.ok) throw new Error(r.statusText); return r.blob(); })
-            .then(blob => setSelectedImage(new File([blob], design.name, { type: 'image/png' })))
+            .then(blob => {
+                const file = new File([blob], design.name, { type: 'image/png' });
+                setSelectedImage(file);
+                
+                // Check A3 dimensions and warn user
+                const img = new Image();
+                img.onload = () => {
+                    const { width, height } = img;
+                    const maxWidth = 4000;
+                    const maxHeight = 5600;
+                    
+                    if (width > maxWidth || height > maxHeight) {
+                        message.warning({
+                            content: `⚠️ Selected design (${width}×${height}px) exceeds A3 size limit (${maxWidth}×${maxHeight}px). You can use it for editing, but final export may be rejected.`,
+                            duration: 8
+                        });
+                    }
+                };
+                img.src = url;
+            })
             .catch(err => message.error(`Failed to load: ${err.message}`));
     };
 
@@ -277,11 +340,93 @@ const BackDesignConfiguratorPage = () => {
     const handleSubmit = async () => {
         if (!selectedImage) return message.error('Select an image first');
         if (textElements.length === 0) return message.warning('Add at least one name');
+        
+        // A3 validation for base image dimensions
+        if (selectedImage) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    const { width, height } = img;
+                    
+                    // A3 dimensions at 300 DPI: max 4000 × 5600 pixels
+                    const maxWidth = 4000;
+                    const maxHeight = 5600;
+                    
+                    if (width > maxWidth || height > maxHeight) {
+                        message.error(`Base design is too large! Maximum size is ${maxWidth} × ${maxHeight} pixels (A3 format). Selected image is ${width} × ${height} pixels. Please select a smaller design.`);
+                        resolve();
+                        return;
+                    }
+                    
+                    // Proceed with upload if validation passes
+                    performUpload();
+                    resolve();
+                };
+                
+                img.onerror = () => {
+                    message.error('Failed to read base image dimensions');
+                    resolve();
+                };
+                
+                img.src = URL.createObjectURL(selectedImage);
+            });
+        }
+    };
+
+    const performUpload = async () => {
         setUploading(true);
         try {
-            // Force canvas redraw with current imageLayout before export
+            // Force canvas redraw with WHITE background for export
+            if (canvasRef.current) {
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext('2d');
+                
+                // Clear and redraw with white background
+                canvas.width = 800;
+                canvas.height = 800;
+                ctx.fillStyle = '#ffffff'; // Always white for export
+                ctx.fillRect(0, 0, 800, 800);
+                
+                // Redraw image if exists
+                if (imagePreview) {
+                    const img = new Image();
+                    img.crossOrigin = 'anonymous';
+                    await new Promise((resolve) => {
+                        img.onload = () => {
+                            ctx.drawImage(img, imageLayout.x, imageLayout.y, imageLayout.w, imageLayout.h);
+                            resolve();
+                        };
+                        img.src = imagePreview;
+                    });
+                }
+                
+                // Redraw text elements
+                textElements.forEach(el => {
+                    ctx.save();
+                    ctx.translate(el.x, el.y);
+                    ctx.rotate((el.rotation * Math.PI) / 180);
+                    ctx.font = `${el.fontSize}px ${el.fontFamily}`;
+                    ctx.fillStyle = designColor === 'black' ? '#ffffff' : '#000000'; // Text color based on garment
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(el.text, 0, 0);
+                    ctx.restore();
+                });
+            }
+            
             await new Promise(resolve => setTimeout(resolve, 100));
             const blob = await new Promise(resolve => canvasRef.current.toBlob(resolve, 'image/png'));
+            
+            // Additional A3 validation for final canvas export
+            const canvas = canvasRef.current;
+            const maxWidth = 4000;
+            const maxHeight = 5600;
+            
+            if (canvas.width > maxWidth || canvas.height > maxHeight) {
+                message.error(`Final design exceeds A3 size limit! Canvas is ${canvas.width} × ${canvas.height} pixels, but maximum allowed is ${maxWidth} × ${maxHeight} pixels.`);
+                return;
+            }
+            
             const formData = new FormData();
             const fileName = selectedImage.name.replace(/\.[^/.]+$/, '');
             formData.append('name', `${fileName}_configured`);
@@ -308,7 +453,9 @@ const BackDesignConfiguratorPage = () => {
             // Don't call fetchBackDesigns - it triggers loadState which resets gallery tab
         } catch (err) {
             message.error(err?.response?.data?.message || 'Failed');
-        } finally { setUploading(false); }
+        } finally { 
+            setUploading(false); 
+        }
     };
 
     if (loading) return <div style={{ display: 'flex', justifyContent: 'center', minHeight: '60vh', alignItems: 'center' }}><Spin size="large" /></div>;
@@ -391,7 +538,13 @@ const BackDesignConfiguratorPage = () => {
                                                 <Card
                                                     key={el.id}
                                                     size="small"
-                                                    style={{ marginBottom: 8, border: selectedTextId === el.id ? '2px solid #00b96b' : '1px solid #f0f0f0', cursor: 'pointer' }}
+                                                    style={{ 
+                                                        marginBottom: 8, 
+                                                        border: selectedTextId === el.id ? '2px solid #00b96b' : 
+                                                               editingNameId === el.id ? '2px solid #1890ff' : '1px solid #f0f0f0', 
+                                                        cursor: 'pointer',
+                                                        backgroundColor: editingNameId === el.id ? '#f0f9ff' : 'white'
+                                                    }}
                                                     onClick={() => setSelectedTextId(el.id)}
                                                 >
                                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -409,11 +562,50 @@ const BackDesignConfiguratorPage = () => {
                                                                 {!el.locked && (
                                                                     <div>
                                                                         <Text type="secondary" style={{ fontSize: 11 }}>Edit Name</Text>
-                                                                        <Input key={`edit-${el.id}`} size="small" defaultValue={el.text} style={{ marginTop: 4 }}
-                                                                            onClick={e => e.stopPropagation()}
-                                                                            onBlur={e => { const v = e.target.value.trim(); if (v) setTextElements(prev => prev.map(t => t.id === el.id ? { ...t, text: v } : t)); }}
-                                                                            onPressEnter={e => { const v = e.target.value.trim(); if (v) setTextElements(prev => prev.map(t => t.id === el.id ? { ...t, text: v } : t)); }}
-                                                                        />
+                                                                        <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+                                                                            <Input 
+                                                                                size="small" 
+                                                                                value={editingNameId === el.id ? editingNameValue : el.text}
+                                                                                onClick={e => {
+                                                                                    e.stopPropagation();
+                                                                                    if (editingNameId !== el.id) {
+                                                                                        handleStartEditName(el);
+                                                                                    }
+                                                                                }}
+                                                                                onChange={e => {
+                                                                                    if (editingNameId === el.id) {
+                                                                                        handleNameChange(e.target.value, el.text);
+                                                                                    }
+                                                                                }}
+                                                                                onPressEnter={handleSaveName}
+                                                                                onBlur={() => {
+                                                                                    // Auto-save on blur if there are changes
+                                                                                    if (hasNameChanged) {
+                                                                                        handleSaveName();
+                                                                                    } else {
+                                                                                        handleCancelEdit();
+                                                                                    }
+                                                                                }}
+                                                                                style={{ flex: 1 }}
+                                                                                placeholder="Enter name"
+                                                                            />
+                                                                            {editingNameId === el.id && hasNameChanged && (
+                                                                                <Button
+                                                                                    size="small"
+                                                                                    type="primary"
+                                                                                    icon={<CheckCircleOutlined />}
+                                                                                    style={{ 
+                                                                                        backgroundColor: '#52c41a',
+                                                                                        borderColor: '#52c41a'
+                                                                                    }}
+                                                                                    onClick={e => {
+                                                                                        e.stopPropagation();
+                                                                                        handleSaveName();
+                                                                                    }}
+                                                                                    title="Save changes (or press Enter)"
+                                                                                />
+                                                                            )}
+                                                                        </div>
                                                                     </div>
                                                                 )}
                                                                 <Row gutter={8}>

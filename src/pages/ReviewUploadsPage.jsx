@@ -212,9 +212,20 @@ const ReviewUploadsPage = () => {
     }, []);
 
     const handleFileSelect = (file) => {
-        setUploadFile(file);
-        setUploadPreview(URL.createObjectURL(file));
-        return false;
+        // Check if this is for back design upload (based on current modal state)
+        const isBackDesign = uploadDesignModal;
+        
+        if (isBackDesign) {
+            // No dimension restrictions for any upload type
+            setUploadFile(file);
+            setUploadPreview(URL.createObjectURL(file));
+            return false;
+        } else {
+            // For logos, no dimension restriction
+            setUploadFile(file);
+            setUploadPreview(URL.createObjectURL(file));
+            return false;
+        }
     };
 
     const handleAdminUploadLogo = async (values) => {
@@ -592,6 +603,22 @@ const ReviewUploadsPage = () => {
                         <Select placeholder="Select class (optional)" allowClear options={classes.map(c => ({ value: c.id, label: `${c.name} — ${c.school?.name || ''}` }))} showSearch optionFilterProp="label" />
                     </Form.Item>
                     <Form.Item label="Design File" required>
+                        {/* <div style={{ 
+                            background: '#f6ffed', 
+                            border: '1px solid #b7eb8f', 
+                            borderRadius: 6, 
+                            padding: 12, 
+                            marginBottom: 12 
+                        }}>
+                            <Typography.Text strong style={{ color: '#389e0d', display: 'block', marginBottom: 4 }}>
+                                📏 A3 Size Requirements
+                            </Typography.Text>
+                            <Typography.Text style={{ fontSize: 12, color: '#52c41a' }}>
+                                • Maximum: 4000 × 5600 pixels (A3 at 300 DPI)<br/>
+                                • Recommended: 2480 × 3508 pixels (A3 at 210 DPI)<br/>
+                                • How to check: Right-click image → Properties → Details
+                            </Typography.Text>
+                        </div> */}
                         <Upload beforeUpload={handleFileSelect} showUploadList={false} accept="image/*">
                             <Button type="dashed" icon={<InboxOutlined />} block style={{ height: 80 }}>
                                 {uploadFile ? `✓ ${uploadFile.name}` : 'Click to select image'}

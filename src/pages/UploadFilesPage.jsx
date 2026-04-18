@@ -7,7 +7,7 @@ import {
 import {
     UploadOutlined, FileImageOutlined, PictureOutlined,
     InboxOutlined, CheckCircleOutlined, ClockCircleOutlined,
-    CloseCircleOutlined, DeleteOutlined
+    CloseCircleOutlined, DeleteOutlined, ReloadOutlined
 } from '@ant-design/icons';
 import {
     getMyClass,
@@ -19,6 +19,7 @@ import {
     getMyBackDesigns
 } from '../api/api';
 import { getUploadsUrl, Status } from '../utils/constants';
+import SimpleUploadModal from '../components/SimpleUploadModal';
 
 const { Title } = Typography;
 const { TabPane } = Tabs;
@@ -44,17 +45,13 @@ const UploadFilesPage = () => {
     const [activeTab, setActiveTab] = useState('logos');
     const [uploadModalOpen, setUploadModalOpen] = useState(false);
     const [uploadType, setUploadType] = useState('logo');
-    const [selectedLogoFile, setSelectedLogoFile] = useState(null);
-    const [selectedLogoPreview, setSelectedLogoPreview] = useState(null);
-    const [selectedDesignFile, setSelectedDesignFile] = useState(null);
-    const [selectedDesignPreview, setSelectedDesignPreview] = useState(null);
 
     // Rejected files modal
     const [rejectedModalOpen, setRejectedModalOpen] = useState(false);
     const [rejectedLogos, setRejectedLogos] = useState([]);
     const [rejectedDesigns, setRejectedDesigns] = useState([]);
     const [rejectedLoading, setRejectedLoading] = useState(false);
-    const [customName, setCustomName] = useState('');
+    const [refreshing, setRefreshing] = useState(false);
 
     const fetchMyClass = async () => {
         setLoading(true);
@@ -87,12 +84,23 @@ const UploadFilesPage = () => {
         }
     };
 
+    const handleRefreshAll = async () => {
+        setRefreshing(true);
+        try {
+            await Promise.all([
+                fetchMyClass(),
+                fetchMyLibrary()
+            ]);
+            message.success('Files refreshed successfully!');
+        } catch (error) {
+            message.error('Failed to refresh some data');
+        } finally {
+            setRefreshing(false);
+        }
+    };
+
     useEffect(() => {
         fetchMyClass();
-        return () => {
-            if (selectedLogoPreview) URL.revokeObjectURL(selectedLogoPreview);
-            if (selectedDesignPreview) URL.revokeObjectURL(selectedDesignPreview);
-        };
     }, []);
 
     useEffect(() => {
@@ -101,76 +109,37 @@ const UploadFilesPage = () => {
         }
     }, [myClass]);
 
-    useEffect(() => {
-        return () => {
-            if (selectedLogoPreview) URL.revokeObjectURL(selectedLogoPreview);
-            if (selectedDesignPreview) URL.revokeObjectURL(selectedDesignPreview);
-        };
-    }, [selectedLogoPreview, selectedDesignPreview]);
-
-    const clearLogoSelection = () => {
-        if (selectedLogoPreview) URL.revokeObjectURL(selectedLogoPreview);
-        setSelectedLogoFile(null);
-        setSelectedLogoPreview(null);
-    };
-    const clearDesignSelection = () => {
-        if (selectedDesignPreview) URL.revokeObjectURL(selectedDesignPreview);
-        setSelectedDesignFile(null);
-        setSelectedDesignPreview(null);
-    };
-
-    const handleFileSelect = (file, type) => {
-        if (type === 'logo') {
-            clearLogoSelection();
-            setSelectedLogoFile(file);
-            setSelectedLogoPreview(URL.createObjectURL(file));
-        } else {
-            clearDesignSelection();
-            setSelectedDesignFile(file);
-            setSelectedDesignPreview(URL.createObjectURL(file));
-        }
-        // Auto-fill name from filename (user can change it)
-        if (!customName) {
-            setCustomName(file.name.replace(/\.[^/.]+$/, ''));
-        }
-        return false;
-    };
-
-    const handleUploadClick = async (type) => {
-        const file = type === 'logo' ? selectedLogoFile : selectedDesignFile;
-        if (!file) {
-            message.error('Please select a file');
-            return;
-        }
-        if (!customName.trim()) {
-            message.error('Please enter a name');
-            return;
-        }
-
-        const formData = new FormData();
-        formData.append('name', customName.trim());
-        if (type === 'logo') {
-            formData.append('logo', file);
-        } else {
-            formData.append('backDesign', file);
-        }
-
+    const handleSimpleUpload = async (formData) => {
+        console.log('🎯 handleSimpleUpload called');
+        console.log('📦 FormData received:', formData);
+        console.log('🏷️ Upload type:', uploadType);
+        
         setUploading(true);
         try {
-            if (type === 'logo') {
-                await uploadLogo(formData);
-                message.success('Logo uploaded');
-                clearLogoSelection();
+            let response;
+            if (uploadType === 'logo') {
+                console.log('📤 Uploading logo...');
+                response = await uploadLogo(formData);
+                message.success('Logo uploaded successfully!');
             } else {
-                await uploadBackDesign(formData);
-                message.success('Back design uploaded');
-                clearDesignSelection();
+                console.log('📤 Uploading back design...');
+                response = await uploadBackDesign(formData);
+                message.success('Back design uploaded successfully!');
             }
-            setCustomName('');
+            
+            console.log('✅ Upload response:', response);
             setUploadModalOpen(false);
             fetchMyLibrary();
         } catch (error) {
-            message.error(error.response?.data?.message || 'Upload failed');
+            console.error('❌ Upload error:', error);
+            console.error('❌ Error details:', {
+                status: error.response?.status,
+                statusText: error.response?.statusText,
+                data: error.response?.data,
+                message: error.message
+            });
+            const errorMessage = error.response?.data?.message || error.message || 'Upload failed';
+            message.error(`Upload failed: ${errorMessage}`);
         } finally {
             setUploading(false);
         }
@@ -213,6 +182,7 @@ const UploadFilesPage = () => {
             message.error(err.response?.data?.message || 'Delete failed');
         }
     };
+    if (loading) return <Spin className="fade-in" style={{ display: 'block', margin: '24px auto' }} />; // or a spinner
 
     if (!myClass && !uploading) {
         return (
@@ -222,7 +192,6 @@ const UploadFilesPage = () => {
         );
     }
 
-    if (loading) return <Spin className="fade-in" style={{ display: 'block', margin: '24px auto' }} />; // or a spinner
 
 
     return (
@@ -234,13 +203,23 @@ const UploadFilesPage = () => {
                         Manage your class logos and back designs
                     </Typography.Text>
                 </div>
-                <Button
-                    icon={<CloseCircleOutlined />}
-                    danger
-                    onClick={() => { setRejectedModalOpen(true); fetchRejectedFiles(); }}
-                >
-                    Rejected Files
-                </Button>
+                <Space>
+                    {/* <Button
+                        icon={<ReloadOutlined />}
+                        loading={refreshing}
+                        onClick={handleRefreshAll}
+                        title="Refresh all files"
+                    >
+                        Refresh
+                    </Button> */}
+                    <Button
+                        icon={<CloseCircleOutlined />}
+                        danger
+                        onClick={() => { setRejectedModalOpen(true); fetchRejectedFiles(); }}
+                    >
+                        Rejected Files
+                    </Button>
+                </Space>
             </div>
 
             <Card className="glass-card" style={{ border: 'none' }}>
@@ -248,13 +227,23 @@ const UploadFilesPage = () => {
                     activeKey={activeTab}
                     onChange={setActiveTab}
                     tabBarExtraContent={
-                        <Button
-                            type="primary"
-                            icon={<UploadOutlined />}
-                            onClick={() => openUploadModal(activeTab === 'logos' ? 'logo' : 'design')}
-                        >
-                            {activeTab === 'logos' ? 'Add Logo' : 'Add Back Design'}
-                        </Button>
+                        <Space>
+                            <Button
+                                type="text"
+                                icon={<ReloadOutlined />}
+                                loading={libraryLoading}
+                                onClick={fetchMyLibrary}
+                                size="small"
+                                title="Refresh current tab"
+                            />
+                            <Button
+                                type="primary"
+                                icon={<UploadOutlined />}
+                                onClick={() => openUploadModal(activeTab === 'logos' ? 'logo' : 'design')}
+                            >
+                                {activeTab === 'logos' ? 'Add Logo' : 'Add Back Design'}
+                            </Button>
+                        </Space>
                     }
                 >
                     <TabPane
@@ -382,109 +371,14 @@ const UploadFilesPage = () => {
                 </Tabs>
             </Card>
 
-            {/* Upload Modal */}
-            <Modal
-                title={uploadType === 'logo' ? 'Upload Logo' : 'Upload Back Design'}
+            {/* Simple Upload Modal */}
+            <SimpleUploadModal
                 open={uploadModalOpen}
-                onCancel={() => {
-                    setUploadModalOpen(false);
-                    clearLogoSelection();
-                    clearDesignSelection();
-                    setCustomName('');
-                }}
-                footer={[
-                    <Button
-                        key="cancel"
-                        onClick={() => {
-                            setUploadModalOpen(false);
-                            clearLogoSelection();
-                            clearDesignSelection();
-                            setCustomName('');
-                        }}
-                    >
-                        Cancel
-                    </Button>,
-                    <Button
-                        key="upload"
-                        type="primary"
-                        loading={uploading}
-                        onClick={() => handleUploadClick(uploadType)}
-                        disabled={!customName.trim() || (uploadType === 'logo' ? !selectedLogoFile : !selectedDesignFile)}
-                    >
-                        Upload
-                    </Button>
-                ]}
-                destroyOnHidden
-            >
-                <Space direction="vertical" size="large" style={{ width: '100%' }}>
-                    <div>
-                        <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>
-                            Name <span style={{ color: '#ff4d4f' }}>*</span>
-                        </Typography.Text>
-                        <Input
-                            placeholder={uploadType === 'logo' ? 'e.g. School Logo 2025' : 'e.g. Berlin Back Design'}
-                            value={customName}
-                            onChange={e => setCustomName(e.target.value)}
-                            maxLength={100}
-                            showCount
-                        />
-                    </div>
-                    <div>
-                        <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
-                            {uploadType === 'logo'
-                                ? 'Select logo file (PNG, JPG up to 2MB)'
-                                : 'Select back design file (PNG, JPG up to 5MB)'}
-                        </Typography.Text>
-                        <Upload
-                            beforeUpload={(file) => handleFileSelect(file, uploadType)}
-                            showUploadList={false}
-                            accept="image/*"
-                            disabled={uploading}
-                        >
-                            <Button
-                                type="dashed"
-                                icon={<InboxOutlined />}
-                                block
-                                size="large"
-                                style={{
-                                    height: 100,
-                                    borderStyle: 'dashed',
-                                    borderWidth: 2,
-                                    borderColor: (uploadType === 'logo' ? selectedLogoFile : selectedDesignFile) ? '#00b96b' : '#d9d9d9'
-                                }}
-                            >
-                                {(uploadType === 'logo' ? selectedLogoFile : selectedDesignFile)
-                                    ? '✓ File Selected - Click to Change'
-                                    : 'Click to Select File'}
-                            </Button>
-                        </Upload>
-                    </div>
-
-                    {((uploadType === 'logo' && selectedLogoPreview) || (uploadType === 'design' && selectedDesignPreview)) && (
-                        <div>
-                            <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
-                                Preview
-                            </Typography.Text>
-                            <div style={{
-                                padding: 16,
-                                background: '#fafafa',
-                                borderRadius: 8,
-                                textAlign: 'center',
-                                border: '1px solid #f0f0f0'
-                            }}>
-                                <img
-                                    src={uploadType === 'logo' ? selectedLogoPreview : selectedDesignPreview}
-                                    alt="Preview"
-                                    style={{ maxWidth: '100%', maxHeight: 200, objectFit: 'contain' }}
-                                />
-                            </div>
-                            <Typography.Text type="success" style={{ display: 'block', marginTop: 8, fontSize: 12 }}>
-                                ✓ {(uploadType === 'logo' ? selectedLogoFile : selectedDesignFile)?.name}
-                            </Typography.Text>
-                        </div>
-                    )}
-                </Space>
-            </Modal>
+                onCancel={() => setUploadModalOpen(false)}
+                onUpload={handleSimpleUpload}
+                uploadType={uploadType}
+                loading={uploading}
+            />
 
             {/* Rejected Files Modal */}
             <Modal

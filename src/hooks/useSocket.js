@@ -5,7 +5,7 @@ let socketInstance = null;
 
 const getSocket = () => {
     if (!socketInstance) {
-        const backendUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://cloth-config-backend.onrender.com';
+        const backendUrl = import.meta.env.VITE_API_URL?.replace('/api', '');
         socketInstance = io(backendUrl, {
             transports: ['websocket', 'polling'],
             autoConnect: true,
@@ -14,12 +14,6 @@ const getSocket = () => {
     return socketInstance;
 };
 
-/**
- * useSocket hook for the admin dashboard
- * @param {string} room - room to join
- * @param {string} event - socket event name to listen for
- * @param {Function} callback - function when event fires
- */
 const useSocket = (room, event, callback) => {
     const callbackRef = useRef(callback);
     callbackRef.current = callback;

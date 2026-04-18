@@ -7,29 +7,29 @@ import {
     Tag,
     Modal,
     message,
-    Statistic,
     Row,
     Col,
     Spin,
-    Drawer,
     Empty,
     Image,
     Upload,
-    Tooltip,
     Input,
+    Progress,
+    Alert,
+    Divider,
     Select
 } from 'antd';
 import {
     TeamOutlined,
-    BankOutlined,
-    CalendarOutlined,
     LinkOutlined,
     PlusOutlined,
-    UnorderedListOutlined,
-    InboxOutlined,
     CheckCircleOutlined,
     ClockCircleOutlined,
     CloseCircleOutlined,
+    ReloadOutlined,
+    CopyOutlined,
+    UploadOutlined,
+    EyeOutlined,
     GlobalOutlined
 } from '@ant-design/icons';
 import {
@@ -37,766 +37,888 @@ import {
     generateRegistrationLink,
     getMyLogos,
     uploadLogo,
-    getAllBackDesignTemplates,
-    selectBackDesignForClass,
     getClassBackDesign,
+    getClassRepStudentCount,
+    setClassRepExpectedStudentCount,
     getStudyTripCountries,
-    setStudyTripCountry,
-    getClassRepLibraryDesigns
+    setStudyTripCountry
 } from '../api/api';
-import NameListManager from '../components/NameListManager';
 import { getUploadsUrl, Status } from '../utils/constants';
 
-const { Title } = Typography;
+const { Title, Text, Paragraph } = Typography;
+const { Dragger } = Upload;
 
-const STATUS_MAP = {
-    [Status.ACTIVE]: { label: 'Approved', color: 'success', icon: <CheckCircleOutlined /> },
-    [Status.INACTIVE]: { label: 'Pending', color: 'processing', icon: <ClockCircleOutlined /> },
-    [Status.DELETED]: { label: 'Rejected', color: 'error', icon: <CloseCircleOutlined /> },
+const STATUS_CONFIG = {
+    [Status.ACTIVE]: {
+        label: 'Approved ',
+        color: 'success',
+        icon: <CheckCircleOutlined />,
+        description: 'Your design has been approved!'
+    },
+    [Status.INACTIVE]: {
+        label: 'Under Review',
+        color: 'processing',
+        icon: <ClockCircleOutlined />,
+        description: 'We are reviewing your design'
+    },
+    [Status.DELETED]: {
+        label: 'Needs Changes',
+        color: 'error',
+        icon: <CloseCircleOutlined />,
+        description: 'Please upload a new design'
+    },
 };
 
-const getStatusTag = (status) => {
-    const s = STATUS_MAP[status] ?? STATUS_MAP[Status.INACTIVE];
-    return <Tag color={s.color} icon={s.icon}>{s.label}</Tag>;
-};
-
-const MyClassPage = () => {
+const MyClassPageSimple = () => {
     const [myClass, setMyClass] = useState(null);
-    const [loading, setLoading] = useState(false);
-    const [registrationLinkModalOpen, setRegistrationLinkModalOpen] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [studentCount, setStudentCount] = useState(null);
+    const [logos, setLogos] = useState([]);
+    const [backDesign, setBackDesign] = useState(null);
+    const [refreshing, setRefreshing] = useState(false);
+
+    // Modals
+    const [linkModalOpen, setLinkModalOpen] = useState(false);
     const [registrationLink, setRegistrationLink] = useState('');
     const [linkLoading, setLinkLoading] = useState(false);
-    const [studyTripModalOpen, setStudyTripModalOpen] = useState(false);
-    const [selectedCountryTemp, setSelectedCountryTemp] = useState(null);
-    
-    // Logo Gallery
-    const [logos, setLogos] = useState([]);
-    const [logosLoading, setLogosLoading] = useState(false);
     const [uploadModalOpen, setUploadModalOpen] = useState(false);
-    const [selectedLogoFile, setSelectedLogoFile] = useState(null);
-    const [selectedLogoPreview, setSelectedLogoPreview] = useState(null);
     const [uploading, setUploading] = useState(false);
+    const [selectedFile, setSelectedFile] = useState(null);
+    const [logoName, setLogoName] = useState('');
+    const [expectedStudentsModalOpen, setExpectedStudentsModalOpen] = useState(false);
+    const [expectedCount, setExpectedCount] = useState(0);
+    const [updatingCount, setUpdatingCount] = useState(false);
 
-    // Back Design Selection
-    const [backDesignModalOpen, setBackDesignModalOpen] = useState(false);
-    const [templates, setTemplates] = useState([]);
-    const [templatesLoading, setTemplatesLoading] = useState(false);
-    const [selectedTemplate, setSelectedTemplate] = useState(null);
-    const [selectingDesign, setSelectingDesign] = useState(false);
-    const [currentBackDesign, setCurrentBackDesign] = useState(null);
-    const [loadingCurrentDesign, setLoadingCurrentDesign] = useState(false);
-
-    // Study trip
+    // Study Trip
+    const [studyTripModalOpen, setStudyTripModalOpen] = useState(false);
     const [studyTripCountries, setStudyTripCountries] = useState([]);
+    const [selectedCountry, setSelectedCountry] = useState(null);
     const [settingCountry, setSettingCountry] = useState(false);
 
-    const fetchMyClass = async () => {
-        setLoading(true);
+    // Fetch all data
+    const fetchAllData = async (showMessage = false) => {
+        if (showMessage) setRefreshing(true);
         try {
-            const classRes = await getMyClass();
-            setMyClass(classRes.data.data?.[0]);
+            // First get class and logos
+            const [classRes, logosRes] = await Promise.all([
+                getMyClass(),
+                getMyLogos({ page: 1, limit: 10 })
+            ]);
+
+            const classData = classRes.data.data?.[0];
+            setMyClass(classData);
+            setLogos(logosRes.data?.data || []);
+
+            // Then get student count if class exists
+            if (classData?.id) {
+                try {
+                    const studentCountRes = await getClassRepStudentCount(classData.id);
+                    console.log('Student count response:', studentCountRes.data); // Debug log
+                    setStudentCount(studentCountRes.data?.data);
+                } catch (error) {
+                    console.error('Student count error:', error); // Debug log
+                    setStudentCount(null);
+                }
+
+                // Fetch back design
+                try {
+                    const backDesignRes = await getClassBackDesign(classData.id);
+                    setBackDesign(backDesignRes.data?.data);
+                } catch (error) {
+                    setBackDesign(null);
+                }
+            }
+
+            if (showMessage) {
+                message.success('Everything updated!');
+            }
         } catch (error) {
-            message.error('Failed to fetch class details');
+            message.error('Failed to load class information');
         } finally {
             setLoading(false);
+            setRefreshing(false);
         }
     };
 
-    const fetchLogos = async () => {
-        setLogosLoading(true);
-        try {
-            const response = await getMyLogos({ page: 1, limit: 50 });
-            setLogos(response.data?.data ?? []);
-        } catch (error) {
-            message.error('Failed to load logos');
-        } finally {
-            setLogosLoading(false);
-        }
-    };
+    useEffect(() => {
+        fetchAllData();
+        fetchStudyTripCountries();
+    }, []);
 
-    const fetchTemplates = async () => {
-        setTemplatesLoading(true);
-        try {
-            const response = await getAllBackDesignTemplates({ page: 1, limit: 100 });
-            setTemplates(response.data?.data ?? []);
-        } catch (error) {
-            message.error('Failed to load templates');
-        } finally {
-            setTemplatesLoading(false);
-        }
-    };
-
-    const fetchCurrentBackDesign = async () => {
-        if (!myClass?.id) return;
-        setLoadingCurrentDesign(true);
-        try {
-            const response = await getClassBackDesign(myClass.id);
-            setCurrentBackDesign(response.data?.data);
-        } catch (error) {
-            console.error('Failed to load current back design');
-        } finally {
-            setLoadingCurrentDesign(false);
-        }
-    };
-
+    // Fetch study trip countries
     const fetchStudyTripCountries = async () => {
         try {
-            const res = await getStudyTripCountries();
-            setStudyTripCountries(res.data.data || []);
-        } catch { /* silent */ }
+            const response = await getStudyTripCountries();
+            setStudyTripCountries(response.data.data || []);
+        } catch (error) {
+            console.error('Failed to fetch study trip countries');
+        }
     };
 
-    const handleSetStudyTripCountry = async (countryId) => {
+    // Set study trip country
+    const handleSetStudyTripCountry = async () => {
+        if (!selectedCountry) {
+            message.error('Please select a country');
+            return;
+        }
+
         setSettingCountry(true);
         try {
-            await setStudyTripCountry({ country_id: countryId });
-            message.success('Study trip country updated');
-            fetchMyClass();
+            await setStudyTripCountry({ country_id: selectedCountry });
+            message.success('Study trip country updated successfully!');
+            setStudyTripModalOpen(false);
+            fetchAllData();
         } catch (error) {
-            message.error(error.response?.data?.message || 'Failed to update');
+            message.error('Failed to update study trip country');
         } finally {
             setSettingCountry(false);
         }
     };
 
-    const handleSaveStudyTripCountry = async () => {
-        await handleSetStudyTripCountry(selectedCountryTemp);
-        setStudyTripModalOpen(false);
-    };
-
-    // Sync temp state when modal opens
-    useEffect(() => {
-        if (studyTripModalOpen) {
-            setSelectedCountryTemp(myClass?.study_trip_country_id || myClass?.country_id || null);
-        }
-    }, [studyTripModalOpen]);
-
-    useEffect(() => {
-        fetchMyClass();
-        fetchStudyTripCountries();
-    }, []);
-
-    useEffect(() => {
-        if (myClass) {
-            fetchLogos();
-            fetchCurrentBackDesign();
-        }
-    }, [myClass]);
-
-    useEffect(() => {
-        return () => {
-            if (selectedLogoPreview) URL.revokeObjectURL(selectedLogoPreview);
-        };
-    }, [selectedLogoPreview]);
-
-    const handleGenerateRegistrationLink = async () => {
+    // Generate registration link
+    const handleGenerateLink = async () => {
         setLinkLoading(true);
         try {
             const { data } = await generateRegistrationLink();
             const link = data?.data?.registrationLink || data?.registrationLink || '';
             setRegistrationLink(link);
-            setRegistrationLinkModalOpen(true);
-            if (link) message.success('Registration link generated');
-            else message.warning('No link returned from server');
+            setLinkModalOpen(true);
         } catch (error) {
-            message.error(error.response?.data?.message || 'Failed to generate link');
+            message.error('Failed to generate registration link');
         } finally {
             setLinkLoading(false);
         }
     };
 
-    const copyRegistrationLink = () => {
-        if (!registrationLink) return;
+    // Copy link to clipboard
+    const copyLink = () => {
         navigator.clipboard.writeText(registrationLink).then(() => {
-            message.success('Link copied to clipboard');
-        }).catch(() => message.error('Failed to copy'));
+            message.success('Link copied! Share it with your classmates');
+        });
     };
 
-    const handleLogoFileSelect = (file) => {
+    // Upload logo
+    const handleFileSelect = async (file) => {
         const isImage = file.type.startsWith('image/');
         if (!isImage) {
-            message.error('Please select an image file');
+            message.error('Please upload an image file');
             return false;
         }
 
-        const isLt2M = file.size / 1024 / 1024 < 2;
-        if (!isLt2M) {
-            message.error('Image must be smaller than 2MB');
+        const isLt5M = file.size / 1024 / 1024 < 5;
+        if (!isLt5M) {
+            message.error('Image must be smaller than 5MB');
             return false;
         }
 
-        if (selectedLogoPreview) URL.revokeObjectURL(selectedLogoPreview);
-        setSelectedLogoFile(file);
-        setSelectedLogoPreview(URL.createObjectURL(file));
-        return false;
+        // Set selected file for display - don't upload yet
+        setSelectedFile(file);
+        
+        // Auto-fill name from filename if empty
+        if (!logoName) {
+            setLogoName(file.name.replace(/\.[^/.]+$/, ''));
+        }
+        
+        message.success(`File selected: ${file.name}`);
+        return false; // Prevent automatic upload
     };
 
-    const handleLogoUpload = async () => {
-        if (!selectedLogoFile) {
-            message.error('Please select a logo file');
+    // Manual upload function
+    const handleManualUpload = async () => {
+        if (!selectedFile) {
+            message.error('Please select a file first');
+            return;
+        }
+        if (!logoName.trim()) {
+            message.error('Please enter a name for the logo');
             return;
         }
 
+        handleActualUpload(selectedFile);
+    };
+
+    // Actual upload function
+    const handleActualUpload = async (file) => {
         setUploading(true);
         try {
             const formData = new FormData();
-            const name = selectedLogoFile.name ? selectedLogoFile.name.replace(/\.[^/.]+$/, '') : 'logo';
-            formData.append('name', name);
-            formData.append('logo', selectedLogoFile);
+            formData.append('name', logoName.trim());
+            formData.append('logo', file);
 
             await uploadLogo(formData);
-            message.success('Logo uploaded successfully');
+            message.success('Logo uploaded successfully! We will review it soon.');
             
-            // Reset and refresh
-            if (selectedLogoPreview) URL.revokeObjectURL(selectedLogoPreview);
-            setSelectedLogoFile(null);
-            setSelectedLogoPreview(null);
+            // Reset form
+            setSelectedFile(null);
+            setLogoName('');
             setUploadModalOpen(false);
-            fetchLogos();
+            fetchAllData();
         } catch (error) {
-            message.error(error.response?.data?.message || 'Upload failed');
+            console.error('Upload error:', error);
+            const errorMessage = error.response?.data?.message || error.message || 'Upload failed. Please try again.';
+            message.error(errorMessage);
         } finally {
             setUploading(false);
         }
+        return false;
     };
 
-    const handleSelectBackDesign = async () => {
-        if (!selectedTemplate) {
-            message.error('Please select a template');
+    // Update expected student count
+    const handleUpdateExpectedCount = async () => {
+        if (!expectedCount || expectedCount < 1) {
+            message.error('Please enter a valid number');
+            return;
+        }
+        if (!myClass?.id) {
+            message.error('Class information not found');
             return;
         }
 
-        setSelectingDesign(true);
+        setUpdatingCount(true);
         try {
-            await selectBackDesignForClass({ template_id: selectedTemplate });
-            message.success('Back design selected successfully');
-            setBackDesignModalOpen(false);
-            setSelectedTemplate(null);
-            fetchMyClass();
-            fetchCurrentBackDesign();
+            await setClassRepExpectedStudentCount(myClass.id, { expected_students: expectedCount });
+            message.success('Expected student count updated!');
+            setExpectedStudentsModalOpen(false);
+            fetchAllData();
         } catch (error) {
-            message.error(error.response?.data?.message || 'Selection failed');
+            message.error('Failed to update count');
         } finally {
-            setSelectingDesign(false);
+            setUpdatingCount(false);
         }
     };
 
-    if (!myClass && !loading) {
+    if (loading) {
         return (
-            <Card className="glass-card" style={{ margin: 24, textAlign: 'center' }}>
-                <Empty description="No class assigned to you yet." />
-            </Card>
+            <div style={{ textAlign: 'center', padding: '100px 0' }}>
+                <Spin size="large" />
+                <div style={{ marginTop: 16 }}>
+                    <Text>Loading your class information...</Text>
+                </div>
+            </div>
         );
     }
 
-    if (loading) {
-        return <Spin className="fade-in" style={{ display: 'block', margin: '24px auto' }} />;
+    if (!myClass) {
+        return (
+            <div style={{ textAlign: 'center', padding: '100px 0' }}>
+                <Empty
+                    description="No class assigned to you yet"
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                />
+            </div>
+        );
     }
 
+    const approvedLogos = logos.filter(logo => logo.status === Status.ACTIVE);
+    const pendingLogos = logos.filter(logo => logo.status === Status.INACTIVE);
+    const rejectedLogos = logos.filter(logo => logo.status === Status.DELETED);
+
     return (
-        <div className="fade-in">
+        <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
             {/* Header */}
-            <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
-                <div>
-                    <Title level={4} style={{ margin: 0 }}>My Class</Title>
-                    <Typography.Text type="secondary">Manage class logos and student name list</Typography.Text>
-                </div>
-                <Space>
-                    <Button
-                        type="default"
-                        icon={<GlobalOutlined />}
-                        onClick={() => setStudyTripModalOpen(true)}
-                    >
-                        Study Trip
-                    </Button>
-                    <Button
-                        type="default"
-                        icon={<LinkOutlined />}
-                        loading={linkLoading}
-                        onClick={handleGenerateRegistrationLink}
-                    >
-                        Registration Link
-                    </Button>
-                    {/* <Button
-                        type="primary"
-                        onClick={() => {
-                            setBackDesignModalOpen(true);
-                            fetchTemplates();
-                        }}
-                    >
-                        Select Design Template
-                    </Button> */}
-                </Space>
+            <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+                <Title level={2} style={{ marginBottom: 0 }}>
+                    {myClass.name}
+                </Title>
+                <Text type="secondary">
+                    {myClass.school?.name} • Class of {myClass.graduation_year}
+                </Text>
             </div>
 
-            {/* Class Info Cards */}
-            <Row gutter={[24, 24]} style={{ marginBottom: 24 }}>
-                <Col xs={24} sm={12} md={8}>
-                    <Card className="glass-card" style={{ border: 'none' }}>
-                        <Statistic
-                            title={<span style={{ fontWeight: 500, color: '#666' }}>Class</span>}
-                            value={myClass?.name}
-                            prefix={
-                                <div style={{
-                                    background: '#00b96b15',
-                                    padding: '8px',
-                                    borderRadius: '12px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    marginRight: '12px'
-                                }}>
-                                    <TeamOutlined style={{ color: '#00b96b', fontSize: '30px' }} />
-                                </div>
-                            }
-                            valueStyle={{ color: '#006d75', fontWeight: '500', fontSize: '30px' }}
-                        />
+
+
+            {/* Main Actions */}
+            <Row gutter={[24, 24]} style={{ marginBottom: '40px' }}>
+                {/* Student Registration */}
+                <Col xs={24} md={12} lg={8}>
+                    <Card
+                        style={{
+                            height: '100%',
+                            borderRadius: 12,
+                            transition: '0.3s',
+                            cursor: 'pointer'
+                        }}
+                        bodyStyle={{ padding: '24px' }}
+                        onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
+                        onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0px)'}
+                    >
+                        <div style={{ textAlign: 'center' }}>
+                            <TeamOutlined style={{ fontSize: 42, color: '#1677ff', marginBottom: 12 }} />
+                            <Title level={4} style={{ marginBottom: 4 }}>
+                                Students
+                            </Title>
+                            <Text type="secondary">
+                                Share link & track registrations
+                            </Text>
+                        </div>
+
+                        <Divider />
+
+                        {/* Count */}
+                        <div style={{ marginBottom: 16 }}>
+                            <Text strong style={{ fontSize: 20 }}>
+                                {studentCount?.registered_students || 0}
+                            </Text>
+                            <Text type="secondary"> / {studentCount?.expected_students || 'Set target'}</Text>
+                        </div>
+
+                        {/* Progress */}
+                        {/* {studentCount?.expected_students && (
+                            <Progress
+                                percent={Math.round(studentCount.completion_percentage || 0)}
+                                strokeColor={{
+                                    '0%': '#ff4d4f',
+                                    '80%': '#faad14',
+                                    '100%': '#52c41a'
+                                }}
+                                style={{ marginBottom: 16 }}
+                            />
+                        )} */}
+
+                        {/* <Divider /> */}
+
+                        <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+                            <Button
+                                type="primary"
+                                icon={<LinkOutlined />}
+                                onClick={handleGenerateLink}
+                                loading={linkLoading}
+                                style={{ flex: 1 }}
+                            >
+                                Get Link
+                            </Button>
+
+                            <Button
+                                onClick={() => {
+                                    setExpectedCount(studentCount?.expected_students || 0);
+                                    setExpectedStudentsModalOpen(true);
+                                }}
+                                style={{ flex: 1 }}
+                            >
+                                Expected: {studentCount?.expected_students || 'Set'}
+                            </Button>
+                        </div>
                     </Card>
                 </Col>
-                <Col xs={24} sm={12} md={8}>
-                    <Card className="glass-card" style={{ border: 'none' }}>
-                        <Statistic
-                            title={<span style={{ fontWeight: 500, color: '#666' }}>School</span>}
-                            value={myClass?.school?.name}
-                            prefix={
-                                <div style={{
-                                    background: '#1890ff15',
-                                    padding: '8px',
-                                    borderRadius: '12px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    marginRight: '12px'
-                                }}>
-                                    <BankOutlined style={{ color: '#1890ff', fontSize: '30px' }} />
-                                </div>
-                            }
-                            valueStyle={{ color: '#006d75', fontWeight: '500', fontSize: '30px' }}
-                        />
+
+                {/* Upload Logo */}
+                <Col xs={24} md={12} lg={8}>
+                    <Card
+                        style={{
+                            height: '100%',
+                            borderRadius: 12,
+                            transition: '0.3s',
+                            cursor: 'pointer'
+                        }}
+                        bodyStyle={{ padding: '24px' }}
+                        onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
+                        onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0px)'}
+                    >
+                        <div style={{ textAlign: 'center' }}>
+                            <UploadOutlined style={{ fontSize: 42, color: '#1890ff', marginBottom: 12 }} />
+                            <Title level={4} style={{ marginBottom: 4 }}>
+                                Upload Logo
+                            </Title>
+                            <Text type="secondary">
+                                Class logo for graduation items
+                            </Text>
+                        </div>
+
+                        <Divider />
+
+                        {/* Logo Status */}
+                        <div style={{ marginBottom: 16, textAlign: 'center' }}>
+                            {logos.length > 0 ? (
+                                <Tag color="success">
+                                    {logos.length} Logo{logos.length > 1 ? 's' : ''}
+                                </Tag>
+                            ) : (
+                                <Tag color="default">No logos yet</Tag>
+                            )}
+                        </div>
+
+                        <Button
+                            type="primary"
+                            icon={<PlusOutlined />}
+                            onClick={() => setUploadModalOpen(true)}
+                            block
+                        >
+                            Upload Logo
+                        </Button>
+
+
                     </Card>
                 </Col>
-                <Col xs={24} sm={12} md={8}>
-                    <Card className="glass-card" style={{ border: 'none' }}>
-                        <Statistic
-                            title={<span style={{ fontWeight: 500, color: '#666' }}>Graduation Year</span>}
-                            value={myClass?.graduation_year}
-                            prefix={
-                                <div style={{
-                                    background: '#722ed115',
-                                    padding: '8px',
-                                    borderRadius: '12px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    marginRight: '12px'
-                                }}>
-                                    <CalendarOutlined style={{ color: '#722ed1', fontSize: '30px' }} />
-                                </div>
-                            }
-                            valueStyle={{ color: '#006d75', fontWeight: '500', fontSize: '30px' }}
-                        />
+                <Col xs={24} md={12} lg={8}>
+                    <Card
+                        style={{
+                            height: '100%',
+                            borderRadius: 12,
+                            transition: '0.3s',
+                            cursor: 'pointer'
+                        }}
+                        bodyStyle={{ padding: '24px' }}
+                        onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
+                        onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0px)'}
+                    >
+                        <div style={{ textAlign: 'center' }}>
+                            <GlobalOutlined style={{ fontSize: 42, color: '#722ed1', marginBottom: 12 }} />
+                            <Title level={4} style={{ marginBottom: 4 }}>
+                                Study Trip
+                            </Title>
+                            <Text type="secondary">
+                                Select destination country
+                            </Text>
+                        </div>
+
+                        <Divider />
+
+                        {/* Country Status */}
+                        <div style={{ marginBottom: 16, textAlign: 'center' }}>
+                            {myClass?.country ? (
+                                <Tag color="success" style={{ fontSize: '14px', padding: '4px 12px' }}>
+                                    {myClass.country.name}
+                                </Tag>
+                            ) : (
+                                <Tag color="default">No country selected</Tag>
+                            )}
+                        </div>
+
+                        <Button
+                            type="primary"
+                            icon={<GlobalOutlined />}
+                            onClick={() => {
+                                setSelectedCountry(myClass?.country_id || null);
+                                setStudyTripModalOpen(true);
+                            }}
+                            block
+                        >
+                            {myClass?.country ? 'Change Country' : 'Select Country'}
+                        </Button>
                     </Card>
                 </Col>
+
+
+
             </Row>
 
-            {/* Current Back Design */}
-            <Card 
-                className="glass-card" 
-                style={{ border: 'none', marginBottom: 24 }}
-                title={
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span>Current Back Design</span>
-                    </div>
-                }
+            {/* Current Status */}
+            <Card
+                title="Current Status"
+                style={{
+                    marginBottom: '24px',
+                    borderRadius: 12
+                }}
             >
-                {loadingCurrentDesign ? (
-                    <div style={{ textAlign: 'center', padding: 48 }}>
-                        <Spin size="large" />
-                    </div>
-                ) : !currentBackDesign ? (
-                    <Empty 
-                        description="No back design selected yet" 
-                        style={{ padding: 48 }}
-                        image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    >
-                        {/* <Button 
-                            type="primary"
-                            onClick={() => {
-                                setBackDesignModalOpen(true);
-                                fetchTemplates();
-                            }}
-                        >
-                            Select Design Template
-                        </Button> */}
-                    </Empty>
-                ) : (
-                    <Row gutter={[16, 16]}>
-                        <Col xs={24} md={12}>
-                            <div style={{ 
-                                padding: 16, 
-                                background: '#fafafa', 
-                                borderRadius: 8,
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                justifyContent: 'center',
-                                minHeight: 300
-                            }}>
-                                <Image
-                                    src={`${getUploadsUrl(currentBackDesign.file_path)}?t=${new Date(currentBackDesign.updated_at || currentBackDesign.created_at).getTime()}`}
-                                    alt={currentBackDesign.name}
-                                    style={{ maxWidth: '100%', maxHeight: 400, objectFit: 'contain' }}
-                                    preview={{
-                                        mask: 'View Full Size'
-                                    }}
+                <Row gutter={[24, 24]}>
+                    {/* Back Design Status */}
+                    <Col xs={24} md={12}>
+                        <div style={{
+                            padding: '20px',
+                            background: '#fafafa',
+                            borderRadius: '12px',
+                            height: '100%'
+                        }}>
+                            <Title level={5} style={{ marginBottom: 16 }}>Back Design</Title>
+                            {backDesign ? (
+                                <div>
+                                    <div style={{ marginBottom: '16px' }}>
+                                        <Image
+                                            src={getUploadsUrl(backDesign.file_path)}
+                                            alt={backDesign.name}
+                                            style={{
+                                                width: '120px',
+                                                height: '120px',
+                                                objectFit: 'cover',
+                                                borderRadius: '8px'
+                                            }}
+                                        />
+                                    </div>
+                                    <Text strong style={{ display: 'block', marginBottom: 8 }}>
+                                        {backDesign.name}
+                                    </Text>
+
+                                    {/* Show configurator info if available */}
+                                    {backDesign.isFromConfigurator && backDesign.configurator_state && (
+                                        <div style={{ marginBottom: 8 }}>
+                                            <Tag color="blue" size="small">
+                                                Configurator Design
+                                            </Tag>
+                                            {backDesign.configurator_state.textElements && (
+                                                <Text type="secondary" style={{ display: 'block', fontSize: 11, marginTop: 4 }}>
+                                                    {backDesign.configurator_state.textElements.length} text elements
+                                                </Text>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    <div style={{ marginBottom: '8px' }}>
+                                        <Tag
+                                            color={STATUS_CONFIG[backDesign.status]?.color}
+                                            icon={STATUS_CONFIG[backDesign.status]?.icon}
+                                        >
+                                            {STATUS_CONFIG[backDesign.status]?.label}
+                                        </Tag>
+                                    </div>
+                                    <Text type="secondary">
+                                        {STATUS_CONFIG[backDesign.status]?.description}
+                                    </Text>
+                                </div>
+                            ) : (
+                                <Empty
+                                    description="No back design selected yet"
+                                    image={Empty.PRESENTED_IMAGE_SIMPLE}
                                 />
-                            </div>
-                        </Col>
-                        <Col xs={24} md={12}>
-                            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                            )}
+                        </div>
+                    </Col>
+
+                    {/* Latest Logo Status */}
+                    <Col xs={24} md={12}>
+                        <div style={{
+                            padding: '20px',
+                            background: '#fafafa',
+                            borderRadius: '12px',
+                            height: '100%'
+                        }}>
+                            <Title level={5} style={{ marginBottom: 16 }}>Latest Logo</Title>
+                            {logos.length > 0 ? (
                                 <div>
-                                    <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>Design Name</Typography.Text>
-                                    <Typography.Text strong style={{ fontSize: 16 }}>{currentBackDesign.name}</Typography.Text>
+                                    {logos.slice(0, 1).map(logo => (
+                                        <div key={logo.id}>
+                                            <div style={{ marginBottom: '16px' }}>
+                                                <Image
+                                                    src={getUploadsUrl(logo.file_path)}
+                                                    alt={logo.name}
+                                                    style={{
+                                                        width: '120px',
+                                                        height: '120px',
+                                                        objectFit: 'cover',
+                                                        borderRadius: '8px'
+                                                    }}
+                                                />
+                                            </div>
+                                            <Text strong style={{ display: 'block', marginBottom: 8 }}>
+                                                {logo.name}
+                                            </Text>
+                                            <div style={{ marginBottom: '8px' }}>
+                                                <Tag
+                                                    color={STATUS_CONFIG[logo.status]?.color}
+                                                    icon={STATUS_CONFIG[logo.status]?.icon}
+                                                >
+                                                    {STATUS_CONFIG[logo.status]?.label}
+                                                </Tag>
+                                            </div>
+                                            <Text type="secondary">
+                                                {STATUS_CONFIG[logo.status]?.description}
+                                            </Text>
+                                        </div>
+                                    ))}
                                 </div>
-                                <div>
-                                    <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>Type</Typography.Text>
-                                    <Tag color={currentBackDesign.is_library ? 'blue' : 'green'}>
-                                        {currentBackDesign.is_library ? 'Design Template' : 'Custom Back Design'}
-                                    </Tag>
-                                </div>
-                                <div>
-                                    <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>Status</Typography.Text>
-                                    {getStatusTag(currentBackDesign.status)}
-                                </div>
-                                <div>
-                                    <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>Created</Typography.Text>
-                                    <Typography.Text>{new Date(currentBackDesign.created_at).toLocaleDateString()}</Typography.Text>
-                                </div>
-                                {/* <Button 
-                                    type="default"
-                                    onClick={() => {
-                                        setBackDesignModalOpen(true);
-                                        fetchTemplates();
-                                    }}
-                                    block
-                                >
-                                    Change Design Template
-                                </Button> */}
-                            </Space>
-                        </Col>
-                    </Row>
-                )}
+                            ) : (
+                                <Empty
+                                    description="No logos uploaded yet"
+                                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                                />
+                            )}
+                        </div>
+                    </Col>
+                </Row>
             </Card>
 
-            {/* Logo Gallery */}
-            <Card 
-                className="glass-card" 
-                style={{ border: 'none' }}
-                title={
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span>Class Logo Gallery</span>
-                        {/* <Button
-                            type="primary"
-                            icon={<PlusOutlined />}
-                            onClick={() => setUploadModalOpen(true)}
-                        >
-                            Add Logo
-                        </Button> */}
-                    </div>
-                }
-            >
-                {logosLoading ? (
-                    <div style={{ textAlign: 'center', padding: 48 }}>
-                        <Spin size="large" />
-                    </div>
-                ) : logos.length === 0 ? (
-                    <Empty 
-                        description="No logos uploaded yet" 
-                        style={{ padding: 48 }}
-                        image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    >
-                        <Button 
-                            type="primary" 
-                            icon={<PlusOutlined />}
-                            onClick={() => setUploadModalOpen(true)}
-                        >
-                            Upload First Logo
-                        </Button>
-                    </Empty>
-                ) : (
+            {/* All Logos */}
+            {logos.length > 1 && (
+                <Card
+                    title="All Your Logos"
+                    style={{
+                        marginBottom: '24px',
+                        borderRadius: 12
+                    }}
+                >
                     <Row gutter={[16, 16]}>
-                        {logos.map((logo) => (
-                            <Col xs={12} sm={8} md={6} lg={4} key={logo.id}>
-                                <Card
-                                    hoverable
-                                    cover={
-                                        <div style={{ 
-                                            padding: 16, 
-                                            background: '#fafafa', 
-                                            height: 150, 
-                                            display: 'flex', 
-                                            alignItems: 'center', 
-                                            justifyContent: 'center' 
-                                        }}>
-                                            <Image
-                                                src={getUploadsUrl(logo.file_path)}
-                                                alt={logo.name}
-                                                style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
-                                                preview={{
-                                                    mask: 'View'
-                                                }}
-                                            />
-                                        </div>
-                                    }
-                                    style={{ borderRadius: 8 }}
-                                    bodyStyle={{ padding: 12 }}
+                        {logos.map(logo => (
+                            <Col xs={12} sm={6} md={6} key={logo.id}>
+                                <div style={{
+                                    textAlign: 'center',
+                                    padding: '16px',
+                                    border: '1px solid #f0f0f0',
+                                    borderRadius: '12px',
+                                    transition: '0.3s',
+                                    cursor: 'pointer'
+                                }}
+                                    onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                                    onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0px)'}
                                 >
-                                    <Tooltip title={logo.name}>
-                                        <Typography.Text strong ellipsis style={{ display: 'block', marginBottom: 8 }}>
+                                    <Image
+                                        src={getUploadsUrl(logo.file_path)}
+                                        alt={logo.name}
+                                        style={{
+                                            width: '80px',
+                                            height: '80px',
+                                            objectFit: 'cover',
+                                            borderRadius: '8px'
+                                        }}
+                                    />
+                                    <div style={{ marginTop: '12px' }}>
+                                        <Text strong style={{ fontSize: '12px', display: 'block' }}>
                                             {logo.name}
-                                        </Typography.Text>
-                                    </Tooltip>
-                                    {getStatusTag(logo.status)}
-                                </Card>
+                                        </Text>
+                                        <Tag
+                                            size="small"
+                                            color={STATUS_CONFIG[logo.status]?.color}
+                                            style={{ marginTop: '8px' }}
+                                        >
+                                            {STATUS_CONFIG[logo.status]?.label}
+                                        </Tag>
+                                    </div>
+                                </div>
                             </Col>
                         ))}
                     </Row>
-                )}
-            </Card>
+                </Card>
+            )}
 
-            {/* Upload Logo Modal */}
+            {/* Registration Link Modal */}
+            <Modal
+                title="Share This Link With Your Classmates"
+                open={linkModalOpen}
+                onCancel={() => setLinkModalOpen(false)}
+                footer={null}
+                width={600}
+            >
+                <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                    <Paragraph>
+                        Send this link to your classmates so they can register and order their graduation items:
+                    </Paragraph>
+                    <div style={{
+                        padding: '16px',
+                        background: '#f6f6f6',
+                        borderRadius: '8px',
+                        marginBottom: '16px',
+                        wordBreak: 'break-all'
+                    }}>
+                        <Text copyable={{ text: registrationLink }}>{registrationLink}</Text>
+                    </div>
+                    <Button
+                        type="primary"
+                        icon={<CopyOutlined />}
+                        onClick={copyLink}
+                        size="large"
+                    >
+                        Copy Link
+                    </Button>
+                </div>
+            </Modal>
+
+            {/* Upload Modal */}
             <Modal
                 title="Upload Class Logo"
                 open={uploadModalOpen}
                 onCancel={() => {
                     setUploadModalOpen(false);
-                    if (selectedLogoPreview) URL.revokeObjectURL(selectedLogoPreview);
-                    setSelectedLogoFile(null);
-                    setSelectedLogoPreview(null);
+                    setSelectedFile(null);
+                    setLogoName('');
                 }}
-                footer={[
-                    <Button 
-                        key="cancel" 
-                        onClick={() => {
-                            setUploadModalOpen(false);
-                            if (selectedLogoPreview) URL.revokeObjectURL(selectedLogoPreview);
-                            setSelectedLogoFile(null);
-                            setSelectedLogoPreview(null);
+                footer={null}
+                width={500}
+            >
+                <div style={{ padding: '20px 0' }}>
+                    {/* <div style={{ 
+                        background: '#f6ffed', 
+                        border: '1px solid #b7eb8f', 
+                        borderRadius: 6, 
+                        padding: 12, 
+                        marginBottom: 16 
+                    }}>
+                        <Typography.Text strong style={{ color: '#389e0d', display: 'block', marginBottom: 4 }}>
+                            📏 A3 Size Requirements
+                        </Typography.Text>
+                        <Typography.Text style={{ fontSize: 12, color: '#52c41a' }}>
+                            • Maximum: 4000 × 5600 pixels (A3 at 300 DPI)<br/>
+                            • Recommended: 2480 × 3508 pixels (A3 at 210 DPI)<br/>
+                            • How to check: Right-click image → Properties → Details<br/>
+                            • File size: Maximum 5MB
+                        </Typography.Text>
+                    </div> */}
+                    
+                    <Paragraph>
+                        Upload a high-quality image of your class logo. We'll review it and approve it for use on graduation items.
+                    </Paragraph>
+                    
+                    {/* Name Input */}
+                    <div style={{ marginBottom: 16 }}>
+                        <Typography.Text strong style={{ display: 'block', marginBottom: 8 }}>
+                            Logo Name *
+                        </Typography.Text>
+                        <Input
+                            placeholder="Enter logo name (e.g. School Logo 2025)"
+                            value={logoName}
+                            onChange={(e) => setLogoName(e.target.value)}
+                            maxLength={100}
+                            showCount
+                            disabled={uploading}
+                        />
+                    </div>
+                    
+                    <Dragger
+                        accept="image/*"
+                        beforeUpload={handleFileSelect}
+                        showUploadList={false}
+                        disabled={uploading}
+                        style={{
+                            borderColor: selectedFile ? '#52c41a' : '#d9d9d9',
+                            backgroundColor: selectedFile ? '#f6ffed' : '#fafafa'
                         }}
                     >
-                        Cancel
-                    </Button>,
-                    <Button
-                        key="upload"
-                        type="primary"
-                        loading={uploading}
-                        onClick={handleLogoUpload}
-                        disabled={!selectedLogoFile}
-                    >
-                        Upload Logo
-                    </Button>
-                ]}
-                destroyOnHidden
-            >
-                <Space direction="vertical" size="large" style={{ width: '100%' }}>
-                    <div>
-                        <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
-                            Select logo file (PNG, JPG up to 2MB)
-                        </Typography.Text>
+                        <p className="ant-upload-drag-icon">
+                            <UploadOutlined style={{ 
+                                fontSize: '48px', 
+                                color: selectedFile ? '#52c41a' : '#1890ff' 
+                            }} />
+                        </p>
+                        <p className="ant-upload-text" style={{
+                            color: selectedFile ? '#52c41a' : undefined,
+                            fontWeight: selectedFile ? 'bold' : 'normal'
+                        }}>
+                            {selectedFile ? '✓ File Selected - Click or drag to change' :
+                             'Click or drag image here to select'}
+                        </p>
+                        <p className="ant-upload-hint">
+                            Max: 5MB • JPG/PNG/GIF
+                        </p>
+                    </Dragger>
+                    
+                    {/* Upload Button and File Name */}
+                    <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
                         <Upload
-                            beforeUpload={handleLogoFileSelect}
-                            showUploadList={false}
                             accept="image/*"
+                            beforeUpload={handleFileSelect}
+                            showUploadList={false}
                             disabled={uploading}
                         >
-                            <Button
-                                type="dashed"
-                                icon={<InboxOutlined />}
-                                block
-                                size="large"
-                                style={{
-                                    height: 100,
-                                    borderStyle: 'dashed',
-                                    borderWidth: 2,
-                                    borderColor: selectedLogoFile ? '#00b96b' : '#d9d9d9'
-                                }}
+                            <Button 
+                                icon={<UploadOutlined />}
+                                disabled={uploading}
                             >
-                                {selectedLogoFile ? '✓ Logo Selected - Click to Change' : 'Click to Select Logo'}
+                                Choose File
                             </Button>
                         </Upload>
+                        {selectedFile && (
+                            <Text type="success" style={{ fontSize: 14 }}>
+                                📁 {selectedFile.name}
+                            </Text>
+                        )}
                     </div>
-
-                    {selectedLogoPreview && (
-                        <div>
-                            <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
-                                Preview
-                            </Typography.Text>
-                            <div style={{ 
-                                padding: 16, 
-                                background: '#fafafa', 
-                                borderRadius: 8, 
-                                textAlign: 'center',
-                                border: '1px solid #f0f0f0'
-                            }}>
-                                <img
-                                    src={selectedLogoPreview}
-                                    alt="Preview"
-                                    style={{ maxWidth: '100%', maxHeight: 200, objectFit: 'contain' }}
-                                />
-                            </div>
-                            <Typography.Text type="success" style={{ display: 'block', marginTop: 8, fontSize: 12 }}>
-                                ✓ {selectedLogoFile.name}
-                            </Typography.Text>
-                        </div>
-                    )}
-                </Space>
+                    
+                    {/* Manual Upload Button */}
+                    <div style={{ marginTop: 16, textAlign: 'center' }}>
+                        <Button
+                            type="primary"
+                            size="large"
+                            loading={uploading}
+                            onClick={handleManualUpload}
+                            disabled={!selectedFile || !logoName.trim()}
+                            style={{ minWidth: 120 }}
+                        >
+                            {uploading ? 'Uploading...' : 'Upload Logo'}
+                        </Button>
+                    </div>
+                </div>
             </Modal>
 
-            {/* Registration Link Modal */}
+            {/* Expected Students Modal */}
             <Modal
-                title="Registration Link for Students"
-                open={registrationLinkModalOpen}
-                onCancel={() => setRegistrationLinkModalOpen(false)}
-                footer={[
-                    <Button key="close" onClick={() => setRegistrationLinkModalOpen(false)}>
-                        Close
-                    </Button>,
-                    <Button 
-                        key="copy" 
-                        type="primary" 
-                        onClick={copyRegistrationLink} 
-                        disabled={!registrationLink}
-                    >
-                        Copy Link
-                    </Button>,
-                ]}
-                destroyOnHidden
+                title="How Many Students Are Expected?"
+                open={expectedStudentsModalOpen}
+                onOk={handleUpdateExpectedCount}
+                onCancel={() => setExpectedStudentsModalOpen(false)}
+                confirmLoading={updatingCount}
+                okText="Save"
             >
-                <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
-                    Share this link with students so they can register and join your class.
-                </Typography.Text>
-                <Input.TextArea
-                    readOnly
-                    value={registrationLink}
-                    rows={3}
-                    style={{ fontFamily: 'monospace', fontSize: 12 }}
-                />
+                <div style={{ padding: '20px 0' }}>
+                    <Paragraph>
+                        Tell us how many students you expect in your class. This helps us track registration progress.
+                    </Paragraph>
+                    <Input
+                        type="number"
+                        placeholder="Enter number of expected students"
+                        value={expectedCount}
+                        onChange={(e) => setExpectedCount(parseInt(e.target.value) || 0)}
+                        min={1}
+                        max={1000}
+                        size="large"
+                    />
+                    {studentCount ? (
+                        <div style={{ marginTop: '12px' }}>
+                            <Text type="secondary">
+                                Currently registered: {studentCount.registered_students || 0} students
+                            </Text>
+                        </div>
+                    ) : (
+                        <div style={{ marginTop: '12px' }}>
+                            <Text type="secondary">
+                                Loading current registration count...
+                            </Text>
+                        </div>
+                    )}
+                </div>
             </Modal>
 
             {/* Study Trip Modal */}
             <Modal
-                title="Study Trip Country"
+                title="Select Study Trip Country"
                 open={studyTripModalOpen}
+                onOk={handleSetStudyTripCountry}
                 onCancel={() => setStudyTripModalOpen(false)}
-                footer={[
-                    <Button key="close" type="primary" loading={settingCountry} onClick={handleSaveStudyTripCountry}>Done</Button>
-                ]}
-                destroyOnHidden
+                confirmLoading={settingCountry}
+                okText="Save Country"
+                width={500}
             >
-                <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
-                    Select the country your class is visiting. Only library designs for this country will be shown.
-                </Typography.Text>
-                <Select
-                    placeholder="Select study trip country"
-                    style={{ width: '100%' }}
-                    value={selectedCountryTemp}
-                    onChange={(value) => setSelectedCountryTemp(value)}
-                    allowClear
-                    showSearch
-                    optionFilterProp="label"
-                    options={studyTripCountries.map(c => ({ value: c.id, label: c.name }))}
-                />
-            </Modal>
+                <div style={{ padding: '20px 0' }}>
+                    <Paragraph>
+                        Choose the country for your class study trip. This will be used for graduation designs and planning.
+                    </Paragraph>
 
-            {/* Back Design Selection Modal */}
-            <Modal
-                title="Select Design Template"
-                open={backDesignModalOpen}
-                onCancel={() => {
-                    setBackDesignModalOpen(false);
-                    setSelectedTemplate(null);
-                }}
-                footer={[
-                    <Button 
-                        key="cancel" 
-                        onClick={() => {
-                            setBackDesignModalOpen(false);
-                            setSelectedTemplate(null);
-                        }}
-                    >
-                        Cancel
-                    </Button>,
-                    <Button
-                        key="select"
-                        type="primary"
-                        loading={selectingDesign}
-                        onClick={handleSelectBackDesign}
-                        disabled={!selectedTemplate}
-                    >
-                        Select Design
-                    </Button>
-                ]}
-                width={800}
-                destroyOnHidden
-            >
-                {templatesLoading ? (
-                    <div style={{ textAlign: 'center', padding: 48 }}>
-                        <Spin size="large" />
-                    </div>
-                ) : templates.length === 0 ? (
-                    <Empty 
-                        description="No templates available" 
-                        style={{ padding: 48 }}
-                        image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    />
-                ) : (
-                    <Row gutter={[16, 16]}>
-                        {templates.map((template) => (
-                            <Col xs={12} sm={8} md={6} key={template.id}>
-                                <Card
-                                    hoverable
-                                    onClick={() => setSelectedTemplate(template.id)}
-                                    style={{
-                                        borderRadius: 8,
-                                        border: selectedTemplate === template.id ? '2px solid #00b96b' : '1px solid #f0f0f0',
-                                        cursor: 'pointer'
-                                    }}
-                                    cover={
-                                        <div style={{ 
-                                            padding: 16, 
-                                            background: '#fafafa', 
-                                            height: 150, 
-                                            display: 'flex', 
-                                            alignItems: 'center', 
-                                            justifyContent: 'center' 
-                                        }}>
-                                            <Image
-                                                src={getUploadsUrl(template.file_path)}
-                                                alt={template.name}
-                                                style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
-                                                preview={{
-                                                    mask: 'View'
-                                                }}
-                                            />
+                    {studyTripCountries.length > 0 ? (
+                        <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                            <Space direction="vertical" style={{ width: '100%' }}>
+                                {studyTripCountries.map(country => (
+                                    <Card
+                                        key={country.id}
+                                        size="small"
+                                        hoverable
+                                        onClick={() => setSelectedCountry(country.id)}
+                                        style={{
+                                            border: selectedCountry === country.id ? '2px solid #1890ff' : '1px solid #f0f0f0',
+                                            backgroundColor: selectedCountry === country.id ? '#f6ffed' : 'white'
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                            <span style={{ fontSize: '24px' }}>{country.flag || '🌍'}</span>
+                                            <div>
+                                                <Text strong>{country.name}</Text>
+                                                {selectedCountry === country.id && (
+                                                    <div>
+                                                        <CheckCircleOutlined style={{ color: '#52c41a', marginLeft: '8px' }} />
+                                                        <Text type="success" style={{ marginLeft: '4px' }}>Selected</Text>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
-                                    }
-                                    bodyStyle={{ padding: 12 }}
-                                >
-                                    <Tooltip title={template.name}>
-                                        <Typography.Text strong ellipsis style={{ display: 'block' }}>
-                                            {template.name}
-                                        </Typography.Text>
-                                    </Tooltip>
-                                    {selectedTemplate === template.id && (
-                                        <CheckCircleOutlined style={{ color: '#00b96b', fontSize: 20, position: 'absolute', top: 8, right: 8 }} />
-                                    )}
-                                </Card>
-                            </Col>
-                        ))}
-                    </Row>
-                )}
+                                    </Card>
+                                ))}
+                            </Space>
+                        </div>
+                    ) : (
+                        <Empty
+                            description="No countries available"
+                            image={Empty.PRESENTED_IMAGE_SIMPLE}
+                        />
+                    )}
+                </div>
             </Modal>
         </div>
     );
 };
 
-export default MyClassPage;
+export default MyClassPageSimple;

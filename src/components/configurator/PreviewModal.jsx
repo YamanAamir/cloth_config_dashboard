@@ -170,9 +170,13 @@ const PreviewModal = ({ open, onClose, canvasRef, designColor = 'white' }) => {
 
         setSending(true);
         const scale = 3;
-        const diffuse = exportHighResCanvas(canvas, scale);
-        const opacity = createOpacityTexture(canvas, scale);
-        const emissive = createEmissiveTexture(canvas, scale);
+        
+        // Use export canvas with white background if available
+        const exportCanvas = canvas.getExportCanvas ? canvas.getExportCanvas() : canvas;
+        
+        const diffuse = exportHighResCanvas(exportCanvas, scale);
+        const opacity = createOpacityTexture(exportCanvas, scale);
+        const emissive = createEmissiveTexture(exportCanvas, scale);
 
         // FIXED MAPPING
         sendToIframe(`${g.prefix}:back_diffuse: ${diffuse}`);

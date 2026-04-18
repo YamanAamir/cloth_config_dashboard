@@ -514,7 +514,7 @@ const PropertiesPanel = ({ selectedElement, onUpdate, onDelete }) => {
                                             fontSize: 11, 
                                             padding: 20 
                                         }}>
-                                            ❌ Image failed to load. Check URL.
+                                            Image failed to load. Check URL.
                                         </div>
                                     </div>
                                 </div>

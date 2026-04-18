@@ -12,6 +12,7 @@ import {
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { sidebarMenus } from '../api/api';
+import NotificationBell from '../components/NotificationBell';
 
 const { Header, Sider, Content } = Layout;
 
@@ -156,17 +157,20 @@ const MainLayout = () => {
                         onClick={() => setCollapsed(!collapsed)}
                         style={{ fontSize: '16px', width: 64, height: 64 }}
                     />
-                    <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-                        <Space style={{ cursor: 'pointer' }}>
-                            <Avatar style={{ backgroundColor: '#00b96b' }} icon={<UserOutlined />} />
-                            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
-                                <span style={{ fontWeight: 600 }}>{user?.name || 'User'}</span>
-                                <Tag color="cyan" style={{ fontSize: '10px', margin: 0, border: 'none' }}>
-                                    {user?.role?.replace(/_/g, ' ').toUpperCase() || 'NO ROLE'}
-                                </Tag>
-                            </div>
-                        </Space>
-                    </Dropdown>
+                    <Space>
+                        <NotificationBell />
+                        <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
+                            <Space style={{ cursor: 'pointer' }}>
+                                <Avatar style={{ backgroundColor: '#00b96b' }} icon={<UserOutlined />} />
+                                <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
+                                    <span style={{ fontWeight: 600 }}>{user?.name || 'User'}</span>
+                                    <Tag color="cyan" style={{ fontSize: '10px', margin: 0, border: 'none' }}>
+                                        {user?.role?.replace(/_/g, ' ').toUpperCase() || 'NO ROLE'}
+                                    </Tag>
+                                </div>
+                            </Space>
+                        </Dropdown>
+                    </Space>
                 </Header>
 
                 <Content style={{ margin: '24px', minHeight: 280, borderRadius: borderRadiusLG, overflow: 'initial' }}>

@@ -35,6 +35,13 @@ export const deleteClass = (id) => api.delete(`/admin/class/${id}/delete`);
 export const toggleClassStatus = (id, data) => api.patch(`/admin/class/${id}/toggle-status`, data);
 export const assignClassRep = (data) => api.post('/admin/class/assign-rep', data);
 
+// Student Count APIs
+export const setExpectedStudentCount = (classId, data) => api.put(`/admin/class/${classId}/expected-students`, data);
+export const getClassStudentCount = (classId) => api.get(`/admin/class/${classId}/student-count`);
+export const setClassRepExpectedStudentCount = (classId, data) => api.put(`/class-rep/class/${classId}/expected-students`, data);
+export const getClassRepStudentCount = (classId) => api.get(`/class-rep/class/${classId}/student-count`);
+export const getAllClassesWithStudentCount = (params = {}) => api.post('/admin/classes-with-student-count', params);
+
 // Logo & Design APIs (admin)
 export const getAllLogos = (params = {}) => api.post('/admin/logos', params);
 export const approveLogo = (logoId, body = {}) => api.put(`/admin/approve-logo/${logoId}`, body);
@@ -121,6 +128,11 @@ export const unlockClass = (classId) => api.put(`/admin/unlock-class/${classId}`
 export const sendDeadlineReminder = (classId) => api.post(`/admin/class/${classId}/send-deadline-reminder`);
 export const sendStatusEmail = (classId) => api.post(`/admin/class/${classId}/send-status-email`);
 export const sendFollowupEmail = (classId) => api.post(`/admin/class/${classId}/send-followup-email`);
+
+// Notification settings
+export const getNotificationSettings = () => api.get('/admin/notification-settings');
+export const updateNotificationSettings = (settings) => api.put('/admin/notification-settings', settings);
+export const testNotificationEmail = (email) => api.post('/admin/test-notification-email', { email });
 export const updateClassProcessStatus = (classId, data) => api.put(`/admin/class/${classId}/process-status`, data);
 export const generateProductionFiles = (classId) => api.post(`/admin/generate-files/${classId}`);
 export const getProductionPackages = () => api.post('/admin/production-packages');

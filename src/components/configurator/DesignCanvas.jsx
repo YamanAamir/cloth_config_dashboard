@@ -33,13 +33,71 @@ const DesignCanvas = ({
         img.src = imagePreview;
     }, [imagePreview]);
 
+    // Function to get canvas with white background for export/preview
+    const getExportCanvas = () => {
+        if (!canvasRef.current) return null;
+        
+        const originalCanvas = canvasRef.current;
+        const exportCanvas = document.createElement('canvas');
+        exportCanvas.width = 800;
+        exportCanvas.height = 800;
+        const ctx = exportCanvas.getContext('2d');
+        
+        // Always white background for export
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, 800, 800);
+        
+        // Draw image if exists
+        if (imgRef.current) {
+            ctx.drawImage(imgRef.current, layout.x, layout.y, layout.w, layout.h);
+        }
+
+        // Draw text elements
+        textElements.forEach(el => {
+            ctx.save();
+            ctx.translate(el.x, el.y);
+            ctx.rotate((el.rotation * Math.PI) / 180);
+            ctx.font = `${el.fontSize}px ${el.fontFamily}`;
+            ctx.fillStyle = getTextColor(designColor);
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(el.text, 0, 0);
+            ctx.restore();
+        });
+
+        // Draw selection handles if needed
+        if (imgSelected && imgRef.current) {
+            ctx.strokeStyle = '#00b96b';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([6, 3]);
+            ctx.strokeRect(layout.x, layout.y, layout.w, layout.h);
+            ctx.setLineDash([]);
+            const corners = getCorners(layout);
+            corners.forEach(([cx, cy]) => {
+                ctx.fillStyle = '#00b96b';
+                ctx.fillRect(cx - HANDLE_SIZE / 2, cy - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE);
+            });
+        }
+        
+        return exportCanvas;
+    };
+
+    // Expose export function via window or component prop
+    React.useEffect(() => {
+        if (canvasRef.current) {
+            canvasRef.current.getExportCanvas = getExportCanvas;
+        }
+    }, [textElements, designColor, imageLayout, imgSelected]);
+
     const redraw = () => {
         if (!canvasRef.current) return;
         const canvas = canvasRef.current;
         const ctx = canvas.getContext('2d');
         canvas.width = 800;
         canvas.height = 800;
-        ctx.fillStyle = '#ffffff';
+        
+        // For display: grey background when white text, white when black text
+        ctx.fillStyle = designColor === 'black' ? '#e8e8e8' : '#ffffff';
         ctx.fillRect(0, 0, 800, 800);
 
         if (imgRef.current) {

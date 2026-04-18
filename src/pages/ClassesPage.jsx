@@ -12,6 +12,7 @@ import {
     updateClassProcessStatus, sendDeadlineReminder
 } from '../api/api';
 import { Status, getUploadsUrl } from '../utils/constants';
+import AdminStudentCountModal from '../components/AdminStudentCountModal';
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -44,6 +45,10 @@ const ClassesPage = () => {
     const [viewingClass, setViewingClass] = useState(null);
     const [viewBackDesign, setViewBackDesign] = useState(null);
     const [loadingViewDesign, setLoadingViewDesign] = useState(false);
+    
+    // Student Count Modal
+    const [studentCountModalOpen, setStudentCountModalOpen] = useState(false);
+    const [selectedClassForCount, setSelectedClassForCount] = useState(null);
     
     const [pagination, setPagination] = useState({
         current: 1,
@@ -439,6 +444,15 @@ const ClassesPage = () => {
                                 setViewBackDesign(res.data?.data);
                             } catch { /* no design */ }
                             finally { setLoadingViewDesign(false); }
+                        }
+                    },
+                    {
+                        key: 'student-count',
+                        label: 'Student Count',
+                        icon: <TeamOutlined style={{ color: '#52c41a' }} />,
+                        onClick: () => {
+                            setSelectedClassForCount(record);
+                            setStudentCountModalOpen(true);
                         }
                     },
                     {
@@ -891,6 +905,17 @@ const ClassesPage = () => {
                     </Space>
                 )}
             </Drawer>
+
+            {/* Student Count Modal */}
+            <AdminStudentCountModal
+                open={studentCountModalOpen}
+                onCancel={() => {
+                    setStudentCountModalOpen(false);
+                    setSelectedClassForCount(null);
+                }}
+                classId={selectedClassForCount?.id}
+                className={selectedClassForCount?.name}
+            />
         </div>
     );
 };
