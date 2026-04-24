@@ -5,12 +5,15 @@ import {
 } from 'antd';
 import {
     PlusOutlined, SendOutlined, EditOutlined, DeleteOutlined,
-    MailOutlined, EyeOutlined, TeamOutlined, GlobalOutlined
+    MailOutlined, EyeOutlined, TeamOutlined, GlobalOutlined,
+    UserAddOutlined, FileTextOutlined, ShoppingCartOutlined,
+    ClockCircleOutlined, BellOutlined
 } from '@ant-design/icons';
 import {
     getCampaigns, createCampaign, updateCampaign,
-    deleteCampaign, sendCampaign, getAllClasses, getAllSchools, getTemplates
+    deleteCampaign, sendCampaign, getAllClasses, getAllSchools, getEmailTemplates
 } from '../api/api';
+import { TEMPLATE_CATEGORIES } from '../utils/constants';
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
@@ -100,13 +103,15 @@ const CampaignPage = () => {
     const [sending, setSending] = useState(null);
     const [classes, setClasses] = useState([]);
     const [schools, setSchools] = useState([]);
-    const [dbTemplates, setDbTemplates] = useState([]);
+    const [automatedTemplates, setAutomatedTemplates] = useState({});
+    const [selectedTemplate, setSelectedTemplate] = useState(null);
     const [form] = Form.useForm();
     const targetType = Form.useWatch('target_type', form);
 
     useEffect(() => {
         fetchCampaigns();
         fetchTargets();
+        loadAutomatedTemplates();
     }, []);
 
     const fetchCampaigns = async () => {
@@ -120,19 +125,53 @@ const CampaignPage = () => {
 
     const fetchTargets = async () => {
         try {
-            const [classRes, schoolRes, tplRes] = await Promise.all([
+            const [classRes, schoolRes] = await Promise.all([
                 getAllClasses({ limit: 200 }),
-                getAllSchools({ limit: 200 }),
-                getTemplates(),
+                getAllSchools({ limit: 200 })
             ]);
             setClasses(classRes.data?.data || []);
             setSchools(schoolRes.data?.data || []);
-            setDbTemplates(tplRes.data?.data || tplRes.data || []);
         } catch { /* silent */ }
+    };
+
+    const loadAutomatedTemplates = async () => {
+        try {
+            // Load all templates (not just automated since your templates have is_automated: false)
+            const response = await getEmailTemplates();
+            
+            // Handle different response structures
+            let templates = [];
+            if (response.data) {
+                if (Array.isArray(response.data)) {
+                    templates = response.data;
+                } else if (response.data.templates && Array.isArray(response.data.templates)) {
+                    templates = response.data.templates;
+                } else if (response.data.data && Array.isArray(response.data.data)) {
+                    templates = response.data.data;
+                }
+            }
+
+            // Group templates by category
+            const groupedTemplates = {};
+            Object.keys(TEMPLATE_CATEGORIES).forEach(categoryKey => {
+                groupedTemplates[categoryKey] = templates.filter(t => t.category === categoryKey);
+            });
+
+            setAutomatedTemplates(groupedTemplates);
+        } catch (error) {
+            console.error('Failed to load automated templates:', error);
+            // Fallback to empty structure for development
+            const emptyTemplates = {};
+            Object.keys(TEMPLATE_CATEGORIES).forEach(categoryKey => {
+                emptyTemplates[categoryKey] = [];
+            });
+            setAutomatedTemplates(emptyTemplates);
+        }
     };
 
     const openCreate = () => {
         setEditingId(null);
+        setSelectedTemplate(null);
         form.resetFields();
         form.setFieldsValue({ target_type: 'all' });
         setModalOpen(true);
@@ -140,6 +179,7 @@ const CampaignPage = () => {
 
     const openEdit = (record) => {
         setEditingId(record.id);
+        setSelectedTemplate(null);
         form.setFieldsValue({
             title: record.title,
             subject: record.subject,
@@ -150,29 +190,65 @@ const CampaignPage = () => {
         setModalOpen(true);
     };
 
-    const applyTemplate = (tplKey) => {
+    const applyTemplate = (templateId) => {
+        if (!templateId) {
+            setSelectedTemplate(null);
+            return;
+        }
+
         // Check local templates first
-        const local = EMAIL_TEMPLATES.find(t => t.key === tplKey);
-        if (local) { form.setFieldsValue({ subject: local.subject, body: local.body }); return; }
-        // Check DB templates
-        const db = dbTemplates.find(t => String(t.id) === String(tplKey));
-        if (db) { form.setFieldsValue({ subject: db.subject, body: db.html_body || db.body }); }
+        const local = EMAIL_TEMPLATES.find(t => t.key === templateId);
+        if (local) { 
+            form.setFieldsValue({ subject: local.subject, body: local.body });
+            setSelectedTemplate(local);
+            return; 
+        }
+
+        // Check automated templates from all categories
+        let foundTemplate = null;
+        Object.values(automatedTemplates).forEach(categoryTemplates => {
+            const template = categoryTemplates.find(t => String(t.id) === String(templateId));
+            if (template) {
+                foundTemplate = template;
+            }
+        });
+
+        if (foundTemplate) {
+            form.setFieldsValue({ 
+                subject: foundTemplate.subject, 
+                body: foundTemplate.html_body || foundTemplate.body 
+            });
+            setSelectedTemplate(foundTemplate);
+        }
     };
 
     const handleSave = async () => {
         try {
             const values = await form.validateFields();
+            
+            // Include template information if selected
+            const campaignData = {
+                ...values,
+                template_id: selectedTemplate?.id || null,
+                template_name: selectedTemplate?.name || selectedTemplate?.label || null
+            };
+            
             if (editingId) {
-                await updateCampaign(editingId, values);
-                message.success('Campaign updated');
+                await updateCampaign(editingId, campaignData);
+                message.success('Campaign updated successfully');
             } else {
-                await createCampaign(values);
-                message.success('Campaign created');
+                await createCampaign(campaignData);
+                message.success('Campaign created successfully');
             }
             setModalOpen(false);
+            setSelectedTemplate(null);
             fetchCampaigns();
         } catch (err) {
-            if (err?.response?.data?.message) message.error(err.response.data.message);
+            if (err?.response?.data?.message) {
+                message.error(err.response.data.message);
+            } else {
+                message.error('Failed to save campaign');
+            }
         }
     };
 
@@ -212,6 +288,16 @@ const CampaignPage = () => {
             dataIndex: 'subject',
             key: 'subject',
             ellipsis: true,
+        },
+        {
+            title: 'Template',
+            dataIndex: 'template_name',
+            key: 'template_name',
+            render: (templateName) => templateName ? (
+                <Tag color="blue">{templateName}</Tag>
+            ) : (
+                <Tag color="default">Custom</Tag>
+            ),
         },
         {
             title: 'Target',
@@ -281,7 +367,7 @@ const CampaignPage = () => {
                 <div>
                     <Title level={4} style={{ margin: 0 }}>Email Campaigns</Title>
                     <Text type="secondary">
-                        Use clothing purchase data to market graduation caps to students and class representatives.
+                        Create targeted email campaigns using pre-designed automated templates or custom content.
                     </Text>
                 </div>
                 <Button type="primary" icon={<PlusOutlined />} onClick={openCreate} size="large">
@@ -324,28 +410,81 @@ const CampaignPage = () => {
                         <Input placeholder="e.g. Graduation Caps Launch 2025" />
                     </Form.Item>
 
-                    <Form.Item label="Start from Template">
+                    <Form.Item label="Select Email Template">
                         <Select
-                            placeholder="Choose a template to pre-fill subject & body"
+                            placeholder="Choose from pre-designed automated templates"
                             onChange={applyTemplate}
                             allowClear
+                            showSearch
+                            optionFilterProp="children"
                         >
-                            {dbTemplates.length > 0 && (
-                                <Select.OptGroup label="Saved Templates">
-                                    {dbTemplates.map(t => (
-                                        <Select.Option key={String(t.id)} value={String(t.id)}>
-                                            {t.name}
-                                        </Select.Option>
-                                    ))}
-                                </Select.OptGroup>
-                            )}
+                            {/* Automated Templates by Category */}
+                            {Object.entries(TEMPLATE_CATEGORIES).map(([categoryKey, categoryInfo]) => {
+                                const categoryTemplates = automatedTemplates[categoryKey] || [];
+                                if (categoryTemplates.length === 0) return null;
+                                
+                                return (
+                                    <Select.OptGroup 
+                                        key={categoryKey}
+                                        label={
+                                            <span style={{ color: categoryInfo.color, fontWeight: 'bold' }}>
+                                                {categoryInfo.label} ({categoryTemplates.length})
+                                            </span>
+                                        }
+                                    >
+                                        {categoryTemplates.map(template => (
+                                            <Select.Option key={String(template.id)} value={String(template.id)}>
+                                                <div>
+                                                    <div style={{ fontWeight: 500 }}>{template.name}</div>
+                                                    <div style={{ fontSize: '12px', color: '#999' }}>
+                                                        {template.subject}
+                                                    </div>
+                                                </div>
+                                            </Select.Option>
+                                        ))}
+                                    </Select.OptGroup>
+                                );
+                            })}
+                            
+                            {/* Built-in Templates */}
                             <Select.OptGroup label="Built-in Templates">
                                 {EMAIL_TEMPLATES.map(t => (
-                                    <Select.Option key={t.key} value={t.key}>{t.label}</Select.Option>
+                                    <Select.Option key={t.key} value={t.key}>
+                                        <div>
+                                            <div style={{ fontWeight: 500 }}>{t.label}</div>
+                                            <div style={{ fontSize: '12px', color: '#999' }}>
+                                                {t.subject || 'Custom template'}
+                                            </div>
+                                        </div>
+                                    </Select.Option>
                                 ))}
                             </Select.OptGroup>
                         </Select>
                     </Form.Item>
+
+                    {/* Template Preview */}
+                    {selectedTemplate && (
+                        <Alert
+                            message={`Selected: ${selectedTemplate.name || selectedTemplate.label}`}
+                            description={
+                                <div>
+                                    <div><strong>Subject:</strong> {selectedTemplate.subject}</div>
+                                    <div style={{ marginTop: '8px' }}>
+                                        <Button 
+                                            size="small" 
+                                            icon={<EyeOutlined />}
+                                            onClick={() => handlePreview(selectedTemplate.html_body || selectedTemplate.body)}
+                                        >
+                                            Preview Template
+                                        </Button>
+                                    </div>
+                                </div>
+                            }
+                            type="info"
+                            showIcon
+                            style={{ marginBottom: 16 }}
+                        />
+                    )}
 
                     <Form.Item label="Email Subject" name="subject" rules={[{ required: true }]}>
                         <Input placeholder="Subject line..." />

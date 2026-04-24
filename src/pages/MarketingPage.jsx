@@ -82,16 +82,23 @@ const MarketingPage = () => {
         setLoading(true);
         try {
             const [tRes, cRes, sRes, clRes] = await Promise.all([
-                getTemplates(), getCampaigns(),
+                getTemplates(),
+                getCampaigns(),
                 getAllSchools({ limit: 100 }),
                 getAllClasses({ limit: 100 })
             ]);
-            setTemplates(tRes.data.data || []);
-            setCampaigns(cRes.data.data || []);
-            setSchools(sRes.data.data || []);
-            setClasses(clRes.data.data || []);
-        } catch { message.error('Failed to load marketing data'); }
-        finally { setLoading(false); }
+
+            setTemplates(tRes?.data?.data?.templates || []);
+            setCampaigns(cRes?.data?.data || []);
+            setSchools(sRes?.data?.data || []);
+            setClasses(clRes?.data?.data || []);
+
+        } catch (error) {
+            console.error('Failed to load marketing data:', error);
+            message.error('Failed to load marketing data');
+        } finally {
+            setLoading(false);
+        }
     };
 
     useEffect(() => { fetchAll(); }, []);
@@ -338,7 +345,7 @@ const MarketingPage = () => {
                     },
                     {
                         key: 'templates',
-                        label: <span><FileTextOutlined /> Templates ({templates.length})</span>,
+                        label: <span><FileTextOutlined /> Templates ({Array.isArray(templates) ? templates.length : 0})</span>,
                         children: (
                             <Card className="glass-card" style={{ border: 'none' }}>
                                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
@@ -368,9 +375,9 @@ const MarketingPage = () => {
                     <Form.Item name="template_id" label="Email Template" rules={[{ required: true, message: 'Select a template' }]}>
                         <Select
                             placeholder="Select a template"
-                            options={templates.map(t => ({ value: t.id, label: `${t.name} — ${t.category}` }))}
+                            options={Array.isArray(templates) ? templates.map(t => ({ value: t.id, label: `${t.name} — ${t.category}` })) : []}
                             onChange={(id) => {
-                                if (id) {
+                                if (id && Array.isArray(templates)) {
                                     const tpl = templates.find(t => t.id === id);
                                     if (tpl) campaignForm.setFieldsValue({ subject: tpl.subject });
                                 }

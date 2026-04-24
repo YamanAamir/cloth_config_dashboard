@@ -137,18 +137,32 @@ export const updateClassProcessStatus = (classId, data) => api.put(`/admin/class
 export const generateProductionFiles = (classId) => api.post(`/admin/generate-files/${classId}`);
 export const getProductionPackages = () => api.post('/admin/production-packages');
 
-// Campaign APIs (Admin)
-export const getCampaigns = (params = {}) => api.get('/campaign/list', { params });
-export const getCampaign = (id) => api.get(`/campaign/${id}`);
-export const createCampaign = (data) => api.post('/campaign/create', data);
-export const updateCampaign = (id, data) => api.put(`/campaign/${id}/update`, data);
-export const deleteCampaign = (id) => api.delete(`/campaign/${id}/delete`);
-export const sendCampaign = (id) => api.post(`/campaign/${id}/send`);
-export const getCampaignTargets = () => api.get('/campaign/targets');
+// Email Template APIs (Admin) - CORRECTED
+export const getEmailTemplates = (params = {}) => api.get('/templates/list', { params });
+export const getEmailTemplate = (id) => api.get(`/templates/${id}`);
+export const createEmailTemplate = (data) => api.post('/templates/create', data);
+export const updateEmailTemplate = (id, data) => api.put(`/templates/${id}/update`, data);
+export const deleteEmailTemplate = (id) => api.delete(`/templates/${id}/delete`);
+export const toggleEmailTemplateStatus = (id, data) => api.patch(`/templates/${id}/toggle-status`, data);
 
-// Email Template APIs (Admin)
-export const getTemplates = (params = {}) => api.get('/template/list', { params });
-export const getTemplate = (id) => api.get(`/template/${id}`);
-export const createTemplate = (data) => api.post('/template/create', data);
-export const updateTemplate = (id, data) => api.put(`/template/${id}/update`, data);
-export const deleteTemplate = (id) => api.delete(`/template/${id}/delete`);
+// Email Automation APIs - CORRECTED
+export const getAutomationTemplates = (params = {}) => api.get('/templates/automation/list', { params });
+export const updateEmailAutomation = (templateId, data) => api.put(`/templates/${templateId}/automation`, data);
+export const sendTestEmail = (templateId, data) => api.post(`/templates/${templateId}/test-send`, data);
+export const getTemplateCategories = (params = {}) => api.get('/templates/categories/stats', { params });
+
+// Campaign APIs (Admin) - CORRECTED
+export const getCampaigns = (params = {}) => api.get('/campaigns/list', { params });
+export const getCampaign = (id) => api.get(`/campaigns/${id}`);
+export const createCampaign = (data) => api.post('/campaigns/create', data);
+export const updateCampaign = (id, data) => api.put(`/campaigns/${id}/update`, data);
+export const deleteCampaign = (id) => api.delete(`/campaigns/${id}/delete`);
+export const sendCampaign = (id, data) => api.post(`/campaigns/${id}/send`, data);
+export const sendCampaignToUser = (id, data) => api.post(`/campaigns/${id}/send-to-user`, data);
+
+// Legacy Template APIs (for backward compatibility)
+export const getTemplates = (params = {}) => api.get('/templates/list', { params });
+export const getTemplate = (id) => api.get(`/templates/${id}`);
+export const createTemplate = (data) => api.post('/templates/create', data);
+export const updateTemplate = (id, data) => api.put(`/templates/${id}/update`, data);
+export const deleteTemplate = (id) => api.delete(`/templates/${id}/delete`);

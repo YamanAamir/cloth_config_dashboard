@@ -31,6 +31,8 @@ import MarketingPage from './pages/MarketingPage';
 import TemplateEditorPage from './pages/TemplateEditorPage';
 import CampaignPage from './pages/CampaignPage';
 import CreateTemplatePage from './pages/CreateTemplatePage';
+import AutomatedEmailsPage from './pages/AutomatedEmailsPage';
+import EmailsPage from './pages/EmailsPage';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
@@ -211,25 +213,22 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         />
+        {/* ── Unified Emails Page (replaces email-template + automated-emails + campaigns) ── */}
         <Route
-          path="email-template"
+          path="emails"
           element={
             <ProtectedRoute allowedRoles={[Role.ADMIN]}>
-              <CreateTemplatePage />
+              <EmailsPage />
             </ProtectedRoute>
           }
         />
-        <Route
-          path="campaigns"
-          element={
-            <ProtectedRoute allowedRoles={[Role.ADMIN]}>
-              <MarketingPage />
-            </ProtectedRoute>
-          }
-        />
+        {/* Legacy redirects so old bookmarks don't break */}
+        <Route path="email-template"    element={<Navigate to="/emails" replace />} />
+        <Route path="automated-emails" element={<Navigate to="/emails" replace />} />
+        <Route path="campaigns"         element={<Navigate to="/emails" replace />} />
         <Route path="fonts" element={<ProtectedRoute allowedRoles={[Role.ADMIN]}><FontsPage /></ProtectedRoute>} />
         <Route path="settings" element={<ProtectedRoute allowedRoles={[Role.ADMIN]}><SettingsPage /></ProtectedRoute>} />
-        <Route path="marketing" element={<ProtectedRoute allowedRoles={[Role.ADMIN]}><MarketingPage /></ProtectedRoute>} />
+        <Route path="marketing" element={<Navigate to="/emails" replace />} />
         <Route path="template-editor" element={<ProtectedRoute allowedRoles={[Role.ADMIN]}><TemplateEditorPage /></ProtectedRoute>} />
       </Route>
 
