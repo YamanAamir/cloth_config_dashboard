@@ -108,6 +108,7 @@ export const getAllCountries = (params = {}) => api.post('/admin/countries', par
 export const createCountry = (data) => api.post('/admin/country/create', data);
 export const updateCountry = (id, data) => api.put(`/admin/country/${id}/update`, data);
 export const deleteCountry = (id) => api.delete(`/admin/country/${id}/delete`);
+export const toggleCountryStatus = (id) => api.put(`/admin/country/${id}/toggle-status`);
 export const permanentDeleteCountry = (id) => api.delete(`/admin/country/${id}/permanent-delete`, { data: { confirm: "DELETE" } });
 
 // Library Design APIs (Admin)

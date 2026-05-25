@@ -161,7 +161,7 @@ const BackDesignConfiguratorPage = () => {
     const fetchCountries = async () => {
         try {
             const res = await getStudyTripCountries();
-            setCountries(res.data.data || []);
+            setCountries(res.data.data.filter(c => c.status === 0) || []);
         } catch { /* silent */ }
     };
 

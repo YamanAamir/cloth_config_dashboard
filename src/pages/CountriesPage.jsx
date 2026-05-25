@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import {
     Table, Button, Card, Typography, Space, Modal,
-    Form, Input, message, Popconfirm, Upload, Image, Empty, Select, Tag
+    Form, Input, message, Popconfirm, Upload, Image, Empty, Select, Tag,
+    Switch
 } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, InboxOutlined } from '@ant-design/icons';
 import {
     getAllCountries, createCountry, updateCountry, deleteCountry, permanentDeleteCountry,
-    uploadLibraryDesign, getLibraryDesigns, deleteLibraryDesign
+    uploadLibraryDesign, getLibraryDesigns, deleteLibraryDesign, toggleCountryStatus
 } from '../api/api';
 import { getUploadsUrl } from '../utils/constants';
 
@@ -74,6 +75,16 @@ const CountriesPage = () => {
         }
     };
 
+    const handleToggleStatus = async (id) => {
+        try {
+            await toggleCountryStatus(id);
+            message.success('Country status updated');
+            fetchCountries();
+        } catch (error) {
+            message.error(error.response?.data?.message || 'Status update failed');
+        }
+    };
+
     const handleDelete = async (id) => {
         try {
             await deleteCountry(id);
@@ -92,7 +103,7 @@ const CountriesPage = () => {
                     </Typography.Text>
                     <br />
                     <Typography.Text>
-                        This will permanently remove "{name}" and all associated data from the system. 
+                        This will permanently remove "{name}" and all associated data from the system.
                         This action is irreversible.
                     </Typography.Text>
                 </div>
@@ -122,7 +133,7 @@ const CountriesPage = () => {
                     </Typography.Text>
                     <br />
                     <Typography.Text>
-                        This will permanently remove "{designName}" from the library. 
+                        This will permanently remove "{designName}" from the library.
                         This action is irreversible.
                     </Typography.Text>
                 </div>
@@ -134,15 +145,15 @@ const CountriesPage = () => {
                 try {
                     await deleteLibraryDesign(designId);
                     message.success('Library design deleted');
-                    
+
                     // Ensure the country row stays expanded
                     if (!expandedRows.includes(countryId)) {
                         setExpandedRows(prev => [...prev, countryId]);
                     }
-                    
+
                     // Force refetch the designs for this specific country
                     await fetchDesignsForCountry(countryId, true);
-                    
+
                 } catch (error) {
                     message.error(error.response?.data?.message || 'Delete failed');
                 }
@@ -172,15 +183,15 @@ const CountriesPage = () => {
             uploadForm.resetFields();
             setSelectedFile(null);
             setSelectedPreview(null);
-            
+
             // Ensure the country row stays expanded
             if (!expandedRows.includes(values.country_id)) {
                 setExpandedRows(prev => [...prev, values.country_id]);
             }
-            
+
             // Force refetch the designs for this country
             await fetchDesignsForCountry(values.country_id, true);
-            
+
         } catch (error) {
             message.error(error.response?.data?.message || 'Upload failed');
         } finally { setUploading(false); }
@@ -218,10 +229,10 @@ const CountriesPage = () => {
                                         danger
                                         size="small"
                                         icon={<DeleteOutlined />}
-                                        style={{ 
-                                            position: 'absolute', 
-                                            top: 2, 
-                                            right: 2, 
+                                        style={{
+                                            position: 'absolute',
+                                            top: 2,
+                                            right: 2,
                                             background: 'rgba(255,255,255,0.9)',
                                             border: '1px solid #ff4d4f',
                                             borderRadius: 4,
@@ -247,24 +258,80 @@ const CountriesPage = () => {
     };
 
     const columns = [
-        { title: 'Country', dataIndex: 'name', key: 'name', render: t => <Text strong>{t}</Text> },
-        { title: 'Code', dataIndex: 'code', key: 'code', render: c => <Tag>{c}</Tag> },
         {
-            title: 'Action', key: 'action', width: 100,
+            title: 'Country',
+            dataIndex: 'name',
+            key: 'name',
+            render: t => <Text strong>{t}</Text>
+        },
+
+        {
+            title: 'Code',
+            dataIndex: 'code',
+            key: 'code',
+            render: c => <Tag>{c}</Tag>
+        },
+
+        {
+            title: 'Status',
+            dataIndex: 'status',
+            key: 'status',
+            width: 120,
+            render: (_, record) => (
+                <Switch
+                    checked={record.status === 0}
+                    checkedChildren="Active"
+                    unCheckedChildren="Inactive"
+                    onChange={() => handleToggleStatus(record.id)}
+                />
+            )
+        },
+
+        {
+            title: 'Action',
+            key: 'action',
+            width: 120,
             render: (_, record) => (
                 <Space>
-                    <Button type="text" size="small" icon={<EditOutlined style={{ color: '#00b96b' }} />}
-                        onClick={() => { setEditingCountry(record); form.setFieldsValue(record); setIsModalOpen(true); }} />
-                    <Popconfirm 
-                        title="Permanently delete this country?" 
+
+                    {/* Edit */}
+                    <Button
+                        type="text"
+                        size="small"
+                        icon={
+                            <EditOutlined
+                                style={{ color: '#00b96b' }}
+                            />
+                        }
+                        onClick={() => {
+                            setEditingCountry(record);
+                            form.setFieldsValue(record);
+                            setIsModalOpen(true);
+                        }}
+                    />
+
+                    {/* Permanent Delete */}
+                    <Popconfirm
+                        title="Permanently delete this country?"
                         description="This action cannot be undone!"
-                        onConfirm={() => handlePermanentDelete(record.id, record.name)} 
-                        okText="Delete Forever" 
+                        onConfirm={() =>
+                            handlePermanentDelete(
+                                record.id,
+                                record.name
+                            )
+                        }
+                        okText="Delete Forever"
                         okType="danger"
                         cancelText="Cancel"
                     >
-                        <Button type="text" size="small" danger icon={<DeleteOutlined />} />
+                        <Button
+                            type="text"
+                            size="small"
+                            danger
+                            icon={<DeleteOutlined />}
+                        />
                     </Popconfirm>
+
                 </Space>
             )
         }
