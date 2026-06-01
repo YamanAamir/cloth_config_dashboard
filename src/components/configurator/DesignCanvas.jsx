@@ -36,17 +36,17 @@ const DesignCanvas = ({
     // Function to get canvas with white background for export/preview
     const getExportCanvas = () => {
         if (!canvasRef.current) return null;
-        
+
         const originalCanvas = canvasRef.current;
         const exportCanvas = document.createElement('canvas');
         exportCanvas.width = 800;
         exportCanvas.height = 800;
         const ctx = exportCanvas.getContext('2d');
-        
+
         // Always white background for export
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, 800, 800);
-        
+
         // Draw image if exists
         if (imgRef.current) {
             ctx.drawImage(imgRef.current, layout.x, layout.y, layout.w, layout.h);
@@ -78,7 +78,7 @@ const DesignCanvas = ({
                 ctx.fillRect(cx - HANDLE_SIZE / 2, cy - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE);
             });
         }
-        
+
         return exportCanvas;
     };
 
@@ -95,7 +95,7 @@ const DesignCanvas = ({
         const ctx = canvas.getContext('2d');
         canvas.width = 800;
         canvas.height = 800;
-        
+
         // For display: grey background when white text, white when black text
         ctx.fillStyle = designColor === 'black' ? '#e8e8e8' : '#ffffff';
         ctx.fillRect(0, 0, 800, 800);
@@ -180,14 +180,40 @@ const DesignCanvas = ({
             my: (e.clientY - rect.top) * (canvas.height / rect.height),
         };
     };
+    const isPointInRotatedText = (mx, my, el) => {
+        const angle = -((el.rotation || 0) * Math.PI / 180);
 
+        // translate point relative to text center
+        const dx = mx - el.x;
+        const dy = my - el.y;
+
+        // rotate point back
+        const rx = dx * Math.cos(angle) - dy * Math.sin(angle);
+        const ry = dx * Math.sin(angle) + dy * Math.cos(angle);
+
+        const ctx = canvasRef.current.getContext('2d');
+        ctx.font = `${el.fontSize}px ${el.fontFamily}`;
+
+        const tw = ctx.measureText(el.text).width / 2;
+        const th = el.fontSize / 2;
+
+        return (
+            rx >= -tw &&
+            rx <= tw &&
+            ry >= -th &&
+            ry <= th
+        );
+    };
+    
     const handleMouseDown = (e) => {
         if (!canvasRef.current) return;
+
         const { mx, my } = getCanvasPos(e);
 
-        // Check resize handles first
+        // Resize handles first
         if (imgSelected && imgRef.current) {
             const handleIdx = hitHandle(mx, my, layout);
+
             if (handleIdx >= 0) {
                 setResizing(true);
                 setResizeStart({ mx, my, layout: { ...layout }, handleIdx });
@@ -195,31 +221,43 @@ const DesignCanvas = ({
             }
         }
 
-        // Check image drag
-        if (imgRef.current && hitImage(mx, my, layout)) {
-            setImgSelected(true);
-            setImgDragging(true);
-            setImgDragOffset({ x: mx - layout.x, y: my - layout.y });
-            setSelectedTextId(null);
-            return;
-        }
-
-        // Check text elements
+        // TEXT FIRST
         const PADDING = 12;
+
         for (let i = textElements.length - 1; i >= 0; i--) {
             const el = textElements[i];
+
             if (el.locked) continue;
+
             const ctx = canvasRef.current.getContext('2d');
             ctx.font = `${el.fontSize}px ${el.fontFamily}`;
+
             const tw = ctx.measureText(el.text).width / 2 + PADDING;
             const th = el.fontSize / 2 + PADDING;
-            if (mx >= el.x - tw && mx <= el.x + tw && my >= el.y - th && my <= el.y + th) {
+
+            // if (mx >= el.x - tw && mx <= el.x + tw && my >= el.y - th && my <= el.y + th) 
+            if (isPointInRotatedText(mx, my, el)) {
                 setSelectedTextId(el.id);
                 setIsDragging(true);
-                setDragOffset({ x: mx - el.x, y: my - el.y });
+                setDragOffset({
+                    x: mx - el.x,
+                    y: my - el.y
+                });
                 setImgSelected(false);
                 return;
             }
+        }
+
+        // IMAGE AFTER TEXT
+        if (imgRef.current && hitImage(mx, my, layout)) {
+            setImgSelected(true);
+            setImgDragging(true);
+            setImgDragOffset({
+                x: mx - layout.x,
+                y: my - layout.y
+            });
+            setSelectedTextId(null);
+            return;
         }
 
         setSelectedTextId(null);

@@ -213,12 +213,12 @@ const MyClassPageSimple = () => {
 
         // Set selected file for display - don't upload yet
         setSelectedFile(file);
-        
+
         // Auto-fill name from filename if empty
         if (!logoName) {
             setLogoName(file.name.replace(/\.[^/.]+$/, ''));
         }
-        
+
         message.success(`File selected: ${file.name}`);
         return false; // Prevent automatic upload
     };
@@ -247,7 +247,7 @@ const MyClassPageSimple = () => {
 
             await uploadLogo(formData);
             message.success('Logo uploaded successfully! We will review it soon.');
-            
+
             // Reset form
             setSelectedFile(null);
             setLogoName('');
@@ -501,7 +501,57 @@ const MyClassPageSimple = () => {
 
 
             </Row>
-
+            {/* All Logos */}
+            {logos.length > 1 && (
+                <Card
+                    title="All Your Logos"
+                    style={{
+                        marginBottom: '24px',
+                        borderRadius: 12
+                    }}
+                >
+                    <Row gutter={[16, 16]}>
+                        {logos.map(logo => (
+                            <Col xs={12} sm={6} md={6} key={logo.id}>
+                                <div style={{
+                                    textAlign: 'center',
+                                    padding: '16px',
+                                    border: '1px solid #f0f0f0',
+                                    borderRadius: '12px',
+                                    transition: '0.3s',
+                                    cursor: 'pointer'
+                                }}
+                                    onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                                    onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0px)'}
+                                >
+                                    <Image
+                                        src={getUploadsUrl(logo.file_path)}
+                                        alt={logo.name}
+                                        style={{
+                                            width: '80px',
+                                            height: '80px',
+                                            objectFit: 'cover',
+                                            borderRadius: '8px'
+                                        }}
+                                    />
+                                    <div style={{ marginTop: '12px' }}>
+                                        <Text strong style={{ fontSize: '12px', display: 'block' }}>
+                                            {logo.name}
+                                        </Text>
+                                        <Tag
+                                            size="small"
+                                            color={STATUS_CONFIG[logo.status]?.color}
+                                            style={{ marginTop: '8px' }}
+                                        >
+                                            {STATUS_CONFIG[logo.status]?.label}
+                                        </Tag>
+                                    </div>
+                                </div>
+                            </Col>
+                        ))}
+                    </Row>
+                </Card>
+            )}
             {/* Current Status */}
             <Card
                 title="Current Status"
@@ -626,57 +676,7 @@ const MyClassPageSimple = () => {
                 </Row>
             </Card>
 
-            {/* All Logos */}
-            {logos.length > 1 && (
-                <Card
-                    title="All Your Logos"
-                    style={{
-                        marginBottom: '24px',
-                        borderRadius: 12
-                    }}
-                >
-                    <Row gutter={[16, 16]}>
-                        {logos.map(logo => (
-                            <Col xs={12} sm={6} md={6} key={logo.id}>
-                                <div style={{
-                                    textAlign: 'center',
-                                    padding: '16px',
-                                    border: '1px solid #f0f0f0',
-                                    borderRadius: '12px',
-                                    transition: '0.3s',
-                                    cursor: 'pointer'
-                                }}
-                                    onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-                                    onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0px)'}
-                                >
-                                    <Image
-                                        src={getUploadsUrl(logo.file_path)}
-                                        alt={logo.name}
-                                        style={{
-                                            width: '80px',
-                                            height: '80px',
-                                            objectFit: 'cover',
-                                            borderRadius: '8px'
-                                        }}
-                                    />
-                                    <div style={{ marginTop: '12px' }}>
-                                        <Text strong style={{ fontSize: '12px', display: 'block' }}>
-                                            {logo.name}
-                                        </Text>
-                                        <Tag
-                                            size="small"
-                                            color={STATUS_CONFIG[logo.status]?.color}
-                                            style={{ marginTop: '8px' }}
-                                        >
-                                            {STATUS_CONFIG[logo.status]?.label}
-                                        </Tag>
-                                    </div>
-                                </div>
-                            </Col>
-                        ))}
-                    </Row>
-                </Card>
-            )}
+
 
             {/* Registration Link Modal */}
             <Modal
@@ -740,11 +740,11 @@ const MyClassPageSimple = () => {
                             • File size: Maximum 5MB
                         </Typography.Text>
                     </div> */}
-                    
+
                     <Paragraph>
                         Upload a high-quality image of your class logo. We'll review it and approve it for use on graduation items.
                     </Paragraph>
-                    
+
                     {/* Name Input */}
                     <div style={{ marginBottom: 16 }}>
                         <Typography.Text strong style={{ display: 'block', marginBottom: 8 }}>
@@ -759,7 +759,7 @@ const MyClassPageSimple = () => {
                             disabled={uploading}
                         />
                     </div>
-                    
+
                     <Dragger
                         accept="image/*"
                         beforeUpload={handleFileSelect}
@@ -771,9 +771,9 @@ const MyClassPageSimple = () => {
                         }}
                     >
                         <p className="ant-upload-drag-icon">
-                            <UploadOutlined style={{ 
-                                fontSize: '48px', 
-                                color: selectedFile ? '#52c41a' : '#1890ff' 
+                            <UploadOutlined style={{
+                                fontSize: '48px',
+                                color: selectedFile ? '#52c41a' : '#1890ff'
                             }} />
                         </p>
                         <p className="ant-upload-text" style={{
@@ -781,13 +781,13 @@ const MyClassPageSimple = () => {
                             fontWeight: selectedFile ? 'bold' : 'normal'
                         }}>
                             {selectedFile ? '✓ File Selected - Click or drag to change' :
-                             'Click or drag image here to select'}
+                                'Click or drag image here to select'}
                         </p>
                         <p className="ant-upload-hint">
                             Max: 5MB • JPG/PNG/GIF
                         </p>
                     </Dragger>
-                    
+
                     {/* Upload Button and File Name */}
                     <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
                         <Upload
@@ -796,12 +796,12 @@ const MyClassPageSimple = () => {
                             showUploadList={false}
                             disabled={uploading}
                         >
-                            <Button 
+                            {/* <Button
                                 icon={<UploadOutlined />}
                                 disabled={uploading}
                             >
                                 Choose File
-                            </Button>
+                            </Button> */}
                         </Upload>
                         {selectedFile && (
                             <Text type="success" style={{ fontSize: 14 }}>
@@ -809,7 +809,7 @@ const MyClassPageSimple = () => {
                             </Text>
                         )}
                     </div>
-                    
+
                     {/* Manual Upload Button */}
                     <div style={{ marginTop: 16, textAlign: 'center' }}>
                         <Button
@@ -818,7 +818,7 @@ const MyClassPageSimple = () => {
                             loading={uploading}
                             onClick={handleManualUpload}
                             disabled={!selectedFile || !logoName.trim()}
-                            style={{ minWidth: 120 }}
+                            style={{ minWidth: 120, color: 'white' }}
                         >
                             {uploading ? 'Uploading...' : 'Upload Logo'}
                         </Button>
@@ -880,34 +880,60 @@ const MyClassPageSimple = () => {
                     </Paragraph>
 
                     {studyTripCountries.length > 0 ? (
-                        <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
-                            <Space direction="vertical" style={{ width: '100%' }}>
-                                {studyTripCountries.map(country => (
-                                    <Card
-                                        key={country.id}
-                                        size="small"
-                                        hoverable
-                                        onClick={() => setSelectedCountry(country.id)}
+                        <div
+                            style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(3, 1fr)',
+                                gap: '12px',
+                                maxHeight: '300px',
+                                overflowY: 'auto',
+                            }}
+                        >
+                            {studyTripCountries.map((country) => (
+                                <Card
+                                    key={country.id}
+                                    hoverable
+                                    size="small"
+                                    onClick={() => setSelectedCountry(country.id)}
+                                    style={{
+                                        cursor: 'pointer',
+                                        textAlign: 'center',
+                                        border:
+                                            selectedCountry === country.id
+                                                ? '2px solid #19997f'
+                                                : '1px solid #f0f0f0',
+                                        background:
+                                            selectedCountry === country.id
+                                                ? '#e6f4ff'
+                                                : '#fff',
+                                    }}
+                                >
+                                    <div
                                         style={{
-                                            border: selectedCountry === country.id ? '2px solid #1890ff' : '1px solid #f0f0f0',
-                                            backgroundColor: selectedCountry === country.id ? '#f6ffed' : 'white'
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'center',
+                                            gap: '6px',
                                         }}
                                     >
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                            <span style={{ fontSize: '24px' }}>{country.flag || '🌍'}</span>
-                                            <div>
-                                                <Text strong>{country.name}</Text>
-                                                {selectedCountry === country.id && (
-                                                    <div>
-                                                        <CheckCircleOutlined style={{ color: '#52c41a', marginLeft: '8px' }} />
-                                                        <Text type="success" style={{ marginLeft: '4px' }}>Selected</Text>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </Card>
-                                ))}
-                            </Space>
+                                        <Text
+                                            strong
+                                            style={{
+                                                fontSize: '13px',
+                                                textAlign: 'center',
+                                            }}
+                                        >
+                                            {country.name}
+                                        </Text>
+
+                                        {/* {selectedCountry === country.id && (
+                                            <CheckCircleOutlined
+                                                style={{ color: '#52c41a', fontSize: '16px' }}
+                                            />
+                                        )} */}
+                                    </div>
+                                </Card>
+                            ))}
                         </div>
                     ) : (
                         <Empty

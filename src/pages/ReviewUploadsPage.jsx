@@ -29,6 +29,7 @@ const ReviewUploadsPage = () => {
     const [backDesigns, setBackDesigns] = useState([]);
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState('1');
+    const [designColor, setDesignColor] = useState('white');
 
     // Admin upload state
     const [uploadLogoModal, setUploadLogoModal] = useState(false);
@@ -179,7 +180,7 @@ const ReviewUploadsPage = () => {
                     </Typography.Text>
                     <br />
                     <Typography.Text>
-                        This will permanently remove "{name}" and its file from the system. 
+                        This will permanently remove "{name}" and its file from the system.
                         This action is irreversible.
                     </Typography.Text>
                 </div>
@@ -207,14 +208,14 @@ const ReviewUploadsPage = () => {
 
     // Fetch schools and classes for upload modals
     useEffect(() => {
-        getAllSchools({ limit: 100 }).then(r => setSchools(r.data.data || [])).catch(() => {});
-        getAllClasses({ limit: 100 }).then(r => setClasses(r.data.data || [])).catch(() => {});
+        getAllSchools({ limit: 100 }).then(r => setSchools(r.data.data || [])).catch(() => { });
+        getAllClasses({ limit: 100 }).then(r => setClasses(r.data.data || [])).catch(() => { });
     }, []);
 
     const handleFileSelect = (file) => {
         // Check if this is for back design upload (based on current modal state)
         const isBackDesign = uploadDesignModal;
-        
+
         if (isBackDesign) {
             // No dimension restrictions for any upload type
             setUploadFile(file);
@@ -247,22 +248,40 @@ const ReviewUploadsPage = () => {
     };
 
     const handleAdminUploadDesign = async (values) => {
-        if (!uploadFile) { message.error('Select a file'); return; }
+        if (!uploadFile) {
+            message.error('Select a file');
+            return;
+        }
+
         setUploading(true);
+
         try {
             const fd = new FormData();
+
             fd.append('name', values.name);
-            if (values.class_id) fd.append('class_id', values.class_id);
-            if (values.country_id) fd.append('country_id', values.country_id);
+
+            if (values.class_id) {
+                fd.append('class_id', values.class_id);
+            }
+
+            fd.append('designColor', designColor); // <-- yahan
+
             fd.append('design', uploadFile);
+
             await adminUploadBackDesign(fd);
+
             message.success('Back design uploaded & approved');
             setUploadDesignModal(false);
             designForm.resetFields();
-            setUploadFile(null); setUploadPreview(null);
+            setUploadFile(null);
+            setUploadPreview(null);
             fetchBackDesigns();
-        } catch (err) { message.error(err.response?.data?.message || 'Upload failed'); }
-        finally { setUploading(false); }
+
+        } catch (err) {
+            message.error(err.response?.data?.message || 'Upload failed');
+        } finally {
+            setUploading(false);
+        }
     };
 
     const getStatusTag = (status) => {
@@ -331,12 +350,12 @@ const ReviewUploadsPage = () => {
                     </Tooltip>
                     <Tooltip title="Reject">
                         <Button
-                                type="text"
-                                shape="circle"
-                                icon={<CloseCircleOutlined style={{ color: '#ff4d4f' }} />}
-                                disabled={record.status === Status.DELETED}
-                                onClick={() => handleReject(record.id, 'logo')}
-                            />
+                            type="text"
+                            shape="circle"
+                            icon={<CloseCircleOutlined style={{ color: '#ff4d4f' }} />}
+                            disabled={record.status === Status.DELETED}
+                            onClick={() => handleReject(record.id, 'logo')}
+                        />
                     </Tooltip>
                     <Tooltip title="Permanent Delete">
                         <Popconfirm
@@ -409,12 +428,12 @@ const ReviewUploadsPage = () => {
                     </Tooltip>
                     <Tooltip title="Reject">
                         <Button
-                                type="text"
-                                shape="circle"
-                                icon={<CloseCircleOutlined style={{ color: '#ff4d4f' }} />}
-                                disabled={record.status === Status.DELETED}
-                                onClick={() => handleReject(record.id, 'design')}
-                            />
+                            type="text"
+                            shape="circle"
+                            icon={<CloseCircleOutlined style={{ color: '#ff4d4f' }} />}
+                            disabled={record.status === Status.DELETED}
+                            onClick={() => handleReject(record.id, 'design')}
+                        />
                     </Tooltip>
                     <Tooltip title="Permanent Delete">
                         <Popconfirm
@@ -602,6 +621,42 @@ const ReviewUploadsPage = () => {
                     <Form.Item name="class_id" label="Assign to Class (optional)" tooltip="Leave empty for library design">
                         <Select placeholder="Select class (optional)" allowClear options={classes.map(c => ({ value: c.id, label: `${c.name} — ${c.school?.name || ''}` }))} showSearch optionFilterProp="label" />
                     </Form.Item>
+                    <Form.Item
+                        name="designColor"
+                        label="Design Color"
+                        initialValue="white"
+                    >
+                        <div>
+                            <Space style={{ marginTop: 8 }}>
+                                {[
+                                    { value: 'white', label: 'White' },
+                                    { value: 'black', label: 'Black' },
+                                ].map(opt => (
+                                    <div
+                                        key={opt.value}
+                                        onClick={() => {
+                                            setDesignColor(opt.value);
+                                            designForm.setFieldValue('designColor', opt.value);
+                                        }}
+                                        style={{
+                                            padding: '6px 14px',
+                                            borderRadius: 8,
+                                            cursor: 'pointer',
+                                            border: designColor === opt.value
+                                                ? '2px solid #00b96b'
+                                                : '1px solid #d9d9d9',
+                                            background: designColor === opt.value
+                                                ? '#f6ffed'
+                                                : '#fff',
+                                            fontWeight: 500
+                                        }}
+                                    >
+                                        {opt.label}
+                                    </div>
+                                ))}
+                            </Space>
+                        </div>
+                    </Form.Item>
                     <Form.Item label="Design File" required>
                         {/* <div style={{ 
                             background: '#f6ffed', 
@@ -634,7 +689,7 @@ const ReviewUploadsPage = () => {
                     </Form.Item>
                 </Form>
             </Modal>
-        </div>
+        </div >
     );
 };
 

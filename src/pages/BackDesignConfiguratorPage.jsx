@@ -38,7 +38,7 @@ const BackDesignConfiguratorPage = () => {
     const [countries, setCountries] = useState([]);
     const [settingCountry, setSettingCountry] = useState(false);
     const [galleryTab, setGalleryTab] = useState('backdesign');
-
+    const [allBackDesigns, setAllBackDesigns] = useState([]);
     // Selected design
     const [selectedImage, setSelectedImage] = useState(null);
     const [imagePreview, setImagePreview] = useState(null);
@@ -95,13 +95,12 @@ const BackDesignConfiguratorPage = () => {
     // Handle save name
     const handleSaveName = () => {
         if (editingNameValue.trim() && hasNameChanged) {
-            setTextElements(prev => prev.map(t => 
+            setTextElements(prev => prev.map(t =>
                 t.id === editingNameId ? { ...t, text: editingNameValue.trim() } : t
             ));
             triggerAutoSave(
                 textElements.map(t => t.id === editingNameId ? { ...t, text: editingNameValue.trim() } : t),
-                designColor, 
-                imageLayout, 
+                imageLayout,
                 selectedDesignId
             );
         }
@@ -120,11 +119,21 @@ const BackDesignConfiguratorPage = () => {
 
     useEffect(() => {
         fetchMyClass();
-        fetchBackDesigns();
         fetchLibraryDesigns();
+        fetchBackDesigns();
         fetchCountries();
         fetchFonts();
     }, []);
+
+    useEffect(() => {
+        const filtered = filterByDesignColor(
+            allBackDesigns,
+            designColor
+        );
+console.log("filtered-back",filtered);
+
+        setBackDesigns(filtered);
+    }, [designColor, allBackDesigns]);
 
     const fetchMyClass = async () => {
         setLoading(true);
@@ -135,18 +144,48 @@ const BackDesignConfiguratorPage = () => {
         finally { setLoading(false); }
     };
 
+    const filterByDesignColor = (data, color) => {
+        return data.filter(d => {
+            if (d.isFromConfigurator === true) return false;
+            if (d.process_status !== 'approved') return false;
+
+            if (color === 'white') {
+                return d.designColor === 'white';
+            }
+
+            if (color === 'black') {
+                return d.designColor === 'black';
+            }
+
+            return true;
+        });
+    };
+
     const fetchBackDesigns = async () => {
         setDesignsLoading(true);
+
         try {
             const res = await getMyBackDesigns({ limit: 100 });
+
             if (res.data?.success && res.data?.data) {
-                const filtered = res.data.data.filter(d => d.isFromConfigurator !== true && d.process_status === 'approved');
+
+                setAllBackDesigns(res.data.data);
+
+                const filtered = filterByDesignColor(
+                    res.data.data,
+                    designColor
+                );
+
                 setBackDesigns(filtered);
-                // loadState will handle design selection - pass filtered as fallback
                 loadState(filtered);
-            } else setBackDesigns([]);
-        } catch { setBackDesigns([]); }
-        finally { setDesignsLoading(false); }
+
+            } else {
+                setBackDesigns([]);
+                setAllBackDesigns([]);
+            }
+        } finally {
+            setDesignsLoading(false);
+        }
     };
 
     const fetchLibraryDesigns = async () => {
@@ -238,11 +277,9 @@ const BackDesignConfiguratorPage = () => {
                 await saveConfiguratorState({
                     configurator_state: {
                         textElements: newTextElements,
-                        designColor: newDesignColor,
                         imageLayout: newImageLayout,
                         baseDesignId: newSelectedDesignId,
                     },
-                    designColor: newDesignColor,
                     name: `design_draft_${Date.now()}`,
                 });
             } catch { /* silent */ }
@@ -289,20 +326,20 @@ const BackDesignConfiguratorPage = () => {
         setSelectedDesignId(design.id);
         if (!keepLayout) setImageLayout({ x: 0, y: 0, w: 800, h: 800 });
         setImagePreview(url);
-        
+
         fetch(url)
             .then(r => { if (!r.ok) throw new Error(r.statusText); return r.blob(); })
             .then(blob => {
                 const file = new File([blob], design.name, { type: 'image/png' });
                 setSelectedImage(file);
-                
+
                 // Check A3 dimensions and warn user
                 const img = new Image();
                 img.onload = () => {
                     const { width, height } = img;
                     const maxWidth = 4000;
                     const maxHeight = 5600;
-                    
+
                     if (width > maxWidth || height > maxHeight) {
                         message.warning({
                             content: `⚠️ Selected design (${width}×${height}px) exceeds A3 size limit (${maxWidth}×${maxHeight}px). You can use it for editing, but final export may be rejected.`,
@@ -329,7 +366,7 @@ const BackDesignConfiguratorPage = () => {
         }];
         setTextElements(newElements);
         setCurrentText('');
-        triggerAutoSave(newElements, designColor, imageLayout, selectedDesignId);
+        triggerAutoSave(newElements, imageLayout, selectedDesignId);
     };
 
     const handleRemoveText = (id) => {
@@ -340,34 +377,34 @@ const BackDesignConfiguratorPage = () => {
     const handleSubmit = async () => {
         if (!selectedImage) return message.error('Select an image first');
         if (textElements.length === 0) return message.warning('Add at least one name');
-        
+
         // A3 validation for base image dimensions
         if (selectedImage) {
             return new Promise((resolve) => {
                 const img = new Image();
                 img.onload = () => {
                     const { width, height } = img;
-                    
+
                     // A3 dimensions at 300 DPI: max 4000 × 5600 pixels
                     const maxWidth = 4000;
                     const maxHeight = 5600;
-                    
+
                     if (width > maxWidth || height > maxHeight) {
                         message.error(`Base design is too large! Maximum size is ${maxWidth} × ${maxHeight} pixels (A3 format). Selected image is ${width} × ${height} pixels. Please select a smaller design.`);
                         resolve();
                         return;
                     }
-                    
+
                     // Proceed with upload if validation passes
                     performUpload();
                     resolve();
                 };
-                
+
                 img.onerror = () => {
                     message.error('Failed to read base image dimensions');
                     resolve();
                 };
-                
+
                 img.src = URL.createObjectURL(selectedImage);
             });
         }
@@ -380,13 +417,13 @@ const BackDesignConfiguratorPage = () => {
             if (canvasRef.current) {
                 const canvas = canvasRef.current;
                 const ctx = canvas.getContext('2d');
-                
+
                 // Clear and redraw with white background
                 canvas.width = 800;
                 canvas.height = 800;
                 ctx.fillStyle = '#ffffff'; // Always white for export
                 ctx.fillRect(0, 0, 800, 800);
-                
+
                 // Redraw image if exists
                 if (imagePreview) {
                     const img = new Image();
@@ -399,7 +436,7 @@ const BackDesignConfiguratorPage = () => {
                         img.src = imagePreview;
                     });
                 }
-                
+
                 // Redraw text elements
                 textElements.forEach(el => {
                     ctx.save();
@@ -413,26 +450,25 @@ const BackDesignConfiguratorPage = () => {
                     ctx.restore();
                 });
             }
-            
+
             await new Promise(resolve => setTimeout(resolve, 100));
             const blob = await new Promise(resolve => canvasRef.current.toBlob(resolve, 'image/png'));
-            
+
             // Additional A3 validation for final canvas export
             const canvas = canvasRef.current;
             const maxWidth = 4000;
             const maxHeight = 5600;
-            
+
             if (canvas.width > maxWidth || canvas.height > maxHeight) {
                 message.error(`Final design exceeds A3 size limit! Canvas is ${canvas.width} × ${canvas.height} pixels, but maximum allowed is ${maxWidth} × ${maxHeight} pixels.`);
                 return;
             }
-            
+
             const formData = new FormData();
             const fileName = selectedImage.name.replace(/\.[^/.]+$/, '');
             formData.append('name', `${fileName}_configured`);
             formData.append('backDesign', blob, `${fileName}_configured.png`);
             formData.append('isFromConfigurator', 'true');
-            formData.append('designColor', designColor);
             // Save configurator state so it can be restored later
             formData.append('configurator_state', JSON.stringify({
                 textElements,
@@ -453,8 +489,8 @@ const BackDesignConfiguratorPage = () => {
             // Don't call fetchBackDesigns - it triggers loadState which resets gallery tab
         } catch (err) {
             message.error(err?.response?.data?.message || 'Failed');
-        } finally { 
-            setUploading(false); 
+        } finally {
+            setUploading(false);
         }
     };
 
@@ -465,8 +501,8 @@ const BackDesignConfiguratorPage = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <Title level={4} style={{ margin: 0 }}>Back Design Configurator</Title>
-                    {autoSaving && <Text type="secondary" style={{ fontSize: 12 }}>💾 Saving...</Text>}
-                    {!autoSaving && textElements.length > 0 && <Text type="secondary" style={{ fontSize: 12 }}>✓ Draft saved</Text>}
+                    {autoSaving && <Text type="secondary" style={{ fontSize: 12 }}> Saving...</Text>}
+                    {!autoSaving && textElements.length > 0 && <Text type="secondary" style={{ fontSize: 12 }}> Draft saved</Text>}
                 </div>
             </div>
 
@@ -538,10 +574,10 @@ const BackDesignConfiguratorPage = () => {
                                                 <Card
                                                     key={el.id}
                                                     size="small"
-                                                    style={{ 
-                                                        marginBottom: 8, 
-                                                        border: selectedTextId === el.id ? '2px solid #00b96b' : 
-                                                               editingNameId === el.id ? '2px solid #1890ff' : '1px solid #f0f0f0', 
+                                                    style={{
+                                                        marginBottom: 8,
+                                                        border: selectedTextId === el.id ? '2px solid #00b96b' :
+                                                            editingNameId === el.id ? '2px solid #1890ff' : '1px solid #f0f0f0',
                                                         cursor: 'pointer',
                                                         backgroundColor: editingNameId === el.id ? '#f0f9ff' : 'white'
                                                     }}
@@ -563,8 +599,8 @@ const BackDesignConfiguratorPage = () => {
                                                                     <div>
                                                                         <Text type="secondary" style={{ fontSize: 11 }}>Edit Name</Text>
                                                                         <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
-                                                                            <Input 
-                                                                                size="small" 
+                                                                            <Input
+                                                                                size="small"
                                                                                 value={editingNameId === el.id ? editingNameValue : el.text}
                                                                                 onClick={e => {
                                                                                     e.stopPropagation();
@@ -594,7 +630,7 @@ const BackDesignConfiguratorPage = () => {
                                                                                     size="small"
                                                                                     type="primary"
                                                                                     icon={<CheckCircleOutlined />}
-                                                                                    style={{ 
+                                                                                    style={{
                                                                                         backgroundColor: '#52c41a',
                                                                                         borderColor: '#52c41a'
                                                                                     }}

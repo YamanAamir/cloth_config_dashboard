@@ -5,16 +5,17 @@ import { InboxOutlined } from '@ant-design/icons';
 const { Dragger } = Upload;
 const { Text } = Typography;
 
-const SimpleUploadModal = ({ 
-    open, 
-    onCancel, 
-    onUpload, 
-    uploadType = 'logo', 
-    loading = false 
+const SimpleUploadModal = ({
+    open,
+    onCancel,
+    onUpload,
+    uploadType = 'logo',
+    loading = false
 }) => {
     const [selectedFile, setSelectedFile] = useState(null);
     const [fileName, setFileName] = useState('');
     const [preview, setPreview] = useState(null);
+    const [designColor, setDesignColor] = useState('white');
 
     const handleFileSelect = (file) => {
         console.log('🔥 File selected:', {
@@ -47,7 +48,7 @@ const SimpleUploadModal = ({
             const previewUrl = URL.createObjectURL(file);
             setPreview(previewUrl);
             setSelectedFile(file);
-            
+
             // Auto-fill name
             if (!fileName) {
                 const nameWithoutExt = file.name.replace(/\.[^/.]+$/, '');
@@ -66,37 +67,28 @@ const SimpleUploadModal = ({
     };
 
     const handleUpload = () => {
-        console.log('🚀 Upload button clicked');
-        console.log('📁 Selected file:', selectedFile);
-        console.log('📝 File name:', fileName);
-
         if (!selectedFile) {
-            console.log('❌ No file selected');
             message.error('Please select a file');
             return;
         }
+
         if (!fileName.trim()) {
-            console.log('❌ No file name entered');
             message.error('Please enter a name');
             return;
         }
 
-        console.log('✅ Creating FormData...');
         const formData = new FormData();
         formData.append('name', fileName.trim());
+
+        // ✅ ADD THIS LINE
+        formData.append('designColor', designColor);
+
         if (uploadType === 'logo') {
             formData.append('logo', selectedFile);
         } else {
             formData.append('backDesign', selectedFile);
         }
 
-        // Debug FormData
-        console.log('📦 FormData contents:');
-        for (let [key, value] of formData.entries()) {
-            console.log(`  ${key}:`, value);
-        }
-
-        console.log('🔄 Calling onUpload...');
         onUpload(formData);
     };
 
@@ -108,6 +100,7 @@ const SimpleUploadModal = ({
         setSelectedFile(null);
         setFileName('');
         setPreview(null);
+        setDesignColor('white');
         onCancel();
     };
 
@@ -120,9 +113,9 @@ const SimpleUploadModal = ({
                 <Button key="cancel" onClick={handleCancel}>
                     Cancel
                 </Button>,
-                <Button 
-                    key="upload" 
-                    type="primary" 
+                <Button
+                    key="upload"
+                    type="primary"
                     loading={loading}
                     onClick={handleUpload}
                     disabled={!selectedFile || !fileName.trim()}
@@ -145,7 +138,35 @@ const SimpleUploadModal = ({
                         showCount
                     />
                 </div>
+                <div>
+                    {/* <Text strong>Design Color *</Text> */}
 
+                    <Space style={{ marginTop: 8 }}>
+                        {[
+                            { value: 'white', label: 'White' },
+                            { value: 'black', label: 'Black' },
+                        ].map(opt => (
+                            <div
+                                key={opt.value}
+                                onClick={() => setDesignColor(opt.value)}
+                                style={{
+                                    padding: '6px 14px',
+                                    borderRadius: 8,
+                                    cursor: 'pointer',
+                                    border: designColor === opt.value
+                                        ? '2px solid #00b96b'
+                                        : '1px solid #d9d9d9',
+                                    background: designColor === opt.value
+                                        ? '#f6ffed'
+                                        : '#fff',
+                                    fontWeight: 500
+                                }}
+                            >
+                                {opt.label}
+                            </div>
+                        ))}
+                    </Space>
+                </div>
                 <div>
                     <Text strong>Select File *</Text>
                     <Dragger
@@ -153,14 +174,14 @@ const SimpleUploadModal = ({
                         showUploadList={false}
                         accept="image/*"
                         disabled={loading}
-                        style={{ 
+                        style={{
                             marginTop: 8,
                             borderColor: selectedFile ? '#52c41a' : '#d9d9d9',
                             backgroundColor: selectedFile ? '#f6ffed' : '#fafafa'
                         }}
                     >
                         <p className="ant-upload-drag-icon">
-                            <InboxOutlined style={{ 
+                            <InboxOutlined style={{
                                 fontSize: '48px',
                                 color: selectedFile ? '#52c41a' : '#d9d9d9'
                             }} />
@@ -169,7 +190,7 @@ const SimpleUploadModal = ({
                             color: selectedFile ? '#52c41a' : undefined,
                             fontWeight: selectedFile ? 'bold' : 'normal'
                         }}>
-                            {selectedFile 
+                            {selectedFile
                                 ? '✓ File Selected - Click or drag to change'
                                 : 'Click or drag image here to upload'
                             }
@@ -178,7 +199,7 @@ const SimpleUploadModal = ({
                             Max: {uploadType === 'logo' ? '2MB' : '5MB'} • JPG, PNG, GIF
                         </p>
                     </Dragger>
-                    
+
                     {/* Upload Button and File Name */}
                     <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
                         <Upload
@@ -187,12 +208,12 @@ const SimpleUploadModal = ({
                             accept="image/*"
                             disabled={loading}
                         >
-                            <Button 
+                            {/* <Button
                                 icon={<InboxOutlined />}
                                 disabled={loading}
                             >
                                 Choose File
-                            </Button>
+                            </Button> */}
                         </Upload>
                         {selectedFile && (
                             <Text type="success" style={{ fontSize: 14 }}>
@@ -216,10 +237,10 @@ const SimpleUploadModal = ({
                             <img
                                 src={preview}
                                 alt="Preview"
-                                style={{ 
-                                    maxWidth: '100%', 
-                                    maxHeight: 200, 
-                                    objectFit: 'contain' 
+                                style={{
+                                    maxWidth: '100%',
+                                    maxHeight: 200,
+                                    objectFit: 'contain'
                                 }}
                             />
                         </div>
