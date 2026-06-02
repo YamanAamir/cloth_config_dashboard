@@ -116,6 +116,7 @@ const SimpleUploadModal = ({
                 <Button
                     key="upload"
                     type="primary"
+                    style={{ color: 'white' }}
                     loading={loading}
                     onClick={handleUpload}
                     disabled={!selectedFile || !fileName.trim()}
@@ -138,35 +139,41 @@ const SimpleUploadModal = ({
                         showCount
                     />
                 </div>
-                <div>
-                    {/* <Text strong>Design Color *</Text> */}
+                {uploadType !== "logo" && (
+                    <div>
+                        {/* <Text strong>Design Color *</Text> */}
 
-                    <Space style={{ marginTop: 8 }}>
-                        {[
-                            { value: 'white', label: 'White' },
-                            { value: 'black', label: 'Black' },
-                        ].map(opt => (
-                            <div
-                                key={opt.value}
-                                onClick={() => setDesignColor(opt.value)}
-                                style={{
-                                    padding: '6px 14px',
-                                    borderRadius: 8,
-                                    cursor: 'pointer',
-                                    border: designColor === opt.value
-                                        ? '2px solid #00b96b'
-                                        : '1px solid #d9d9d9',
-                                    background: designColor === opt.value
-                                        ? '#f6ffed'
-                                        : '#fff',
-                                    fontWeight: 500
-                                }}
-                            >
-                                {opt.label}
-                            </div>
-                        ))}
-                    </Space>
-                </div>
+                        <Space style={{ marginTop: 8 }}>
+                            {[
+                                { value: 'white', label: 'White', bg: '#ffffff', border: '#d9d9d9', printColor: 'Black print' },
+                                { value: 'black', label: 'Black', bg: '#1a1a1a', border: '#1a1a1a', printColor: 'White print' },
+                                { value: 'normal', label: 'Normal', bg: '#1a1a1a', border: '#1a1a1a', printColor: 'Orignal print' }
+                            ].map(opt => (
+                                <div
+                                    key={opt.value}
+                                    onClick={() => setDesignColor(opt.value)}
+                                    style={{
+                                        padding: '6px 14px',
+                                        borderRadius: 8,
+                                        cursor: 'pointer',
+                                        border: designColor === opt.value
+                                            ? '2px solid #00b96b'
+                                            : '1px solid #d9d9d9',
+                                        background: designColor === opt.value
+                                            ? '#f6ffed'
+                                            : '#fff',
+                                        fontWeight: 500
+                                    }}
+                                >
+                                    <div>
+                                        <div style={{ fontSize: 13, fontWeight: 500 }}>{opt.label}</div>
+                                        <div style={{ fontSize: 11, color: '#888' }}>{opt.printColor}</div>
+                                    </div>
+                                </div>
+                            ))}
+                        </Space>
+                    </div>
+                )}
                 <div>
                     <Text strong>Select File *</Text>
                     <Dragger

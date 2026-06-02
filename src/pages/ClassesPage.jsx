@@ -94,7 +94,7 @@ const ClassesPage = () => {
     const fetchFilteredReps = async (schoolId) => {
         try {
             const repsRes = await getAllClassReps({
-                // school_id: schoolId,
+                school_id: schoolId,
                 unassigned_only: true,
                 page: 1,
                 limit: 50

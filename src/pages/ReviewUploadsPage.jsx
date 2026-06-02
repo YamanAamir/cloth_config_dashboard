@@ -629,8 +629,9 @@ const ReviewUploadsPage = () => {
                         <div>
                             <Space style={{ marginTop: 8 }}>
                                 {[
-                                    { value: 'white', label: 'White' },
-                                    { value: 'black', label: 'Black' },
+                                    { value: 'white', label: 'White', bg: '#ffffff', border: '#d9d9d9', printColor: 'Black print' },
+                                    { value: 'black', label: 'Black', bg: '#1a1a1a', border: '#1a1a1a', printColor: 'White print' },
+                                    { value: 'normal', label: 'Normal', bg: '#1a1a1a', border: '#1a1a1a', printColor: 'Orignal print' }
                                 ].map(opt => (
                                     <div
                                         key={opt.value}
@@ -651,7 +652,10 @@ const ReviewUploadsPage = () => {
                                             fontWeight: 500
                                         }}
                                     >
-                                        {opt.label}
+                                        <div>
+                                            <div style={{ fontSize: 13, fontWeight: 500 }}>{opt.label}</div>
+                                            <div style={{ fontSize: 11, color: '#888' }}>{opt.printColor}</div>
+                                        </div>
                                     </div>
                                 ))}
                             </Space>
@@ -684,7 +688,7 @@ const ReviewUploadsPage = () => {
                     <Form.Item style={{ textAlign: 'right', marginBottom: 0 }}>
                         <Space>
                             <Button onClick={() => setUploadDesignModal(false)}>Cancel</Button>
-                            <Button type="primary" htmlType="submit" loading={uploading}>Upload & Approve</Button>
+                            <Button style={{ color: 'white' }} type="primary" htmlType="submit" loading={uploading}>Upload & Approve</Button>
                         </Space>
                     </Form.Item>
                 </Form>

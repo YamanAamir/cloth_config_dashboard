@@ -130,7 +130,7 @@ const BackDesignConfiguratorPage = () => {
             allBackDesigns,
             designColor
         );
-console.log("filtered-back",filtered);
+        console.log("filtered-back", filtered);
 
         setBackDesigns(filtered);
     }, [designColor, allBackDesigns]);
@@ -534,6 +534,7 @@ console.log("filtered-back",filtered);
                                 {[
                                     { value: 'white', label: 'White', bg: '#ffffff', border: '#d9d9d9', printColor: 'Black print' },
                                     { value: 'black', label: 'Black', bg: '#1a1a1a', border: '#1a1a1a', printColor: 'White print' },
+                                    { value: 'normal', label: 'Normal', bg: '#1a1a1a', border: '#1a1a1a', printColor: 'Orignal print' }
                                 ].map(opt => (
                                     <div
                                         key={opt.value}
@@ -547,7 +548,7 @@ console.log("filtered-back",filtered);
                                             background: designColor === opt.value ? '#f0fff8' : '#fafafa'
                                         }}
                                     >
-                                        <div style={{ width: 20, height: 20, borderRadius: '50%', background: opt.bg, border: `1px solid ${opt.border}` }} />
+                                        {/* <div style  ={{ width: 20, height: 20, borderRadius: '50%', background: opt.bg, border: `1px solid ${opt.border}` }} /> */}
                                         <div>
                                             <div style={{ fontSize: 13, fontWeight: 500 }}>{opt.label}</div>
                                             <div style={{ fontSize: 11, color: '#888' }}>{opt.printColor}</div>
@@ -780,6 +781,7 @@ console.log("filtered-back",filtered);
                         <Button
                             type="primary" icon={<SaveOutlined />} onClick={handleSubmit}
                             block loading={uploading}
+                            style={{ color: 'white' }}
                             disabled={!selectedImage || textElements.length === 0}
                         >
                             {uploading ? 'Saving...' : (isEditMode ? 'Update Back Design' : 'Submit Back Design')}
