@@ -583,7 +583,7 @@ const ReviewUploadsPage = () => {
             </Card>
 
             {/* Admin Upload Logo Modal */}
-            <Modal title="Upload Logo (Auto-Approved)" open={uploadLogoModal}
+            <Modal title="Upload Logo (Approved)" open={uploadLogoModal}
                 onCancel={() => { setUploadLogoModal(false); setUploadFile(null); setUploadPreview(null); }}
                 footer={null} destroyOnHidden>
                 <Form form={logoForm} layout="vertical" onFinish={handleAdminUploadLogo} style={{ marginTop: 16 }}>
@@ -594,11 +594,13 @@ const ReviewUploadsPage = () => {
                         <Select placeholder="Select school" options={schools.map(s => ({ value: s.id, label: s.name }))} showSearch optionFilterProp="label" />
                     </Form.Item>
                     <Form.Item label="Logo File" required>
-                        <Upload beforeUpload={handleFileSelect} showUploadList={false} accept="image/*">
-                            <Button type="dashed" icon={<InboxOutlined />} block style={{ height: 80 }}>
-                                {uploadFile ? `✓ ${uploadFile.name}` : 'Click to select image'}
-                            </Button>
-                        </Upload>
+                        {!uploadPreview && (
+                            <Upload beforeUpload={handleFileSelect} showUploadList={false} accept="image/*">
+                                <Button type="dashed" icon={<InboxOutlined />} block style={{ height: 80 }}>
+                                    {uploadFile ? `✓ ${uploadFile.name}` : 'Click to select image'}
+                                </Button>
+                            </Upload>
+                        )}
                         {uploadPreview && <img src={uploadPreview} alt="preview" style={{ marginTop: 8, maxWidth: '100%', maxHeight: 150, objectFit: 'contain' }} />}
                     </Form.Item>
                     <Form.Item style={{ textAlign: 'right', marginBottom: 0 }}>
@@ -611,7 +613,7 @@ const ReviewUploadsPage = () => {
             </Modal>
 
             {/* Admin Upload Back Design Modal */}
-            <Modal title="Upload Back Design (Auto-Approved)" open={uploadDesignModal}
+            <Modal title="Upload Back Design (Approved)" open={uploadDesignModal}
                 onCancel={() => { setUploadDesignModal(false); setUploadFile(null); setUploadPreview(null); }}
                 footer={null} destroyOnHidden>
                 <Form form={designForm} layout="vertical" onFinish={handleAdminUploadDesign} style={{ marginTop: 16 }}>
@@ -662,27 +664,14 @@ const ReviewUploadsPage = () => {
                         </div>
                     </Form.Item>
                     <Form.Item label="Design File" required>
-                        {/* <div style={{ 
-                            background: '#f6ffed', 
-                            border: '1px solid #b7eb8f', 
-                            borderRadius: 6, 
-                            padding: 12, 
-                            marginBottom: 12 
-                        }}>
-                            <Typography.Text strong style={{ color: '#389e0d', display: 'block', marginBottom: 4 }}>
-                                📏 A3 Size Requirements
-                            </Typography.Text>
-                            <Typography.Text style={{ fontSize: 12, color: '#52c41a' }}>
-                                • Maximum: 4000 × 5600 pixels (A3 at 300 DPI)<br/>
-                                • Recommended: 2480 × 3508 pixels (A3 at 210 DPI)<br/>
-                                • How to check: Right-click image → Properties → Details
-                            </Typography.Text>
-                        </div> */}
-                        <Upload beforeUpload={handleFileSelect} showUploadList={false} accept="image/*">
-                            <Button type="dashed" icon={<InboxOutlined />} block style={{ height: 80 }}>
-                                {uploadFile ? `✓ ${uploadFile.name}` : 'Click to select image'}
-                            </Button>
-                        </Upload>
+
+                        {!uploadPreview && (
+                            <Upload beforeUpload={handleFileSelect} showUploadList={false} accept="image/*">
+                                <Button type="dashed" icon={<InboxOutlined />} block style={{ height: 80 }}>
+                                    {uploadFile ? `✓ ${uploadFile.name}` : 'Click to select image'}
+                                </Button>
+                            </Upload>
+                        )}
                         {uploadPreview && <img src={uploadPreview} alt="preview" style={{ marginTop: 8, maxWidth: '100%', maxHeight: 150, objectFit: 'contain' }} />}
                     </Form.Item>
                     <Form.Item style={{ textAlign: 'right', marginBottom: 0 }}>

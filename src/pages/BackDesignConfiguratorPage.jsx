@@ -496,13 +496,21 @@ const BackDesignConfiguratorPage = () => {
 
     if (loading) return <div style={{ display: 'flex', justifyContent: 'center', minHeight: '60vh', alignItems: 'center' }}><Spin size="large" /></div>;
 
+    // When order is locked: existing names are read-only, but new names can still be added
+    const isOrderLocked = myClass?.order_locked === true;
+
     return (
         <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <Title level={4} style={{ margin: 0 }}>Back Design Configurator</Title>
-                    {autoSaving && <Text type="secondary" style={{ fontSize: 12 }}> Saving...</Text>}
-                    {!autoSaving && textElements.length > 0 && <Text type="secondary" style={{ fontSize: 12 }}> Draft saved</Text>}
+                    {isOrderLocked && (
+                        <Text type="warning" style={{ fontSize: 12 }}>
+                             Orders locked — you can add new names, but existing names and design cannot be changed.
+                        </Text>
+                    )}
+                    {!isOrderLocked && autoSaving && <Text type="secondary" style={{ fontSize: 12 }}> Saving...</Text>}
+                    {!isOrderLocked && !autoSaving && textElements.length > 0 && <Text type="secondary" style={{ fontSize: 12 }}> Draft saved</Text>}
                 </div>
             </div>
 
@@ -522,8 +530,9 @@ const BackDesignConfiguratorPage = () => {
                             selectedDesignId={selectedDesignId}
                             galleryTab={galleryTab}
                             setGalleryTab={setGalleryTab}
-                            onSelectDesign={loadDesignForEditing}
+                            onSelectDesign={isOrderLocked ? undefined : loadDesignForEditing}
                             onSetCountry={handleSetCountry}
+                            isLocked={isOrderLocked}
                         />
 
                         <Divider />
@@ -538,17 +547,17 @@ const BackDesignConfiguratorPage = () => {
                                 ].map(opt => (
                                     <div
                                         key={opt.value}
-                                        onClick={() => setDesignColor(opt.value)}
+                                        onClick={() => !isOrderLocked && setDesignColor(opt.value)}
                                         style={{
-                                            cursor: 'pointer',
+                                            cursor: isOrderLocked ? 'not-allowed' : 'pointer',
                                             padding: '8px 16px',
                                             borderRadius: 8,
                                             border: designColor === opt.value ? '2px solid #00b96b' : '2px solid #f0f0f0',
                                             display: 'flex', alignItems: 'center', gap: 8,
-                                            background: designColor === opt.value ? '#f0fff8' : '#fafafa'
+                                            background: designColor === opt.value ? '#f0fff8' : '#fafafa',
+                                            opacity: isOrderLocked ? 0.6 : 1,
                                         }}
                                     >
-                                        {/* <div style  ={{ width: 20, height: 20, borderRadius: '50%', background: opt.bg, border: `1px solid ${opt.border}` }} /> */}
                                         <div>
                                             <div style={{ fontSize: 13, fontWeight: 500 }}>{opt.label}</div>
                                             <div style={{ fontSize: 11, color: '#888' }}>{opt.printColor}</div>
@@ -579,21 +588,26 @@ const BackDesignConfiguratorPage = () => {
                                                         marginBottom: 8,
                                                         border: selectedTextId === el.id ? '2px solid #00b96b' :
                                                             editingNameId === el.id ? '2px solid #1890ff' : '1px solid #f0f0f0',
-                                                        cursor: 'pointer',
+                                                        cursor: isOrderLocked ? 'default' : 'pointer',
                                                         backgroundColor: editingNameId === el.id ? '#f0f9ff' : 'white'
                                                     }}
-                                                    onClick={() => setSelectedTextId(el.id)}
+                                                    onClick={() => !isOrderLocked && setSelectedTextId(el.id)}
                                                 >
                                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                         <div>
                                                             <Text strong>{el.text}</Text>
                                                             <br />
                                                             <Text type="secondary" style={{ fontSize: 11 }}>
-                                                                {el.fontSize}px · {el.rotation}° · {el.locked ? '🔒' : 'Unlocked'}
+                                                                {el.fontSize}px · {el.rotation}°
+                                                                {isOrderLocked
+                                                                    ? ' ·  Locked'
+                                                                    : ` · ${el.locked ? '' : 'Unlocked'}`
+                                                                }
                                                             </Text>
                                                         </div>
                                                     </div>
-                                                    {selectedTextId === el.id && (
+                                                    {/* Only show edit controls when NOT order-locked */}
+                                                    {!isOrderLocked && selectedTextId === el.id && (
                                                         <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid #f0f0f0' }}>
                                                             <Space direction="vertical" style={{ width: '100%' }} size="small">
                                                                 {!el.locked && (
@@ -616,7 +630,6 @@ const BackDesignConfiguratorPage = () => {
                                                                                 }}
                                                                                 onPressEnter={handleSaveName}
                                                                                 onBlur={() => {
-                                                                                    // Auto-save on blur if there are changes
                                                                                     if (hasNameChanged) {
                                                                                         handleSaveName();
                                                                                     } else {
@@ -631,14 +644,8 @@ const BackDesignConfiguratorPage = () => {
                                                                                     size="small"
                                                                                     type="primary"
                                                                                     icon={<CheckCircleOutlined />}
-                                                                                    style={{
-                                                                                        backgroundColor: '#52c41a',
-                                                                                        borderColor: '#52c41a'
-                                                                                    }}
-                                                                                    onClick={e => {
-                                                                                        e.stopPropagation();
-                                                                                        handleSaveName();
-                                                                                    }}
+                                                                                    style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
+                                                                                    onClick={e => { e.stopPropagation(); handleSaveName(); }}
                                                                                     title="Save changes (or press Enter)"
                                                                                 />
                                                                             )}
@@ -778,14 +785,33 @@ const BackDesignConfiguratorPage = () => {
 
                         <Divider />
                         <Title level={5}>3. {isEditMode ? 'Update' : 'Submit'} Design</Title>
-                        <Button
-                            type="primary" icon={<SaveOutlined />} onClick={handleSubmit}
-                            block loading={uploading}
-                            style={{ color: 'white' }}
-                            disabled={!selectedImage || textElements.length === 0}
-                        >
-                            {uploading ? 'Saving...' : (isEditMode ? 'Update Back Design' : 'Submit Back Design')}
-                        </Button>
+                        {isOrderLocked ? (
+                            <>
+                                <Button
+                                    type="primary"
+                                    icon={<SaveOutlined />}
+                                    onClick={handleSubmit}
+                                    block
+                                    loading={uploading}
+                                    style={{ color: 'white' }}
+                                    disabled={!selectedImage}
+                                >
+                                    {uploading ? 'Saving...' : 'Save New Names'}
+                                </Button>
+                                <Text type="secondary" style={{ display: 'block', marginTop: 8, fontSize: 12, textAlign: 'center' }}>
+                                     Design is locked — only new names will be added to the existing design.
+                                </Text>
+                            </>
+                        ) : (
+                            <Button
+                                type="primary" icon={<SaveOutlined />} onClick={handleSubmit}
+                                block loading={uploading}
+                                style={{ color: 'white' }}
+                                disabled={!selectedImage || textElements.length === 0}
+                            >
+                                {uploading ? 'Saving...' : (isEditMode ? 'Update Back Design' : 'Submit Back Design')}
+                            </Button>
+                        )}
                     </Card>
                 </Col>
 
@@ -807,6 +833,7 @@ const BackDesignConfiguratorPage = () => {
                             canvasRef={canvasRef}
                             imageLayout={imageLayout}
                             setImageLayout={setImageLayout}
+                            isLocked={isOrderLocked}
                         />
                     </Card>
                 </Col>

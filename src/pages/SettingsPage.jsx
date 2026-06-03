@@ -30,6 +30,7 @@ const SettingsPage = () => {
                 'price_ZIPPERHOODIE': parseFloat(data['price_ZIPPERHOODIE']) || 0,
                 'price_SWEATPANTS': parseFloat(data['price_SWEATPANTS']) || 0,
                 'price_SHORTS': parseFloat(data['price_SHORTS']) || 0,
+                max_chars_cloth_text: parseInt(data.max_chars_cloth_text) || 20,
             });
         } catch { message.error('Failed to load settings'); }
         finally { setLoading(false); }
@@ -120,6 +121,25 @@ const SettingsPage = () => {
                                 </Form.Item>
                             </Col>
                         ))}
+                    </Row>
+                </Card>
+
+                {/* Cloth Text Length Limit */}
+                <Card className="glass-card" style={{ border: 'none', marginBottom: 24 }} title="Cloth Text Length Limit">
+                    <Text type="secondary" style={{ display: 'block', marginBottom: 16, fontSize: 13 }}>
+                        Maximum number of characters allowed for any printed text on garments.
+                    </Text>
+                    <Row gutter={[16, 0]}>
+                        <Col xs={24} sm={12} md={6}>
+                            <Form.Item
+                                name="max_chars_cloth_text"
+                                label="Max Characters"
+                                tooltip="Maximum characters allowed for cloth text input (e.g. name on chest, back, sleeve)"
+                                rules={[{ type: 'number', min: 1, max: 999, message: 'Must be between 1 and 999' }]}
+                            >
+                                <InputNumber min={1} max={999} step={1} style={{ width: '100%' }} addonAfter="chars" />
+                            </Form.Item>
+                        </Col>
                     </Row>
                 </Card>
 

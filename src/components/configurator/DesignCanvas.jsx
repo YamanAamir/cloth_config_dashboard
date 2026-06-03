@@ -15,7 +15,8 @@ const DesignCanvas = ({
     dragOffset, setDragOffset,
     setTextElements, canvasRef,
     onCanvasUpdate,
-    imageLayout, setImageLayout
+    imageLayout, setImageLayout,
+    isLocked = false,
 }) => {
     const [hasOutOfBounds, setHasOutOfBounds] = useState(false);
     const [imgDragging, setImgDragging] = useState(false);
@@ -114,7 +115,7 @@ const DesignCanvas = ({
         canvas.width = CANVAS_SIZE;
         canvas.height = CANVAS_SIZE;
 
-        ctx.fillStyle = designColor === 'black' ? '#e8e8e8' : '#ffffff';
+        ctx.fillStyle = designColor === 'black' ? '#7e7e7e' : '#ffffff';
         ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
 
         const l = currentLayout || layout;
@@ -223,6 +224,7 @@ const DesignCanvas = ({
     // ─── Mouse handlers ──────────────────────────────────────────────────────────
 
     const handleMouseDown = (e) => {
+        if (isLocked) return;
         if (!canvasRef.current) return;
         const { mx, my } = getCanvasPos(e);
 
@@ -268,6 +270,7 @@ const DesignCanvas = ({
     };
 
     const handleMouseMove = (e) => {
+        if (isLocked) return;
         if (!canvasRef.current) return;
         const { mx, my } = getCanvasPos(e);
 
@@ -341,6 +344,7 @@ const DesignCanvas = ({
     };
 
     const getCursor = () => {
+        if (isLocked) return 'not-allowed';
         if (resizing) return 'nwse-resize';
         if (imgDragging || isDragging) return 'grabbing';
         return 'default';
@@ -361,9 +365,15 @@ const DesignCanvas = ({
                 display: 'flex', justifyContent: 'space-between',
                 alignItems: 'center', marginBottom: 8, paddingLeft: 10
             }}>
-                <Typography.Text type="secondary" style={{ fontSize: 11 }}>
-                    Click image to select · Drag to move · Corner handles to resize · Click empty area to deselect
-                </Typography.Text>
+                {isLocked ? (
+                    <Typography.Text type="warning" style={{ fontSize: 12 }}>
+                        🔒 This design is locked. Preview is available but editing is disabled.
+                    </Typography.Text>
+                ) : (
+                    <Typography.Text type="secondary" style={{ fontSize: 11 }}>
+                        Click image to select · Drag to move · Corner handles to resize · Click empty area to deselect
+                    </Typography.Text>
+                )}
                 {hasOutOfBounds && (
                     <Typography.Text type="danger" style={{ fontSize: 11 }}>
                         <WarningOutlined /> Name outside print area
@@ -387,11 +397,16 @@ const DesignCanvas = ({
                 style={{
                     maxWidth: '100%',
                     borderRadius: 4,
-                    border: hasOutOfBounds ? '2px solid #ff4d4f' : '1px solid #d9d9d9',
+                    border: hasOutOfBounds
+                        ? '2px solid #ff4d4f'
+                        : isLocked
+                            ? '2px solid #faad14'
+                            : '1px solid #d9d9d9',
                     cursor: getCursor(),
                     display: 'block',
                     margin: '0 auto',
                     transition: 'border-color 0.2s',
+                    opacity: isLocked ? 0.85 : 1,
                 }}
             />
         </div>
