@@ -379,83 +379,103 @@ const ReviewUploadsPage = () => {
         },
     ];
 
-    const designColumns = [
-        {
-            title: 'Preview',
-            dataIndex: 'file_path',
-            key: 'file_path',
-            render: (path) => (
-                <Image
-                    width={80}
-                    height={80}
-                    src={getUploadsUrl(path)}
-                    fallback="https://via.placeholder.com/80?text=No+Design"
-                    style={{ borderRadius: 8, objectFit: 'contain', border: '1px solid #f0f0f0' }}
-                />
-            ),
-        },
-        { title: 'Name', dataIndex: 'name', key: 'name', render: (t) => <Typography.Text strong>{t || '—'}</Typography.Text> },
-        {
-            title: 'Class',
-            key: 'class',
-            render: (_, record) => <Typography.Text>{record.class?.name || '—'}</Typography.Text>,
-        },
-        {
-            title: 'Status',
-            dataIndex: 'status',
-            key: 'status',
-            render: (status) => getStatusTag(status),
-        },
-        {
-            title: 'Action',
-            key: 'action',
-            render: (_, record) => (
-                <Space>
-                    <Tooltip title="Approve">
-                        <Popconfirm
-                            title="Approve this design?"
-                            onConfirm={() => handleApprove(record.id, 'design')}
-                            okText="Yes"
-                            cancelText="No"
-                        >
-                            <Button
-                                type="text"
-                                shape="circle"
-                                icon={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
-                                disabled={record.status === Status.ACTIVE}
-                            />
-                        </Popconfirm>
-                    </Tooltip>
-                    <Tooltip title="Reject">
+ const designColumns = [
+    {
+        title: 'Preview',
+        dataIndex: 'file_path',
+        key: 'file_path',
+        render: (path) => (
+            <Image
+                width={80}
+                height={80}
+                src={getUploadsUrl(path)}
+                fallback="https://via.placeholder.com/80?text=No+Design"
+                style={{ borderRadius: 8, objectFit: 'contain', border: '1px solid #f0f0f0' }}
+            />
+        ),
+    },
+    {
+        title: 'Name',
+        dataIndex: 'name',
+        key: 'name',
+        render: (t) => <Typography.Text strong>{t || '—'}</Typography.Text>
+    },
+    {
+        title: 'Class',
+        key: 'class',
+        render: (_, record) => (
+            <Typography.Text>
+                {record.class?.name || '—'}
+            </Typography.Text>
+        ),
+    },
+    {
+        title: 'School',
+        key: 'school',
+        render: (_, record) => (
+            <Typography.Text>
+                {record.class?.school?.name || '—'}
+            </Typography.Text>
+        ),
+    },
+    {
+        title: 'Status',
+        dataIndex: 'status',
+        key: 'status',
+        render: (status) => getStatusTag(status),
+    },
+    {
+        title: 'Action',
+        key: 'action',
+        render: (_, record) => (
+            <Space>
+                <Tooltip title="Approve">
+                    <Popconfirm
+                        title="Approve this design?"
+                        onConfirm={() => handleApprove(record.id, 'design')}
+                        okText="Yes"
+                        cancelText="No"
+                    >
                         <Button
                             type="text"
                             shape="circle"
-                            icon={<CloseCircleOutlined style={{ color: '#ff4d4f' }} />}
-                            disabled={record.status === Status.DELETED}
-                            onClick={() => handleReject(record.id, 'design')}
+                            icon={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
+                            disabled={record.status === Status.ACTIVE}
                         />
-                    </Tooltip>
-                    <Tooltip title="Permanent Delete">
-                        <Popconfirm
-                            title="Permanently delete this design?"
-                            description="This action cannot be undone!"
-                            onConfirm={() => handlePermanentDelete(record.id, 'design', record.name)}
-                            okText="Delete Forever"
-                            okType="danger"
-                            cancelText="Cancel"
-                        >
-                            <Button
-                                type="text"
-                                shape="circle"
-                                icon={<DeleteOutlined style={{ color: '#ff4d4f' }} />}
-                                danger
-                            />
-                        </Popconfirm>
-                    </Tooltip>
-                </Space>
-            ),
-        },
-    ];
+                    </Popconfirm>
+                </Tooltip>
+
+                <Tooltip title="Reject">
+                    <Button
+                        type="text"
+                        shape="circle"
+                        icon={<CloseCircleOutlined style={{ color: '#ff4d4f' }} />}
+                        disabled={record.status === Status.DELETED}
+                        onClick={() => handleReject(record.id, 'design')}
+                    />
+                </Tooltip>
+
+                <Tooltip title="Permanent Delete">
+                    <Popconfirm
+                        title="Permanently delete this design?"
+                        description="This action cannot be undone!"
+                        onConfirm={() => handlePermanentDelete(record.id, 'design', record.name)}
+                        okText="Delete Forever"
+                        okType="danger"
+                        cancelText="Cancel"
+                    >
+                        <Button
+                            type="text"
+                            shape="circle"
+                            icon={<DeleteOutlined style={{ color: '#ff4d4f' }} />}
+                            danger
+                        />
+                    </Popconfirm>
+                </Tooltip>
+            </Space>
+        ),
+    },
+];
 
     return (
         <div className="fade-in">
