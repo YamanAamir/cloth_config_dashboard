@@ -145,7 +145,57 @@ const DesignCanvas = ({
         setHasOutOfBounds(checkBounds(textElements, canvas));
     }, [textElements, designColor, imageLayout, onCanvasUpdate, drawSelectionOverlay]);
 
-    // ─── Image load ──────────────────────────────────────────────────────────────
+    // ─── Background removal ───────────────────────────────────────────────────────
+    // Removes near-white pixels from the image using flood-fill from all 4 corners.
+    // tolerance: 0–255, higher = removes more shades of white/light grey
+    const removeImageBackground = useCallback((img, tolerance = 30) => {
+        const offscreen = document.createElement('canvas');
+        offscreen.width = img.naturalWidth;
+        offscreen.height = img.naturalHeight;
+        const ctx = offscreen.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+
+        const { width, height } = offscreen;
+        const imageData = ctx.getImageData(0, 0, width, height);
+        const data = imageData.data;
+
+        const isNearWhite = (idx) => {
+            const r = data[idx], g = data[idx + 1], b = data[idx + 2], a = data[idx + 3];
+            if (a < 10) return true; // already transparent
+            return r >= 255 - tolerance && g >= 255 - tolerance && b >= 255 - tolerance;
+        };
+
+        const visited = new Uint8Array(width * height);
+
+        const floodFill = (startX, startY) => {
+            const stack = [[startX, startY]];
+            while (stack.length > 0) {
+                const [x, y] = stack.pop();
+                if (x < 0 || x >= width || y < 0 || y >= height) continue;
+                const pos = y * width + x;
+                if (visited[pos]) continue;
+                visited[pos] = 1;
+                const idx = pos * 4;
+                if (!isNearWhite(idx)) continue;
+                // Make transparent
+                data[idx + 3] = 0;
+                stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+            }
+        };
+
+        // Flood fill from all 4 corners
+        floodFill(0, 0);
+        floodFill(width - 1, 0);
+        floodFill(0, height - 1);
+        floodFill(width - 1, height - 1);
+
+        ctx.putImageData(imageData, 0, 0);
+
+        // Return as new Image with transparency
+        const result = new Image();
+        result.src = offscreen.toDataURL('image/png');
+        return result;
+    }, []);
 
     useEffect(() => {
         if (!imagePreview) {
@@ -157,23 +207,26 @@ const DesignCanvas = ({
         const img = new Image();
         img.crossOrigin = 'anonymous';
         img.onload = () => {
-            imgRef.current = img;
+            // Remove white background, then store cleaned image
+            const cleaned = removeImageBackground(img, 30);
+            cleaned.onload = () => {
+                imgRef.current = cleaned;
 
-            // Always reset layout when a new image loads so it fits canvas properly
-            const maxPx = CANVAS_SIZE * DEFAULT_IMG_MAX; // 400px
-            let w = img.naturalWidth;
-            let h = img.naturalHeight;
-            const ratio = Math.min(maxPx / w, maxPx / h, 1);
-            w = Math.round(w * ratio);
-            h = Math.round(h * ratio);
-            const newLayout = {
-                x: Math.round((CANVAS_SIZE - w) / 2),
-                y: Math.round((CANVAS_SIZE - h) / 2),
-                w,
-                h,
+                // Always reset layout when a new image loads so it fits canvas properly
+                const maxPx = CANVAS_SIZE * DEFAULT_IMG_MAX; // 400px
+                let w = img.naturalWidth;
+                let h = img.naturalHeight;
+                const ratio = Math.min(maxPx / w, maxPx / h, 1);
+                w = Math.round(w * ratio);
+                h = Math.round(h * ratio);
+                const newLayout = {
+                    x: Math.round((CANVAS_SIZE - w) / 2),
+                    y: Math.round((CANVAS_SIZE - h) / 2),
+                    w,
+                    h,
+                };
+                setImageLayout(newLayout);
             };
-            setImageLayout(newLayout);
-            // redraw will fire from imageLayout useEffect after setImageLayout
         };
         img.onerror = () => { imgRef.current = null; };
         img.src = imagePreview;

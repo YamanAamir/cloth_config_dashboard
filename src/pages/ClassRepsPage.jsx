@@ -233,7 +233,7 @@ const ClassRepsPage = () => {
                     return (
                         <Tag
                             color="blue"
-                            style={{ cursor: 'pointer',width:'100%', textAlign:"center" }}
+                            style={{ cursor: 'pointer', width: '100%', textAlign: "center" }}
                             onClick={() => openAssignModal(record)}
                         >
                             <TeamOutlined style={{ marginRight: 4 }} />
@@ -245,7 +245,7 @@ const ClassRepsPage = () => {
                     <Button
                         size="small"
                         type="dashed"
-                        
+                        style={{ cursor: 'pointer', width: '100%', textAlign: "center" }}
                         icon={<UserAddOutlined />}
                         onClick={() => openAssignModal(record)}
                     >
@@ -312,8 +312,8 @@ const ClassRepsPage = () => {
                     { type: 'divider' },
                     {
                         key: 'delete',
-                        label: <span style={{  fontWeight: 600 }}>Delete</span>,
-                        icon: <ExclamationCircleOutlined  />,
+                        label: <span style={{ fontWeight: 600 }}>Delete</span>,
+                        icon: <ExclamationCircleOutlined />,
                         danger: true,
                         onClick: () => {
                             Modal.confirm({
@@ -346,7 +346,6 @@ const ClassRepsPage = () => {
         },
     ];
 
-    // ─── Render ───────────────────────────────────────────────────────────────────
 
     return (
         <div>
