@@ -30,7 +30,9 @@ import {
     CopyOutlined,
     UploadOutlined,
     EyeOutlined,
-    GlobalOutlined
+    GlobalOutlined,
+    EditFilled,
+    EditOutlined
 } from '@ant-design/icons';
 import {
     getMyClass,
@@ -389,13 +391,19 @@ const MyClassPageSimple = () => {
                             </Button>
 
                             <Button
+                                style={{
+                                    flex: 1,
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                }}
                                 onClick={() => {
                                     setExpectedCount(studentCount?.expected_students || 0);
                                     setExpectedStudentsModalOpen(true);
                                 }}
-                                style={{ flex: 1 }}
                             >
-                                Expected: {studentCount?.expected_students || 'Set'}
+                                <span>Expected: {studentCount?.expected_students || 'Set'}</span>
+                                <EditOutlined />
                             </Button>
                         </div>
                     </Card>
@@ -697,7 +705,7 @@ const MyClassPageSimple = () => {
                         marginBottom: '16px',
                         wordBreak: 'break-all'
                     }}>
-                        <Text copyable={{ text: registrationLink }}>{registrationLink}</Text>
+                        <Text >{registrationLink}</Text>
                     </div>
                     <Button
                         type="primary"

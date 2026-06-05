@@ -342,7 +342,7 @@ const BackDesignConfiguratorPage = () => {
 
                     if (width > maxWidth || height > maxHeight) {
                         message.warning({
-                            content: `⚠️ Selected design (${width}×${height}px) exceeds A3 size limit (${maxWidth}×${maxHeight}px). You can use it for editing, but final export may be rejected.`,
+                            content: `Selected design (${width}×${height}px) exceeds A3 size limit (${maxWidth}×${maxHeight}px). You can use it for editing, but final export may be rejected.`,
                             duration: 8
                         });
                     }

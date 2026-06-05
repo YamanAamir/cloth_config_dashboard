@@ -3,11 +3,11 @@ import {
     Table, Button, Card, Typography, Space, Modal,
     Form, Input, Switch, message, Popconfirm, Select,
     Tag, Drawer, Empty, Image, Spin, Dropdown} from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, TeamOutlined, BankOutlined, CalendarOutlined, UserAddOutlined, EyeOutlined, LockOutlined, UnlockOutlined, FileZipOutlined, FilePdfOutlined, FileExcelOutlined, MoreOutlined, MailOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, TeamOutlined, BankOutlined, CalendarOutlined, EyeOutlined, LockOutlined, UnlockOutlined, FileZipOutlined, FilePdfOutlined, FileExcelOutlined, MoreOutlined, MailOutlined } from '@ant-design/icons';
 import {
     getAllClasses, createClass, updateClass, deleteClass,
-    toggleClassStatus, getAllSchools, getAllClassReps,
-    assignClassRep, getClassBackDesign, lockClass, unlockClass,
+    toggleClassStatus, getAllSchools,
+    getClassBackDesign, lockClass, unlockClass,
     generateProductionFiles, sendStatusEmail, sendFollowupEmail,
     updateClassProcessStatus, sendDeadlineReminder
 } from '../api/api';
@@ -20,14 +20,10 @@ const { Option } = Select;
 const ClassesPage = () => {
     const [classes, setClasses] = useState([]);
     const [schools, setSchools] = useState([]);
-    const [classReps, setClassReps] = useState([]);
     const [loading, setLoading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
     const [editingClass, setEditingClass] = useState(null);
-    const [selectedClass, setSelectedClass] = useState(null);
     const [form] = Form.useForm();
-    const [assignForm] = Form.useForm();
     
     // Back Design Drawer
     const [designDrawerOpen, setDesignDrawerOpen] = useState(false);
@@ -91,20 +87,6 @@ const ClassesPage = () => {
         }
     };
 
-    const fetchFilteredReps = async (schoolId) => {
-        try {
-            const repsRes = await getAllClassReps({
-                school_id: schoolId,
-                unassigned_only: true,
-                page: 1,
-                limit: 50
-            });
-            setClassReps(repsRes.data.data || []);
-        } catch (error) {
-            message.error('Failed to fetch representatives');
-        }
-    };
-
     useEffect(() => {
         fetchClasses();
     }, [pagination.current, pagination.limit, pagination.search]);
@@ -136,22 +118,6 @@ const ClassesPage = () => {
             message.error(error.response?.data?.message || 'Operation failed');
         }
     };
-
-    const handleAssignRep = async (values) => {
-        try {
-            const payload = {
-                class_id: selectedClass.id,
-                class_rep_id: values.class_rep_id
-            };
-            await assignClassRep(payload);
-            message.success('Representative assigned successfully');
-            setIsAssignModalOpen(false);
-            assignForm.resetFields();
-            fetchClasses();
-        } catch (error) {
-            message.error(error.response?.data?.message || 'Assignment failed');
-        }
-    }
 
     const handleDelete = async (id) => {
         try {
@@ -362,48 +328,6 @@ const ClassesPage = () => {
                     />
                 );
             },
-        },
-        {
-            title: "Assigned Reps",
-            dataIndex: "users",
-            key: "assigned_reps",
-            render: (users, record) => {
-                if (!users || users.length === 0) {
-                    return (
-                        <Button
-                            size="small"
-                            type="dashed"
-                            danger
-                            icon={<UserAddOutlined />}
-                            onClick={() => {
-                                setSelectedClass(record);
-                                assignForm.resetFields();
-                                setIsAssignModalOpen(true);
-                                fetchFilteredReps(record.school_id);
-                            }}
-                        >
-                            Assign Rep
-                        </Button>
-                    );
-                }
-                return (
-                    <Button
-                        size="small"
-                        type="primary"
-                        icon={<TeamOutlined />}
-                        onClick={() => {
-                            setSelectedClass(record);
-                            assignForm.setFieldsValue({
-                                class_rep_id: record.users?.[0]?.id
-                            });
-                            setIsAssignModalOpen(true);
-                            fetchFilteredReps(record.school_id);
-                        }}
-                    >
-                        Assigned
-                    </Button>
-                );
-            }
         },
         {
             title: 'Lock',
@@ -665,56 +589,6 @@ const ClassesPage = () => {
                             <Button onClick={() => setIsModalOpen(false)}>Cancel</Button>
                             <Button type="primary" htmlType="submit">
                                 {editingClass ? 'Update Class' : 'Create Class'}
-                            </Button>
-                        </Space>
-                    </Form.Item>
-                </Form>
-            </Modal>
-
-            {/* Assign Representative Modal */}
-            <Modal
-                title={`Assign Representative to ${selectedClass?.name}`}
-                open={isAssignModalOpen}
-                onCancel={() => setIsAssignModalOpen(false)}
-                footer={null}
-                destroyOnHidden
-            >
-                <Form
-                    form={assignForm}
-                    layout="vertical"
-                    onFinish={handleAssignRep}
-                    style={{ marginTop: 20 }}
-                >
-                    <Form.Item
-                        name="class_rep_id"
-                        label="Select Representative"
-                        rules={[{ required: true, message: 'Please select a representative' }]}
-                    >
-                        <Select
-                            placeholder="Search and select representative"
-                            showSearch
-                            optionFilterProp="label"
-                            options={[
-                                // Currently assigned rep (if any) shown at top
-                                ...(selectedClass?.users?.length > 0 ? [{
-                                    value: selectedClass.users[0].id,
-                                    label: `${selectedClass.users[0].name} (${selectedClass.users[0].email}) — Currently Assigned`,
-                                    style: { color: '#00b96b' }
-                                }] : []),
-                                // Unassigned reps from backend
-                                ...classReps.map(rep => ({
-                                    value: rep.id,
-                                    label: `${rep.name} (${rep.email})`
-                                }))
-                            ]}
-                        />
-                    </Form.Item>
-
-                    <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
-                        <Space>
-                            <Button onClick={() => setIsAssignModalOpen(false)}>Cancel</Button>
-                            <Button type="primary" htmlType="submit">
-                                Assign Representative
                             </Button>
                         </Space>
                     </Form.Item>

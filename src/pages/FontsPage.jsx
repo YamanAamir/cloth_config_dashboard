@@ -83,7 +83,7 @@ const FontsPage = () => {
             content: (
                 <div>
                     <Typography.Text type="danger" strong>
-                        ⚠️ This action cannot be undone!
+                        This action cannot be undone!
                     </Typography.Text>
                     <br />
                     <Typography.Text>

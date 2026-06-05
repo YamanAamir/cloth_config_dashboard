@@ -114,11 +114,11 @@ const SchoolsPage = () => {
     };
 
     const columns = [
-        {
-            title: 'S/N',
-            key: 'serial',
-            render: (_, record, index) => index + 1,
-        },
+        // {
+        //     title: 'S/N',
+        //     key: 'serial',
+        //     render: (_, record, index) => index + 1,
+        // },
         {
             title: 'School Name',
             dataIndex: 'name',
@@ -141,13 +141,7 @@ const SchoolsPage = () => {
         //         </Tag>
         //     ),
         // },
-        {
-            title: 'Created At',
-            dataIndex: 'created_at',
-            key: 'created_at',
-            render: (date) => new Date(date).toLocaleDateString(),
-        },
-        {
+         {
             title: 'Status',
             dataIndex: 'status',
             key: 'status',

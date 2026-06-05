@@ -449,7 +449,7 @@ const PropertiesPanel = ({ selectedElement, onUpdate, onDelete }) => {
                                     placeholder="https://example.com/image.jpg"
                                 />
                                 <Text style={{ fontSize: 10, color: '#ff4d4f', display: 'block', marginTop: 4 }}>
-                                    ⚠️ IMPORTANT: Use hosted image URLs only (https://...). Base64 images will not display in emails.
+                                    IMPORTANT: Use hosted image URLs only (https://...). Base64 images will not display in emails.
                                 </Text>
                                 <Text style={{ fontSize: 10, color: '#666', display: 'block', marginTop: 2 }}>
                                     💡 Upload images to your server or use image hosting services like Imgur, Cloudinary, etc.
