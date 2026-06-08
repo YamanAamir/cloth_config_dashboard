@@ -146,7 +146,8 @@ const DesignCanvas = ({
     }, [textElements, designColor, imageLayout, onCanvasUpdate, drawSelectionOverlay]);
 
     // ─── Background removal ───────────────────────────────────────────────────────
-    // Removes near-white pixels from the image using flood-fill from all 4 corners.
+    // Step 1: Flood-fill from all 4 corners to remove outer background (gray/white).
+    // Step 2: Global pass — remove ALL remaining near-white pixels anywhere in image.
     // tolerance: 0–255, higher = removes more shades of white/light grey
     const removeImageBackground = useCallback((img, tolerance = 30) => {
         const offscreen = document.createElement('canvas');
@@ -159,14 +160,19 @@ const DesignCanvas = ({
         const imageData = ctx.getImageData(0, 0, width, height);
         const data = imageData.data;
 
-        const isNearWhite = (idx) => {
+        const isNearWhiteOrGray = (idx) => {
             const r = data[idx], g = data[idx + 1], b = data[idx + 2], a = data[idx + 3];
             if (a < 10) return true; // already transparent
-            return r >= 255 - tolerance && g >= 255 - tolerance && b >= 255 - tolerance;
+            // Near white
+            if (r >= 255 - tolerance && g >= 255 - tolerance && b >= 255 - tolerance) return true;
+            // Near gray (outer canvas background like #7e7e7e)
+            const isGray = Math.abs(r - g) < 15 && Math.abs(g - b) < 15 && Math.abs(r - b) < 15;
+            if (isGray && r >= 100 && r <= 180) return true;
+            return false;
         };
 
+        // Step 1: Flood fill from all 4 corners to remove outer background
         const visited = new Uint8Array(width * height);
-
         const floodFill = (startX, startY) => {
             const stack = [[startX, startY]];
             while (stack.length > 0) {
@@ -176,18 +182,26 @@ const DesignCanvas = ({
                 if (visited[pos]) continue;
                 visited[pos] = 1;
                 const idx = pos * 4;
-                if (!isNearWhite(idx)) continue;
-                // Make transparent
+                if (!isNearWhiteOrGray(idx)) continue;
                 data[idx + 3] = 0;
                 stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
             }
         };
 
-        // Flood fill from all 4 corners
         floodFill(0, 0);
         floodFill(width - 1, 0);
         floodFill(0, height - 1);
         floodFill(width - 1, height - 1);
+
+        // Step 2: Global pass — remove ALL remaining near-white pixels (inner whites)
+        const whiteThreshold = 255 - tolerance;
+        for (let i = 0; i < data.length; i += 4) {
+            if (data[i + 3] === 0) continue; // already transparent, skip
+            const r = data[i], g = data[i + 1], b = data[i + 2];
+            if (r >= whiteThreshold && g >= whiteThreshold && b >= whiteThreshold) {
+                data[i + 3] = 0; // make transparent
+            }
+        }
 
         ctx.putImageData(imageData, 0, 0);
 

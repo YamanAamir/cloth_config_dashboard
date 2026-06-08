@@ -99,11 +99,24 @@ export const deleteNameListItem = (itemId) => api.delete(`/class-rep/namelist/it
 // Font APIs (Admin)
 export const getAdminFonts = (params = {}) => api.post('/admin/fonts', params);
 export const createFont = (data) => api.post('/admin/font/create', data);
+export const updateFont = (id, data) => api.put(`/admin/font/${id}/update`, data);
 export const deleteFont = (id) => api.delete(`/admin/font/${id}/delete`);
 export const permanentDeleteFont = (id) => api.delete(`/admin/font/${id}/permanent-delete`, { data: { confirm: "DELETE" } });
+export const toggleFontStatus = (id) => api.put(`/admin/font/${id}/toggle-status`);
+
+// Student APIs (Admin)
+export const adminGetStudents = (params = {}) => api.post('/admin/students', params);
+export const adminGetStudentDetails = (id) => api.get(`/admin/student/${id}/details`);
+export const adminDeleteStudent = (id) => api.delete(`/admin/student/${id}/delete`);
+export const adminPermanentDeleteStudent = (id) => api.delete(`/admin/student/${id}/permanent-delete`, { data: { confirm: "DELETE" } });
+
+// Student APIs (Class Rep)
+export const crGetStudentDetails = (id) => api.get(`/class-rep/student/${id}/details`);
+export const crDeleteStudent = (id) => api.delete(`/class-rep/student/${id}/delete`);
 
 // Font APIs (Class Rep)
 export const getClassRepFonts = () => api.get('/class-rep/fonts');
+
 export const getAllCountries = (params = {}) => api.post('/admin/countries', params);
 export const createCountry = (data) => api.post('/admin/country/create', data);
 export const updateCountry = (id, data) => api.put(`/admin/country/${id}/update`, data);

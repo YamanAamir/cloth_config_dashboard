@@ -126,22 +126,22 @@ const SchoolsPage = () => {
             render: (text) => <span style={{ fontWeight: 600 }}>{text}</span>,
         },
         {
+            title: 'No of Classes',
+            dataIndex: 'classes',
+            key: 'classes',
+            render: (classes) => (
+                <Tag color="cyan" style={{ fontSize: 13, padding: '2px 8px' }}>
+                    {Array.isArray(classes) ? classes.length : 0}
+                </Tag>
+            ),
+        },
+        {
             title: 'Education Type',
             dataIndex: 'education_type',
             key: 'education_type',
             render: (type) => <Tag color="blue">{type}</Tag>
         },
-        // {
-        //     title: 'Classes',
-        //     dataIndex: 'class_count',
-        //     key: 'class_count',
-        //     render: (count) => (
-        //         <Tag color="cyan" style={{ fontSize: 13, padding: '2px 8px' }}>
-        //             {count || 0}
-        //         </Tag>
-        //     ),
-        // },
-         {
+        {
             title: 'Status',
             dataIndex: 'status',
             key: 'status',

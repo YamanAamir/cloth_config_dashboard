@@ -52,22 +52,22 @@ const { Dragger } = Upload;
 
 const STATUS_CONFIG = {
     [Status.ACTIVE]: {
-        label: 'Approved ',
+        label: 'Godkendt',
         color: 'success',
         icon: <CheckCircleOutlined />,
-        description: 'Your design has been approved!'
+        description: 'Dit design er blevet godkendt!'
     },
     [Status.INACTIVE]: {
-        label: 'Under Review',
+        label: 'Under gennemgang',
         color: 'processing',
         icon: <ClockCircleOutlined />,
-        description: 'We are reviewing your design'
+        description: 'Vi gennemgår dit design'
     },
     [Status.DELETED]: {
-        label: 'Needs Changes',
+        label: 'Kræver ændringer',
         color: 'error',
         icon: <CloseCircleOutlined />,
-        description: 'Please upload a new design'
+        description: 'Upload venligst et nyt design'
     },
 };
 
@@ -293,9 +293,6 @@ const MyClassPageSimple = () => {
         return (
             <div style={{ textAlign: 'center', padding: '100px 0' }}>
                 <Spin size="large" />
-                <div style={{ marginTop: 16 }}>
-                    <Text>Loading your class information...</Text>
-                </div>
             </div>
         );
     }
@@ -323,7 +320,7 @@ const MyClassPageSimple = () => {
                     {myClass.name}
                 </Title>
                 <Text type="secondary">
-                    {myClass.school?.name} • Class of {myClass.graduation_year}
+                    {myClass.school?.name} • Klasse af {myClass.graduation_year}
                 </Text>
             </div>
 
@@ -347,10 +344,10 @@ const MyClassPageSimple = () => {
                         <div style={{ textAlign: 'center' }}>
                             <TeamOutlined style={{ fontSize: 42, color: '#1677ff', marginBottom: 12 }} />
                             <Title level={4} style={{ marginBottom: 4 }}>
-                                Students
+                                Elever
                             </Title>
                             <Text type="secondary">
-                                Share link & track registrations
+                                Del link og spor registreringer
                             </Text>
                         </div>
 
@@ -387,7 +384,7 @@ const MyClassPageSimple = () => {
                                 loading={linkLoading}
                                 style={{ flex: 1 }}
                             >
-                                Get Link
+                                Hent link
                             </Button>
 
                             <Button
@@ -402,7 +399,7 @@ const MyClassPageSimple = () => {
                                     setExpectedStudentsModalOpen(true);
                                 }}
                             >
-                                <span>Expected: {studentCount?.expected_students || 'Set'}</span>
+                                <span>Forventet: {studentCount?.expected_students || 'Angiv'}</span>
                                 <EditOutlined />
                             </Button>
                         </div>
@@ -425,10 +422,10 @@ const MyClassPageSimple = () => {
                         <div style={{ textAlign: 'center' }}>
                             <UploadOutlined style={{ fontSize: 42, color: '#1890ff', marginBottom: 12 }} />
                             <Title level={4} style={{ marginBottom: 4 }}>
-                                Upload Logo
+                                Upload logo
                             </Title>
                             <Text type="secondary">
-                                Class logo for graduation items
+                                Klasselogo til dimissionsgenstande
                             </Text>
                         </div>
 
@@ -438,10 +435,10 @@ const MyClassPageSimple = () => {
                         <div style={{ marginBottom: 16, textAlign: 'center' }}>
                             {logos.length > 0 ? (
                                 <Tag color="success">
-                                    {logos.length} Logo{logos.length > 1 ? 's' : ''}
+                                    {logos.length} Logo{logos.length > 1 ? 'er' : ''}
                                 </Tag>
                             ) : (
-                                <Tag color="default">No logos yet</Tag>
+                                <Tag color="default">Ingen logoer endnu</Tag>
                             )}
                         </div>
 
@@ -451,7 +448,7 @@ const MyClassPageSimple = () => {
                             onClick={() => setUploadModalOpen(true)}
                             block
                         >
-                            Upload Logo
+                            Upload logo
                         </Button>
 
 
@@ -472,10 +469,10 @@ const MyClassPageSimple = () => {
                         <div style={{ textAlign: 'center' }}>
                             <GlobalOutlined style={{ fontSize: 42, color: '#722ed1', marginBottom: 12 }} />
                             <Title level={4} style={{ marginBottom: 4 }}>
-                                Study Trip
+                                Studietur
                             </Title>
                             <Text type="secondary">
-                                Select destination country
+                                Vælg destinationsland
                             </Text>
                         </div>
 
@@ -488,7 +485,7 @@ const MyClassPageSimple = () => {
                                     {myClass.country.name}
                                 </Tag>
                             ) : (
-                                <Tag color="default">No country selected</Tag>
+                                <Tag color="default">Intet land valgt</Tag>
                             )}
                         </div>
 
@@ -501,7 +498,7 @@ const MyClassPageSimple = () => {
                             }}
                             block
                         >
-                            {myClass?.country ? 'Change Country' : 'Select Country'}
+                            {myClass?.country ? 'Skift land' : 'Vælg land'}
                         </Button>
                     </Card>
                 </Col>
@@ -512,7 +509,7 @@ const MyClassPageSimple = () => {
             {/* All Logos */}
             {logos.length > 1 && (
                 <Card
-                    title="All Your Logos"
+                    title="Alle dine logoer"
                     style={{
                         marginBottom: '24px',
                         borderRadius: 12
@@ -562,7 +559,7 @@ const MyClassPageSimple = () => {
             )}
             {/* Current Status */}
             <Card
-                title="Current Status"
+                title="Aktuel status"
                 style={{
                     marginBottom: '24px',
                     borderRadius: 12
@@ -577,7 +574,7 @@ const MyClassPageSimple = () => {
                             borderRadius: '12px',
                             height: '100%'
                         }}>
-                            <Title level={5} style={{ marginBottom: 16 }}>Back Design</Title>
+                            <Title level={5} style={{ marginBottom: 16 }}>Bagdesign</Title>
                             {backDesign ? (
                                 <div>
                                     <div style={{ marginBottom: '16px' }}>
@@ -600,11 +597,11 @@ const MyClassPageSimple = () => {
                                     {backDesign.isFromConfigurator && backDesign.configurator_state && (
                                         <div style={{ marginBottom: 8 }}>
                                             <Tag color="blue" size="small">
-                                                Configurator Design
+                                                Konfigurator design
                                             </Tag>
                                             {backDesign.configurator_state.textElements && (
                                                 <Text type="secondary" style={{ display: 'block', fontSize: 11, marginTop: 4 }}>
-                                                    {backDesign.configurator_state.textElements.length} text elements
+                                                    {backDesign.configurator_state.textElements.length} tekstelementer
                                                 </Text>
                                             )}
                                         </div>
@@ -624,7 +621,7 @@ const MyClassPageSimple = () => {
                                 </div>
                             ) : (
                                 <Empty
-                                    description="No back design selected yet"
+                                    description="Ingen bagdesign valgt endnu"
                                     image={Empty.PRESENTED_IMAGE_SIMPLE}
                                 />
                             )}
@@ -639,7 +636,7 @@ const MyClassPageSimple = () => {
                             borderRadius: '12px',
                             height: '100%'
                         }}>
-                            <Title level={5} style={{ marginBottom: 16 }}>Latest Logo</Title>
+                            <Title level={5} style={{ marginBottom: 16 }}>Seneste logo</Title>
                             {logos.length > 0 ? (
                                 <div>
                                     {logos.slice(0, 1).map(logo => (
@@ -675,7 +672,7 @@ const MyClassPageSimple = () => {
                                 </div>
                             ) : (
                                 <Empty
-                                    description="No logos uploaded yet"
+                                    description="Ingen logoer uploadet endnu"
                                     image={Empty.PRESENTED_IMAGE_SIMPLE}
                                 />
                             )}
@@ -688,7 +685,7 @@ const MyClassPageSimple = () => {
 
             {/* Registration Link Modal */}
             <Modal
-                title="Share This Link With Your Classmates"
+                title="Del dette link med dine klassekammerater"
                 open={linkModalOpen}
                 onCancel={() => setLinkModalOpen(false)}
                 footer={null}
@@ -696,7 +693,7 @@ const MyClassPageSimple = () => {
             >
                 <div style={{ textAlign: 'center', padding: '20px 0' }}>
                     <Paragraph>
-                        Send this link to your classmates so they can register and order their graduation items:
+                        Send dette link til dine klassekammerater, så de kan registrere sig og bestille deres dimissionsgenstande:
                     </Paragraph>
                     <div style={{
                         padding: '16px',
@@ -713,14 +710,14 @@ const MyClassPageSimple = () => {
                         onClick={copyLink}
                         size="large"
                     >
-                        Copy Link
+                        Kopiér link
                     </Button>
                 </div>
             </Modal>
 
             {/* Upload Modal */}
             <Modal
-                title="Upload Class Logo"
+                title="Upload klasselogo"
                 open={uploadModalOpen}
                 onCancel={() => {
                     setUploadModalOpen(false);
@@ -750,16 +747,15 @@ const MyClassPageSimple = () => {
                     </div> */}
 
                     <Paragraph>
-                        Upload a high-quality image of your class logo. We'll review it and approve it for use on graduation items.
+                        Upload et billede i høj kvalitet af dit klasselogo. Vi gennemgår det og godkender det til brug på dimissionsgenstande.
                     </Paragraph>
 
-                    {/* Name Input */}
                     <div style={{ marginBottom: 16 }}>
                         <Typography.Text strong style={{ display: 'block', marginBottom: 8 }}>
-                            Logo Name *
+                            Logonavn *
                         </Typography.Text>
                         <Input
-                            placeholder="Enter logo name (e.g. School Logo 2025)"
+                            placeholder="Indtast logonavn (f.eks. Skolelogo 2025)"
                             value={logoName}
                             onChange={(e) => setLogoName(e.target.value)}
                             maxLength={100}
@@ -788,11 +784,11 @@ const MyClassPageSimple = () => {
                             color: selectedFile ? '#52c41a' : undefined,
                             fontWeight: selectedFile ? 'bold' : 'normal'
                         }}>
-                            {selectedFile ? '✓ File Selected - Click or drag to change' :
-                                'Click or drag image here to select'}
+                            {selectedFile ? '✓ Fil valgt – Klik eller træk for at skifte' :
+                                'Klik eller træk billede hertil for at vælge'}
                         </p>
                         <p className="ant-upload-hint">
-                            Max: 5MB • JPG/PNG/GIF
+                            Maks: 5MB • JPG/PNG/GIF
                         </p>
                     </Dragger>
 
@@ -828,7 +824,7 @@ const MyClassPageSimple = () => {
                             disabled={!selectedFile || !logoName.trim()}
                             style={{ minWidth: 120, color: 'white' }}
                         >
-                            {uploading ? 'Uploading...' : 'Upload Logo'}
+                            {uploading ? 'Uploader...' : 'Upload logo'}
                         </Button>
                     </div>
                 </div>
@@ -836,20 +832,21 @@ const MyClassPageSimple = () => {
 
             {/* Expected Students Modal */}
             <Modal
-                title="How Many Students Are Expected?"
+                title="Hvor mange elever forventes?"
                 open={expectedStudentsModalOpen}
                 onOk={handleUpdateExpectedCount}
                 onCancel={() => setExpectedStudentsModalOpen(false)}
                 confirmLoading={updatingCount}
-                okText="Save"
+                okText="Gem"
+                cancelText="Annuller"
             >
                 <div style={{ padding: '20px 0' }}>
                     <Paragraph>
-                        Tell us how many students you expect in your class. This helps us track registration progress.
+                        Fortæl os, hvor mange elever du forventer i din klasse. Dette hjælper os med at spore registreringsfremskridt.
                     </Paragraph>
                     <Input
                         type="number"
-                        placeholder="Enter number of expected students"
+                        placeholder="Indtast antal forventede elever"
                         value={expectedCount}
                         onChange={(e) => setExpectedCount(parseInt(e.target.value) || 0)}
                         min={1}
@@ -859,32 +856,32 @@ const MyClassPageSimple = () => {
                     {studentCount ? (
                         <div style={{ marginTop: '12px' }}>
                             <Text type="secondary">
-                                Currently registered: {studentCount.registered_students || 0} students
+                                Aktuelt registrerede: {studentCount.registered_students || 0} elever
                             </Text>
                         </div>
                     ) : (
                         <div style={{ marginTop: '12px' }}>
                             <Text type="secondary">
-                                Loading current registration count...
+                                Indlæser nuværende registreringsantal...
                             </Text>
                         </div>
                     )}
                 </div>
             </Modal>
 
-            {/* Study Trip Modal */}
             <Modal
-                title="Select Study Trip Country"
+                title="Vælg studietur destination"
                 open={studyTripModalOpen}
                 onOk={handleSetStudyTripCountry}
                 onCancel={() => setStudyTripModalOpen(false)}
                 confirmLoading={settingCountry}
-                okText="Save Country"
+                okText="Gem land"
+                cancelText="Annuller"
                 width={500}
             >
                 <div style={{ padding: '20px 0' }}>
                     <Paragraph>
-                        Choose the country for your class study trip. This will be used for graduation designs and planning.
+                        Vælg det land, din klasse tager på studietur til. Dette bruges til dimissionsdesigns og planlægning.
                     </Paragraph>
 
                     {studyTripCountries.length > 0 ? (
@@ -912,40 +909,22 @@ const MyClassPageSimple = () => {
                                                 : '1px solid #f0f0f0',
                                         background:
                                             selectedCountry === country.id
-                                                ? '#e6f4ff'
+                                                ? '#e6fff5'
                                                 : '#fff',
                                     }}
                                 >
-                                    <div
-                                        style={{
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            alignItems: 'center',
-                                            gap: '6px',
-                                        }}
+                                    <Text
+                                        strong
+                                        style={{ fontSize: '13px', textAlign: 'center' }}
                                     >
-                                        <Text
-                                            strong
-                                            style={{
-                                                fontSize: '13px',
-                                                textAlign: 'center',
-                                            }}
-                                        >
-                                            {country.name}
-                                        </Text>
-
-                                        {/* {selectedCountry === country.id && (
-                                            <CheckCircleOutlined
-                                                style={{ color: '#52c41a', fontSize: '16px' }}
-                                            />
-                                        )} */}
-                                    </div>
+                                        {country.name}
+                                    </Text>
                                 </Card>
                             ))}
                         </div>
                     ) : (
                         <Empty
-                            description="No countries available"
+                            description="Ingen lande tilgængelige"
                             image={Empty.PRESENTED_IMAGE_SIMPLE}
                         />
                     )}

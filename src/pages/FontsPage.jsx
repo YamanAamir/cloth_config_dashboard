@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import {
     Card, Typography, Table, Button, Space, Modal,
-    Form, Input, message, Popconfirm, Alert
+    Form, Input, message, Popconfirm, Alert, Switch, Tag
 } from 'antd';
-import { PlusOutlined, DeleteOutlined, LinkOutlined } from '@ant-design/icons';
-import { getAdminFonts, createFont, deleteFont, permanentDeleteFont } from '../api/api';
+import { PlusOutlined, DeleteOutlined, LinkOutlined, EditOutlined } from '@ant-design/icons';
+import { getAdminFonts, createFont, updateFont, deleteFont, permanentDeleteFont, toggleFontStatus } from '../api/api';
 
 const { Title, Text } = Typography;
 const PREVIEW_TEXT = 'AaBbCc 123';
@@ -13,6 +13,7 @@ const FontsPage = () => {
     const [fonts, setFonts] = useState([]);
     const [loading, setLoading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingFont, setEditingFont] = useState(null); // null = add, object = edit
     const [saving, setSaving] = useState(false);
     const [previewUrl, setPreviewUrl] = useState('');
     const [previewFamily, setPreviewFamily] = useState('');
@@ -58,14 +59,20 @@ const FontsPage = () => {
     const handleSave = async (values) => {
         setSaving(true);
         try {
-            await createFont({ name: values.name, google_font_url: values.google_font_url });
-            message.success('Font added');
+            if (editingFont) {
+                await updateFont(editingFont.id, { name: values.name, google_font_url: values.google_font_url });
+                message.success('Font updated');
+            } else {
+                await createFont({ name: values.name, google_font_url: values.google_font_url });
+                message.success('Font added');
+            }
             setIsModalOpen(false);
             form.resetFields();
+            setEditingFont(null);
             setPreviewFamily(''); setPreviewUrl('');
             fetchFonts();
         } catch (err) {
-            message.error(err.response?.data?.message || 'Failed to add font');
+            message.error(err.response?.data?.message || 'Failed to save font');
         } finally { setSaving(false); }
     };
 
@@ -75,6 +82,15 @@ const FontsPage = () => {
             message.success('Font removed');
             fetchFonts();
         } catch { message.error('Delete failed'); }
+    };
+
+    const handleToggleStatus = async (record) => {
+        if (record.status === 2) return; // deleted font toggle nahi hogi
+        try {
+            await toggleFontStatus(record.id);
+            message.success(`Font marked as ${record.status === 0 ? 'inactive' : 'active'}`);
+            fetchFonts();
+        } catch { message.error('Status update failed'); }
     };
 
     const handlePermanentDelete = async (id, name) => {
@@ -132,19 +148,49 @@ const FontsPage = () => {
             ) : '—'
         },
         {
+            title: 'Status',
+            dataIndex: 'status',
+            key: 'status',
+            render: (status, record) => {
+                if (status === 2) return <Tag color="error">Deleted</Tag>;
+                return (
+                    <Switch
+                        checked={status === 0}
+                        onChange={() => handleToggleStatus(record)}
+                        checkedChildren="Active"
+                        unCheckedChildren="Inactive"
+                    />
+                );
+            },
+        },
+        {
             title: 'Action',
             key: 'action',
             render: (_, r) => (
-                <Popconfirm 
-                    title="Permanently delete this font?" 
-                    description="This action cannot be undone!"
-                    onConfirm={() => handlePermanentDelete(r.id, r.name)} 
-                    okText="Delete Forever" 
-                    okType="danger"
-                    cancelText="Cancel"
-                >
-                    <Button type="text" danger icon={<DeleteOutlined />} />
-                </Popconfirm>
+                <Space>
+                    <Button
+                        type="text"
+                        icon={<EditOutlined style={{ color: '#00b96b' }} />}
+                        onClick={() => {
+                            setEditingFont(r);
+                            form.setFieldsValue({ name: r.name, google_font_url: r.google_font_url });
+                            setPreviewFamily(r.name);
+                            setPreviewUrl(r.google_font_url || '');
+                            loadFont(r.google_font_url, r.name);
+                            setIsModalOpen(true);
+                        }}
+                    />
+                    <Popconfirm
+                        title="Permanently delete this font?"
+                        description="This action cannot be undone!"
+                        onConfirm={() => handlePermanentDelete(r.id, r.name)}
+                        okText="Delete Forever"
+                        okType="danger"
+                        cancelText="Cancel"
+                    >
+                        <Button type="text" danger icon={<DeleteOutlined />} />
+                    </Popconfirm>
+                </Space>
             )
         }
     ];
@@ -156,7 +202,7 @@ const FontsPage = () => {
                     <Title level={4} style={{ margin: 0 }}>Font Management</Title>
                     <Text type="secondary">Fonts available for class representatives when adding names to back print</Text>
                 </div>
-                <Button type="primary" icon={<PlusOutlined />} onClick={() => { form.resetFields(); setPreviewFamily(''); setIsModalOpen(true); }}>
+                <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditingFont(null); form.resetFields(); setPreviewFamily(''); setPreviewUrl(''); setIsModalOpen(true); }}>
                     Add Font
                 </Button>
             </div>
@@ -185,9 +231,9 @@ const FontsPage = () => {
             </Card>
 
             <Modal
-                title="Add Font"
+                title={editingFont ? 'Edit Font' : 'Add Font'}
                 open={isModalOpen}
-                onCancel={() => { setIsModalOpen(false); setPreviewFamily(''); setPreviewUrl(''); }}
+                onCancel={() => { setIsModalOpen(false); setEditingFont(null); setPreviewFamily(''); setPreviewUrl(''); }}
                 footer={null}
                 destroyOnHidden
             >
@@ -223,8 +269,10 @@ const FontsPage = () => {
 
                     <Form.Item style={{ textAlign: 'right', marginBottom: 0 }}>
                         <Space>
-                            <Button onClick={() => setIsModalOpen(false)}>Cancel</Button>
-                            <Button type="primary" htmlType="submit" loading={saving}>Add Font</Button>
+                            <Button onClick={() => { setIsModalOpen(false); setEditingFont(null); }}>Cancel</Button>
+                            <Button type="primary" htmlType="submit" loading={saving}>
+                                {editingFont ? 'Update Font' : 'Add Font'}
+                            </Button>
                         </Space>
                     </Form.Item>
                 </Form>

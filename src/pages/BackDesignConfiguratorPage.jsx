@@ -135,13 +135,13 @@ const BackDesignConfiguratorPage = () => {
         setBackDesigns(filtered);
     }, [designColor, allBackDesigns]);
 
-    const fetchMyClass = async () => {
-        setLoading(true);
+    const fetchMyClass = async (silent = false) => {
+        if (!silent) setLoading(true);
         try {
             const res = await getMyClass();
             setMyClass(res.data.data?.[0]);
-        } catch { message.error('Failed to fetch class'); }
-        finally { setLoading(false); }
+        } catch { if (!silent) message.error('Failed to fetch class'); }
+        finally { if (!silent) setLoading(false); }
     };
 
     const filterByDesignColor = (data, color) => {
@@ -302,7 +302,9 @@ const BackDesignConfiguratorPage = () => {
         setSettingCountry(true);
         try {
             await setStudyTripCountry({ country_id: countryId || null });
-            message.success('Study trip country updated');
+            message.success('Studietur land opdateret');
+            // Refresh myClass so hasCountry updates in DesignGallery
+            fetchMyClass(true);
             fetchLibraryDesigns();
         } catch (err) {
             message.error(err.response?.data?.message || 'Failed');
@@ -503,14 +505,14 @@ const BackDesignConfiguratorPage = () => {
         <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <Title level={4} style={{ margin: 0 }}>Back Design Configurator</Title>
+                    <Title level={4} style={{ margin: 0 }}>Bagdesign Konfigurator</Title>
                     {isOrderLocked && (
                         <Text type="warning" style={{ fontSize: 12 }}>
-                             Orders locked — you can add new names, but existing names and design cannot be changed.
+                             Bestillinger låst — du kan tilføje nye navne, men eksisterende navne og design kan ikke ændres.
                         </Text>
                     )}
-                    {!isOrderLocked && autoSaving && <Text type="secondary" style={{ fontSize: 12 }}> Saving...</Text>}
-                    {!isOrderLocked && !autoSaving && textElements.length > 0 && <Text type="secondary" style={{ fontSize: 12 }}> Draft saved</Text>}
+                    {!isOrderLocked && autoSaving && <Text type="secondary" style={{ fontSize: 12 }}> Gemmer...</Text>}
+                    {!isOrderLocked && !autoSaving && textElements.length > 0 && <Text type="secondary" style={{ fontSize: 12 }}> Kladde gemt</Text>}
                 </div>
             </div>
 
@@ -518,7 +520,7 @@ const BackDesignConfiguratorPage = () => {
                 {/* Left: Gallery + Settings */}
                 <Col xs={24} lg={10}>
                     <Card>
-                        <Title level={5} style={{ marginTop: 0 }}>1. Select Base Image</Title>
+                        <Title level={5} style={{ marginTop: 0 }}>1. Vælg basisbillede</Title>
                         <DesignGallery
                             backDesigns={backDesigns}
                             designsLoading={designsLoading}
@@ -538,12 +540,12 @@ const BackDesignConfiguratorPage = () => {
                         <Divider />
 
                         <div style={{ marginBottom: 16 }}>
-                            <Text strong style={{ display: 'block', marginBottom: 8 }}>Garment Color</Text>
+                            <Text strong style={{ display: 'block', marginBottom: 8 }}>Beklædningsfarve</Text>
                             <Space>
                                 {[
-                                    { value: 'white', label: 'White', bg: '#ffffff', border: '#d9d9d9', printColor: 'Black print' },
-                                    { value: 'black', label: 'Black', bg: '#1a1a1a', border: '#1a1a1a', printColor: 'White print' },
-                                    { value: 'normal', label: 'Normal', bg: '#1a1a1a', border: '#1a1a1a', printColor: 'Orignal print' }
+                                    { value: 'white', label: 'Hvid', bg: '#ffffff', border: '#d9d9d9', printColor: 'Sort tryk' },
+                                    { value: 'black', label: 'Sort', bg: '#1a1a1a', border: '#1a1a1a', printColor: 'Hvidt tryk' },
+                                    { value: 'normal', label: 'Normal', bg: '#1a1a1a', border: '#1a1a1a', printColor: 'Originalt tryk' }
                                 ].map(opt => (
                                     <div
                                         key={opt.value}
@@ -577,7 +579,7 @@ const BackDesignConfiguratorPage = () => {
                             items={[
                                 {
                                     key: 'manual',
-                                    label: <span>Names {textElements.length > 0 && <Badge count={textElements.length} color="#00b96b" style={{ marginLeft: 4 }} />}</span>,
+                                    label: <span>Navne {textElements.length > 0 && <Badge count={textElements.length} color="#00b96b" style={{ marginLeft: 4 }} />}</span>,
                                     children: (
                                         <>
                                             {textElements.map(el => (
@@ -600,8 +602,8 @@ const BackDesignConfiguratorPage = () => {
                                                             <Text type="secondary" style={{ fontSize: 11 }}>
                                                                 {el.fontSize}px · {el.rotation}°
                                                                 {isOrderLocked
-                                                                    ? ' ·  Locked'
-                                                                    : ` · ${el.locked ? '' : 'Unlocked'}`
+                                                                    ? ' ·  Låst'
+                                                                    : ` · ${el.locked ? '' : 'Ulåst'}`
                                                                 }
                                                             </Text>
                                                         </div>
@@ -612,7 +614,7 @@ const BackDesignConfiguratorPage = () => {
                                                             <Space direction="vertical" style={{ width: '100%' }} size="small">
                                                                 {!el.locked && (
                                                                     <div>
-                                                                        <Text type="secondary" style={{ fontSize: 11 }}>Edit Name</Text>
+                                                                        <Text type="secondary" style={{ fontSize: 11 }}>Rediger navn</Text>
                                                                         <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
                                                                             <Input
                                                                                 size="small"
@@ -637,7 +639,7 @@ const BackDesignConfiguratorPage = () => {
                                                                                     }
                                                                                 }}
                                                                                 style={{ flex: 1 }}
-                                                                                placeholder="Enter name"
+                                                                                placeholder="Indtast navn"
                                                                             />
                                                                             {editingNameId === el.id && hasNameChanged && (
                                                                                 <Button
@@ -654,7 +656,7 @@ const BackDesignConfiguratorPage = () => {
                                                                 )}
                                                                 <Row gutter={8}>
                                                                     <Col span={14}>
-                                                                        <Text type="secondary" style={{ fontSize: 11 }}>Font Size</Text>
+                                                                        <Text type="secondary" style={{ fontSize: 11 }}>Skriftstørrelse</Text>
                                                                         <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
                                                                             <Button size="small" icon={<MinusCircleOutlined />} disabled={el.locked}
                                                                                 onClick={e => { e.stopPropagation(); setTextElements(prev => prev.map(t => t.id === el.id ? { ...t, fontSize: Math.max(10, t.fontSize - 2) } : t)); }} />
@@ -673,7 +675,7 @@ const BackDesignConfiguratorPage = () => {
                                                                 </Row>
                                                                 {fonts.length > 0 && (
                                                                     <div style={{ marginTop: 4 }}>
-                                                                        <Text type="secondary" style={{ fontSize: 11 }}>Font</Text>
+                                                                        <Text type="secondary" style={{ fontSize: 11 }}>Skrifttype</Text>
                                                                         <Select size="small" value={el.fontFamily} disabled={el.locked} style={{ width: '100%', marginTop: 4 }}
                                                                             onChange={v => setTextElements(prev => prev.map(t => t.id === el.id ? { ...t, fontFamily: v } : t))}
                                                                             onClick={e => e.stopPropagation()}>
@@ -682,12 +684,12 @@ const BackDesignConfiguratorPage = () => {
                                                                     </div>
                                                                 )}
                                                                 <Space size="small" style={{ width: '100%', justifyContent: 'flex-end' }}>
-                                                                    <Tooltip title={el.locked ? 'Unlock' : 'Lock'}>
+                                                                    <Tooltip title={el.locked ? 'Lås op' : 'Lås'}>
                                                                         <Button size="small" type={el.locked ? 'primary' : 'default'}
                                                                             onClick={e => { e.stopPropagation(); setTextElements(prev => prev.map(t => t.id === el.id ? { ...t, locked: !t.locked } : t)); }}
                                                                             icon={el.locked ? <LockOutlined /> : <UnlockOutlined />} />
                                                                     </Tooltip>
-                                                                    <Tooltip title="Delete">
+                                                                    <Tooltip title="Slet">
                                                                         <Button size="small" danger onClick={e => { e.stopPropagation(); handleRemoveText(el.id); }} icon={<DeleteOutlined />} />
                                                                     </Tooltip>
                                                                 </Space>
@@ -696,7 +698,7 @@ const BackDesignConfiguratorPage = () => {
                                                     )}
                                                 </Card>
                                             ))}
-                                            <TextArea placeholder="Enter name" value={currentText} onChange={e => setCurrentText(e.target.value)}
+                                            <TextArea placeholder="Indtast navn" value={currentText} onChange={e => setCurrentText(e.target.value)}
                                                 onPressEnter={e => { e.preventDefault(); handleAddText(); }} rows={2} style={{ marginTop: 8 }} />
                                             <Select value={currentFontSize} onChange={setCurrentFontSize} style={{ width: '100%', marginTop: 8 }}>
                                                 {[10, 12, 14, 16, 18, 20, 24, 28, 32, 40, 48].map(v => <Select.Option key={v} value={v}>{v}px</Select.Option>)}
@@ -704,26 +706,26 @@ const BackDesignConfiguratorPage = () => {
                                             <Select value={currentFontFamily} onChange={setCurrentFontFamily} style={{ width: '100%', marginTop: 8 }} placeholder="Select font" showSearch optionFilterProp="label">
                                                 {fonts.map(f => <Select.Option key={f.id} value={f.name} label={f.name}><span style={{ fontFamily: f.name, fontSize: 15 }}>{f.name}</span></Select.Option>)}
                                             </Select>
-                                            <Button type="primary" icon={<PlusOutlined />} onClick={handleAddText} block style={{ marginTop: 8 }}>Add Name</Button>
+                                            <Button type="primary" icon={<PlusOutlined />} onClick={handleAddText} block style={{ marginTop: 8 }}>Tilføj navn</Button>
                                         </>
                                     )
                                 },
                                 {
                                     key: 'students',
-                                    label: <span>Students {students.length > 0 && <Badge count={students.length} color="#1890ff" style={{ marginLeft: 4 }} />}</span>,
+                                    label: <span>Elever {students.length > 0 && <Badge count={students.length} color="#1890ff" style={{ marginLeft: 4 }} />}</span>,
                                     children: studentsLoading ? <Spin style={{ display: 'block', margin: '20px auto' }} /> : (
                                         <>
                                             {students.length === 0 ? (
-                                                <Text type="secondary" style={{ display: 'block', textAlign: 'center', padding: 20 }}>No registered students yet</Text>
+                                                <Text type="secondary" style={{ display: 'block', textAlign: 'center', padding: 20 }}>Ingen registrerede elever endnu</Text>
                                             ) : (
                                                 <>
                                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                                                         <Text type="secondary" style={{ fontSize: 12 }}>
-                                                            {selectedStudents.size} selected
+                                                            {selectedStudents.size} valgt
                                                         </Text>
                                                         <Space size="small">
-                                                            <Button size="small" onClick={() => setSelectedStudents(new Set(students.map(s => s.id)))}>All</Button>
-                                                            <Button size="small" onClick={() => setSelectedStudents(new Set())}>None</Button>
+                                                            <Button size="small" onClick={() => setSelectedStudents(new Set(students.map(s => s.id)))}>Alle</Button>
+                                                            <Button size="small" onClick={() => setSelectedStudents(new Set())}>Ingen</Button>
                                                         </Space>
                                                     </div>
                                                     {students.map((s, idx) => {
@@ -750,7 +752,7 @@ const BackDesignConfiguratorPage = () => {
                                                                     </div>
                                                                     <Text strong style={{ fontSize: 13 }}>{idx + 1}. {s.name}</Text>
                                                                 </div>
-                                                                {isAdded && <Text type="success" style={{ fontSize: 11 }}>✓ Added</Text>}
+                                                                {isAdded && <Text type="success" style={{ fontSize: 11 }}>✓ Tilføjet</Text>}
                                                             </div>
                                                         );
                                                     })}
@@ -772,11 +774,11 @@ const BackDesignConfiguratorPage = () => {
                                                             setSelectedStudents(new Set());
                                                             setNamesTab('manual');
                                                         }}>
-                                                        Add {selectedStudents.size > 0 ? `${selectedStudents.size} ` : ''}to Canvas
+                                                        Tilføj {selectedStudents.size > 0 ? `${selectedStudents.size} ` : ''}til lærred
                                                     </Button>
                                                 </>
                                             )}
-                                            <Button type="default" block style={{ marginTop: 8 }} onClick={fetchStudents}>Refresh</Button>
+                                            <Button type="default" block style={{ marginTop: 8 }} onClick={fetchStudents}>Opdater</Button>
                                         </>
                                     )
                                 }
@@ -784,7 +786,7 @@ const BackDesignConfiguratorPage = () => {
                         />
 
                         <Divider />
-                        <Title level={5}>3. {isEditMode ? 'Update' : 'Submit'} Design</Title>
+                        <Title level={5}>3. {isEditMode ? 'Opdater' : 'Indsend'} design</Title>
                         {isOrderLocked ? (
                             <>
                                 <Button
@@ -796,10 +798,10 @@ const BackDesignConfiguratorPage = () => {
                                     style={{ color: 'white' }}
                                     disabled={!selectedImage}
                                 >
-                                    {uploading ? 'Saving...' : 'Save New Names'}
+                                    {uploading ? 'Gemmer...' : 'Gem nye navne'}
                                 </Button>
                                 <Text type="secondary" style={{ display: 'block', marginTop: 8, fontSize: 12, textAlign: 'center' }}>
-                                     Design is locked — only new names will be added to the existing design.
+                                     Design er låst — kun nye navne vil blive tilføjet til det eksisterende design.
                                 </Text>
                             </>
                         ) : (
@@ -809,7 +811,7 @@ const BackDesignConfiguratorPage = () => {
                                 style={{ color: 'white' }}
                                 disabled={!selectedImage || textElements.length === 0}
                             >
-                                {uploading ? 'Saving...' : (isEditMode ? 'Update Back Design' : 'Submit Back Design')}
+                                {uploading ? 'Gemmer...' : (isEditMode ? 'Opdater bagdesign' : 'Indsend bagdesign')}
                             </Button>
                         )}
                     </Card>

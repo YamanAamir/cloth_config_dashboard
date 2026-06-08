@@ -32,6 +32,7 @@ import TemplateEditorPage from './pages/TemplateEditorPage';
 import CampaignPage from './pages/CampaignPage';
 import CreateTemplatePage from './pages/CreateTemplatePage';
 import AutomatedEmailsPage from './pages/AutomatedEmailsPage';
+import AdminStudentsPage from './pages/AdminStudentsPage';
 import EmailsPage from './pages/EmailsPage';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -218,7 +219,7 @@ const AppRoutes = () => {
           path="emails"
           element={
             <ProtectedRoute allowedRoles={[Role.ADMIN]}>
-              <EmailsPage />
+              <MarketingPage />
             </ProtectedRoute>
           }
         />
@@ -228,6 +229,7 @@ const AppRoutes = () => {
         <Route path="campaigns"         element={<Navigate to="/emails" replace />} />
         <Route path="fonts" element={<ProtectedRoute allowedRoles={[Role.ADMIN]}><FontsPage /></ProtectedRoute>} />
         <Route path="settings" element={<ProtectedRoute allowedRoles={[Role.ADMIN]}><SettingsPage /></ProtectedRoute>} />
+        <Route path="students" element={<ProtectedRoute allowedRoles={[Role.ADMIN]}><AdminStudentsPage /></ProtectedRoute>} />
         <Route path="marketing" element={<Navigate to="/emails" replace />} />
         <Route path="template-editor" element={<ProtectedRoute allowedRoles={[Role.ADMIN]}><TemplateEditorPage /></ProtectedRoute>} />
       </Route>
