@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Modal, Upload, Button, Input, message, Typography, Space } from 'antd';
-import { InboxOutlined } from '@ant-design/icons';
+import { Modal, Upload, Button, Input, message, Typography, Space, Checkbox, Tooltip } from 'antd';
+import { InboxOutlined, GlobalOutlined } from '@ant-design/icons';
 
 const { Dragger } = Upload;
 const { Text } = Typography;
@@ -16,6 +16,7 @@ const SimpleUploadModal = ({
     const [fileName, setFileName] = useState('');
     const [preview, setPreview] = useState(null);
     const [designColor, setDesignColor] = useState('white');
+    const [forAllStudents, setForAllStudents] = useState(false);
 
     const handleFileSelect = (file) => {
         console.log('🔥 File selected:', {
@@ -87,6 +88,7 @@ const SimpleUploadModal = ({
             formData.append('logo', selectedFile);
         } else {
             formData.append('backDesign', selectedFile);
+            formData.append('forAllStudents', forAllStudents ? 'true' : 'false');
         }
 
         onUpload(formData);
@@ -101,6 +103,7 @@ const SimpleUploadModal = ({
         setFileName('');
         setPreview(null);
         setDesignColor('white');
+        setForAllStudents(false);
         onCancel();
     };
 
@@ -172,6 +175,32 @@ const SimpleUploadModal = ({
                                 </div>
                             ))}
                         </Space>
+                    </div>
+                )}
+                {uploadType !== "logo" && (
+                    <div
+                        style={{
+                            padding: '12px 16px',
+                            borderRadius: 8,
+                            border: forAllStudents ? '1.5px solid #7c3aed' : '1px solid #f0f0f0',
+                            background: forAllStudents ? '#f5f0ff' : '#fafafa',
+                            cursor: 'pointer',
+                        }}
+                        onClick={() => setForAllStudents(v => !v)}
+                    >
+                        <Checkbox
+                            checked={forAllStudents}
+                            onChange={e => setForAllStudents(e.target.checked)}
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <Space size={6}>
+                                <GlobalOutlined style={{ color: '#7c3aed' }} />
+                                <Text strong style={{ fontSize: 13 }}>For alle elever (Studietur bibliotek)</Text>
+                            </Space>
+                        </Checkbox>
+                        <div style={{ marginTop: 4, paddingLeft: 24, fontSize: 12, color: '#888' }}>
+                            Markér dette for at gøre designet tilgængeligt i studietur-biblioteket for dit lands elever
+                        </div>
                     </div>
                 )}
                 <div>

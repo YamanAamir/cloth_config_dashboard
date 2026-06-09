@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
     Table, Button, Card, Typography, Space, Tag, Tabs,
-    message, Image, Popconfirm, Tooltip, Input, Select, Modal, Upload, Form
+    message, Image, Popconfirm, Tooltip, Input, Select, Modal, Upload, Form, Checkbox
 } from 'antd';
 import {
     CheckCircleOutlined, CloseCircleOutlined, EyeOutlined,
-    FileImageOutlined, ClockCircleOutlined, PlusOutlined, InboxOutlined, DeleteOutlined
+    FileImageOutlined, ClockCircleOutlined, PlusOutlined, InboxOutlined, DeleteOutlined, GlobalOutlined
 } from '@ant-design/icons';
 import {
     getAllLogos, approveLogo, rejectLogo, adminPermanentDeleteLogo,
@@ -30,6 +30,7 @@ const ReviewUploadsPage = () => {
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState('1');
     const [designColor, setDesignColor] = useState('white');
+    const [adminForAllStudents, setAdminForAllStudents] = useState(false);
 
     // Admin upload state
     const [uploadLogoModal, setUploadLogoModal] = useState(false);
@@ -268,6 +269,8 @@ const ReviewUploadsPage = () => {
 
             fd.append('design', uploadFile);
 
+            fd.append('forAllStudents', adminForAllStudents ? 'true' : 'false');
+
             await adminUploadBackDesign(fd);
 
             message.success('Back design uploaded & approved');
@@ -275,6 +278,7 @@ const ReviewUploadsPage = () => {
             designForm.resetFields();
             setUploadFile(null);
             setUploadPreview(null);
+            setAdminForAllStudents(false);
             fetchBackDesigns();
 
         } catch (err) {
@@ -497,7 +501,7 @@ const ReviewUploadsPage = () => {
                             </Button>
                         ) : (
                             <Button size="small" icon={<PlusOutlined />}
-                                onClick={() => { setUploadFile(null); setUploadPreview(null); designForm.resetFields(); setUploadDesignModal(true); }}>
+                                onClick={() => { setUploadFile(null); setUploadPreview(null); designForm.resetFields(); setAdminForAllStudents(false); setUploadDesignModal(true); }}>
                                 Upload Back Design
                             </Button>
                         )
@@ -634,7 +638,7 @@ const ReviewUploadsPage = () => {
 
             {/* Admin Upload Back Design Modal */}
             <Modal title="Upload Back Design (Approved)" open={uploadDesignModal}
-                onCancel={() => { setUploadDesignModal(false); setUploadFile(null); setUploadPreview(null); }}
+                onCancel={() => { setUploadDesignModal(false); setUploadFile(null); setUploadPreview(null); setAdminForAllStudents(false); }}
                 footer={null} destroyOnHidden>
                 <Form form={designForm} layout="vertical" onFinish={handleAdminUploadDesign} style={{ marginTop: 16 }}>
                     <Form.Item name="name" label="Design Name" rules={[{ required: true }]}>
@@ -681,6 +685,32 @@ const ReviewUploadsPage = () => {
                                     </div>
                                 ))}
                             </Space>
+                        </div>
+                    </Form.Item>
+                    <Form.Item label="For alle elever (Studietur bibliotek)">
+                        <div
+                            style={{
+                                padding: '12px 16px',
+                                borderRadius: 8,
+                                border: adminForAllStudents ? '1.5px solid #7c3aed' : '1px solid #f0f0f0',
+                                background: adminForAllStudents ? '#f5f0ff' : '#fafafa',
+                                cursor: 'pointer',
+                            }}
+                            onClick={() => setAdminForAllStudents(v => !v)}
+                        >
+                            <Checkbox
+                                checked={adminForAllStudents}
+                                onChange={e => setAdminForAllStudents(e.target.checked)}
+                                onClick={e => e.stopPropagation()}
+                            >
+                                <Space size={6}>
+                                    <GlobalOutlined style={{ color: '#7c3aed' }} />
+                                    <Typography.Text strong style={{ fontSize: 13 }}>For alle elever</Typography.Text>
+                                </Space>
+                            </Checkbox>
+                            <div style={{ marginTop: 4, paddingLeft: 24, fontSize: 12, color: '#888' }}>
+                                Markér dette for at tilføje designet til studietur-biblioteket (is_library: true)
+                            </div>
                         </div>
                     </Form.Item>
                     <Form.Item label="Design File" required>

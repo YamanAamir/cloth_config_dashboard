@@ -145,11 +145,14 @@ const DesignCanvas = ({
         setHasOutOfBounds(checkBounds(textElements, canvas));
     }, [textElements, designColor, imageLayout, onCanvasUpdate, drawSelectionOverlay]);
 
-    // ─── Background removal ───────────────────────────────────────────────────────
-    // Step 1: Flood-fill from all 4 corners to remove outer background (gray/white).
-    // Step 2: Global pass — remove ALL remaining near-white pixels anywhere in image.
-    // tolerance: 0–255, higher = removes more shades of white/light grey
-    const removeImageBackground = useCallback((img, tolerance = 30) => {
+    // ─── Image color processing ──────────────────────────────────────────────────
+    // white garment → remove white pixels from design (dark/colored content stays)
+    // black garment → auto-detect background from corners, flood-fill remove it
+    //                 (keeps logo/text regardless of color)
+    // normal/null   → no processing, original image as-is
+    const processImageForColor = useCallback((img, mode) => {
+        if (!mode) return img;
+
         const offscreen = document.createElement('canvas');
         offscreen.width = img.naturalWidth;
         offscreen.height = img.naturalHeight;
@@ -160,21 +163,50 @@ const DesignCanvas = ({
         const imageData = ctx.getImageData(0, 0, width, height);
         const data = imageData.data;
 
-        const isNearWhiteOrGray = (idx) => {
-            const r = data[idx], g = data[idx + 1], b = data[idx + 2], a = data[idx + 3];
-            if (a < 10) return true; // already transparent
-            // Near white
-            if (r >= 255 - tolerance && g >= 255 - tolerance && b >= 255 - tolerance) return true;
-            // Near gray (outer canvas background like #7e7e7e)
-            const isGray = Math.abs(r - g) < 15 && Math.abs(g - b) < 15 && Math.abs(r - b) < 15;
-            if (isGray && r >= 100 && r <= 180) return true;
-            return false;
-        };
+        if (mode === 'white') {
+            // White garment: remove near-white pixels so dark/colored design shows
+            const tolerance = 60;
+            for (let i = 0; i < data.length; i += 4) {
+                const r = data[i], g = data[i + 1], b = data[i + 2];
+                if (r > 255 - tolerance && g > 255 - tolerance && b > 255 - tolerance) {
+                    data[i + 3] = 0;
+                }
+            }
 
-        // Step 1: Flood fill from all 4 corners to remove outer background
-        const visited = new Uint8Array(width * height);
-        const floodFill = (startX, startY) => {
-            const stack = [[startX, startY]];
+        } else if (mode === 'black') {
+            // Black garment: auto-detect background from corners, flood-fill remove it
+            // Uses tight squared-distance so near-identical pixels are removed
+            // but logo/text (even slightly brighter) stays intact
+
+            const bgTolerance = 64; // squared distance = 8 per channel (very tight)
+
+            // Sample background color from 4 corners and average
+            const cornerPositions = [
+                0,
+                (width - 1) * 4,
+                (height - 1) * width * 4,
+                ((height - 1) * width + (width - 1)) * 4,
+            ];
+            let br = 0, bg2 = 0, bb = 0;
+            cornerPositions.forEach(p => { br += data[p]; bg2 += data[p + 1]; bb += data[p + 2]; });
+            const bgR = br / 4, bgG = bg2 / 4, bgB = bb / 4;
+
+            const colorDistSq = (idx) => {
+                const dr = data[idx] - bgR;
+                const dg = data[idx + 1] - bgG;
+                const db = data[idx + 2] - bgB;
+                return dr * dr + dg * dg + db * db;
+            };
+
+            // Flood-fill from all 4 corners
+            const visited = new Uint8Array(width * height);
+            const stack = [
+                [0, 0],
+                [width - 1, 0],
+                [0, height - 1],
+                [width - 1, height - 1],
+            ];
+
             while (stack.length > 0) {
                 const [x, y] = stack.pop();
                 if (x < 0 || x >= width || y < 0 || y >= height) continue;
@@ -182,30 +214,14 @@ const DesignCanvas = ({
                 if (visited[pos]) continue;
                 visited[pos] = 1;
                 const idx = pos * 4;
-                if (!isNearWhiteOrGray(idx)) continue;
+                if (data[idx + 3] < 10) continue; // already transparent
+                if (colorDistSq(idx) > bgTolerance) continue; // different from bg — stop
                 data[idx + 3] = 0;
                 stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
-            }
-        };
-
-        floodFill(0, 0);
-        floodFill(width - 1, 0);
-        floodFill(0, height - 1);
-        floodFill(width - 1, height - 1);
-
-        // Step 2: Global pass — remove ALL remaining near-white pixels (inner whites)
-        const whiteThreshold = 255 - tolerance;
-        for (let i = 0; i < data.length; i += 4) {
-            if (data[i + 3] === 0) continue; // already transparent, skip
-            const r = data[i], g = data[i + 1], b = data[i + 2];
-            if (r >= whiteThreshold && g >= whiteThreshold && b >= whiteThreshold) {
-                data[i + 3] = 0; // make transparent
             }
         }
 
         ctx.putImageData(imageData, 0, 0);
-
-        // Return as new Image with transparency
         const result = new Image();
         result.src = offscreen.toDataURL('image/png');
         return result;
@@ -221,13 +237,16 @@ const DesignCanvas = ({
         const img = new Image();
         img.crossOrigin = 'anonymous';
         img.onload = () => {
-            // Remove white background, then store cleaned image
-            const cleaned = removeImageBackground(img, 30);
-            cleaned.onload = () => {
-                imgRef.current = cleaned;
+            const mode = designColor === 'white' ? 'white'
+                       : designColor === 'black' ? 'black'
+                       : null; // normal — no processing
 
-                // Always reset layout when a new image loads so it fits canvas properly
-                const maxPx = CANVAS_SIZE * DEFAULT_IMG_MAX; // 400px
+            const processed = mode ? processImageForColor(img, mode) : img;
+
+            const applyProcessed = (processedImg) => {
+                imgRef.current = processedImg;
+                // Reset layout to fit canvas properly
+                const maxPx = CANVAS_SIZE * DEFAULT_IMG_MAX;
                 let w = img.naturalWidth;
                 let h = img.naturalHeight;
                 const ratio = Math.min(maxPx / w, maxPx / h, 1);
@@ -241,10 +260,16 @@ const DesignCanvas = ({
                 };
                 setImageLayout(newLayout);
             };
+
+            if (mode === 'normal') {
+                applyProcessed(processed);
+            } else {
+                processed.onload = () => applyProcessed(processed);
+            }
         };
         img.onerror = () => { imgRef.current = null; };
         img.src = imagePreview;
-    }, [imagePreview]);
+    }, [imagePreview, designColor]);
 
     // Main redraw trigger
     useEffect(() => {

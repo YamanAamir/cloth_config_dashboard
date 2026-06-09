@@ -126,12 +126,13 @@ const BackDesignConfiguratorPage = () => {
     }, []);
 
     useEffect(() => {
-        const filtered = filterByDesignColor(
-            allBackDesigns,
-            designColor
-        );
-        console.log("filtered-back", filtered);
+        // Guard: allBackDesigns khali hai means data abhi load nahi hua (race condition).
+        // fetchBackDesigns directly setBackDesigns karta hai — ye useEffect sirf
+        // color/data change pe re-filter karne ke liye hai.
+        if (allBackDesigns.length === 0) return;
 
+        const filtered = filterByDesignColor(allBackDesigns, designColor);
+        console.log("filtered-back", filtered);
         setBackDesigns(filtered);
     }, [designColor, allBackDesigns]);
 

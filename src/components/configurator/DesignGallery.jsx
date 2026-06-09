@@ -120,7 +120,7 @@ const DesignGallery = ({
                 items={[
                     {
                         key: 'backdesign',
-                        label: 'Bagdesign',
+                        label: 'Rygtryk',
                         children: designsLoading ? <Spin /> :
                             backDesigns.length === 0
                                 ? <Empty description="Ingen godkendte bagdesigns tilgængelige" image={Empty.PRESENTED_IMAGE_SIMPLE} />
@@ -149,7 +149,7 @@ const DesignGallery = ({
                     },
                     {
                         key: 'countrylogos',
-                        label: 'Landelogoer',
+                        label: 'Rygtryk bibliotek',
                         children: countryLogosContent(),
                     }
                 ]}

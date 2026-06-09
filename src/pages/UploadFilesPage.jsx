@@ -113,7 +113,7 @@ const UploadFilesPage = () => {
         console.log('🎯 handleSimpleUpload called');
         console.log('📦 FormData received:', formData);
         console.log('🏷️ Upload type:', uploadType);
-        
+
         setUploading(true);
         try {
             let response;
@@ -126,7 +126,7 @@ const UploadFilesPage = () => {
                 response = await uploadBackDesign(formData);
                 message.success('Back design uploaded successfully!');
             }
-            
+
             console.log('✅ Upload response:', response);
             setUploadModalOpen(false);
             fetchMyLibrary();
@@ -233,9 +233,10 @@ const UploadFilesPage = () => {
                                 icon={<ReloadOutlined />}
                                 loading={libraryLoading}
                                 onClick={fetchMyLibrary}
-                                size="small"
                                 title="Refresh current tab"
-                            />
+                            >
+                                Refresh  {activeTab === 'logos' ? 'Logos' : 'Back Designs'}
+                            </Button >
                             <Button
                                 type="primary"
                                 icon={<UploadOutlined />}
