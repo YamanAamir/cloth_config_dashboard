@@ -106,7 +106,7 @@ const AppRoutes = () => {
           path="school-overview"
           element={
             <ProtectedRoute allowedRoles={[Role.ADMIN]}>
-              <SchoolOverviewPage/>
+              <SchoolOverviewPage />
             </ProtectedRoute>
           }
         />
@@ -223,15 +223,28 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         />
+
+        <Route
+          path="students"
+          element={
+            <ProtectedRoute allowedRoles={[Role.ADMIN]}>
+              <AdminStudentsPage />
+            </ProtectedRoute>}
+        />
         {/* Legacy redirects so old bookmarks don't break */}
-        <Route path="email-template"    element={<Navigate to="/emails" replace />} />
+        <Route path="email-template" element={<Navigate to="/emails" replace />} />
+
         <Route path="automated-emails" element={<Navigate to="/emails" replace />} />
-        <Route path="campaigns"         element={<Navigate to="/emails" replace />} />
+
+        <Route path="campaigns" element={<Navigate to="/emails" replace />} />
+
         <Route path="fonts" element={<ProtectedRoute allowedRoles={[Role.ADMIN]}><FontsPage /></ProtectedRoute>} />
+
         <Route path="settings" element={<ProtectedRoute allowedRoles={[Role.ADMIN]}><SettingsPage /></ProtectedRoute>} />
-        <Route path="students" element={<ProtectedRoute allowedRoles={[Role.ADMIN]}><AdminStudentsPage /></ProtectedRoute>} />
+
         <Route path="marketing" element={<Navigate to="/emails" replace />} />
         <Route path="template-editor" element={<ProtectedRoute allowedRoles={[Role.ADMIN]}><TemplateEditorPage /></ProtectedRoute>} />
+
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
