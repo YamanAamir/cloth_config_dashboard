@@ -46,7 +46,7 @@ const BackDesignConfiguratorPage = () => {
     const [existingConfiguratorDesign, setExistingConfiguratorDesign] = useState(null);
 
     // Image position & size on canvas (draggable/resizable)
-    const [imageLayout, setImageLayout] = useState({ x: 0, y: 0, w: 800, h: 800 });
+    const [imageLayout, setImageLayout] = useState({ x: 0, y: 0, w: 3508, h: 4961 });
     const [isEditMode, setIsEditMode] = useState(false);
 
     // Text/names
@@ -299,6 +299,15 @@ const BackDesignConfiguratorPage = () => {
         finally { setStudentsLoading(false); }
     };
 
+    // Clear canvas when gallery tab changes so previous tab's selection doesn't bleed through
+    const handleGalleryTabChange = (tab) => {
+        setGalleryTab(tab);
+        setSelectedDesignId(null);
+        setSelectedImage(null);
+        setImagePreview(null);
+        setImageLayout({ x: 0, y: 0, w: 3508, h: 4961 });
+    };
+
     const handleSetCountry = async (countryId) => {
         setSettingCountry(true);
         try {
@@ -327,7 +336,7 @@ const BackDesignConfiguratorPage = () => {
     const loadDesignForEditing = (design, keepLayout = false) => {
         const url = `${getUploadsUrl(design.file_path)}?t=${Date.now()}`;
         setSelectedDesignId(design.id);
-        if (!keepLayout) setImageLayout({ x: 0, y: 0, w: 800, h: 800 });
+        if (!keepLayout) setImageLayout({ x: 0, y: 0, w: 3508, h: 4961 });
         setImagePreview(url);
 
         fetch(url)
@@ -416,16 +425,16 @@ const BackDesignConfiguratorPage = () => {
     const performUpload = async () => {
         setUploading(true);
         try {
-            // Force canvas redraw with WHITE background for export
+            // Force canvas redraw with WHITE background for export (A3 size)
             if (canvasRef.current) {
                 const canvas = canvasRef.current;
                 const ctx = canvas.getContext('2d');
 
-                // Clear and redraw with white background
-                canvas.width = 800;
-                canvas.height = 800;
-                ctx.fillStyle = '#ffffff'; // Always white for export
-                ctx.fillRect(0, 0, 800, 800);
+                // A3 at 300 DPI
+                canvas.width = 3508;
+                canvas.height = 4961;
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, 3508, 4961);
 
                 // Redraw image if exists
                 if (imagePreview) {
@@ -456,16 +465,6 @@ const BackDesignConfiguratorPage = () => {
 
             await new Promise(resolve => setTimeout(resolve, 100));
             const blob = await new Promise(resolve => canvasRef.current.toBlob(resolve, 'image/png'));
-
-            // Additional A3 validation for final canvas export
-            const canvas = canvasRef.current;
-            const maxWidth = 4000;
-            const maxHeight = 5600;
-
-            if (canvas.width > maxWidth || canvas.height > maxHeight) {
-                message.error(`Final design exceeds A3 size limit! Canvas is ${canvas.width} × ${canvas.height} pixels, but maximum allowed is ${maxWidth} × ${maxHeight} pixels.`);
-                return;
-            }
 
             const formData = new FormData();
             const fileName = selectedImage.name.replace(/\.[^/.]+$/, '');
@@ -532,7 +531,7 @@ const BackDesignConfiguratorPage = () => {
                             settingCountry={settingCountry}
                             selectedDesignId={selectedDesignId}
                             galleryTab={galleryTab}
-                            setGalleryTab={setGalleryTab}
+                            setGalleryTab={handleGalleryTabChange}
                             onSelectDesign={isOrderLocked ? undefined : loadDesignForEditing}
                             onSetCountry={handleSetCountry}
                             isLocked={isOrderLocked}

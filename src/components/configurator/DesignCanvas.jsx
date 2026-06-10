@@ -4,9 +4,11 @@ import { Button, Typography } from 'antd';
 
 const getTextColor = (garmentColor) => (garmentColor === 'black' ? '#ffffff' : '#000000');
 const HANDLE_SIZE = 14;
-const CANVAS_SIZE = 800;
+// A3 at 300 DPI: 3508 × 4961 px (portrait)
+const CANVAS_W = 3508;
+const CANVAS_H = 4961;
 // Image loads at max this fraction of canvas so it fits nicely
-const DEFAULT_IMG_MAX = 0.5; // 50% of 800 = 400px max
+const DEFAULT_IMG_MAX = 0.5; // 50% of shorter side
 
 const DesignCanvas = ({
     setPreviewOpen, imagePreview, textElements, designColor,
@@ -112,11 +114,11 @@ const DesignCanvas = ({
         if (!canvasRef.current) return;
         const canvas = canvasRef.current;
         const ctx = canvas.getContext('2d');
-        canvas.width = CANVAS_SIZE;
-        canvas.height = CANVAS_SIZE;
+        canvas.width = CANVAS_W;
+        canvas.height = CANVAS_H;
 
         ctx.fillStyle = designColor === 'black' ? '#7e7e7e' : '#ffffff';
-        ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+        ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
         const l = currentLayout || layout;
 
@@ -245,16 +247,16 @@ const DesignCanvas = ({
 
             const applyProcessed = (processedImg) => {
                 imgRef.current = processedImg;
-                // Reset layout to fit canvas properly
-                const maxPx = CANVAS_SIZE * DEFAULT_IMG_MAX;
+                // Reset layout — fit image to 50% of shorter canvas side, centered
+                const maxPx = Math.min(CANVAS_W, CANVAS_H) * DEFAULT_IMG_MAX;
                 let w = img.naturalWidth;
                 let h = img.naturalHeight;
                 const ratio = Math.min(maxPx / w, maxPx / h, 1);
                 w = Math.round(w * ratio);
                 h = Math.round(h * ratio);
                 const newLayout = {
-                    x: Math.round((CANVAS_SIZE - w) / 2),
-                    y: Math.round((CANVAS_SIZE - h) / 2),
+                    x: Math.round((CANVAS_W - w) / 2),
+                    y: Math.round((CANVAS_H - h) / 2),
                     w,
                     h,
                 };
@@ -281,12 +283,12 @@ const DesignCanvas = ({
     const getExportCanvas = useCallback(() => {
         if (!canvasRef.current) return null;
         const exportCanvas = document.createElement('canvas');
-        exportCanvas.width = CANVAS_SIZE;
-        exportCanvas.height = CANVAS_SIZE;
+        exportCanvas.width = CANVAS_W;
+        exportCanvas.height = CANVAS_H;
         const ctx = exportCanvas.getContext('2d');
 
         ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+        ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
         if (imgRef.current) {
             ctx.drawImage(imgRef.current, layout.x, layout.y, layout.w, layout.h);

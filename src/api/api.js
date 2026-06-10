@@ -127,6 +127,7 @@ export const permanentDeleteCountry = (id) => api.delete(`/admin/country/${id}/p
 // Library Design APIs (Admin)
 export const uploadLibraryDesign = (formData) => apiFormdata.post('/admin/library-design/upload', formData);
 export const getLibraryDesigns = (params = {}) => api.get('/admin/library-designs', { params });
+export const updateLibraryDesign = (id, data) => api.patch(`/admin/library-design/${id}`, data);
 export const deleteLibraryDesign = (id) => api.delete(`/admin/library-design/${id}/delete`);
 
 // Class Rep - Study Trip

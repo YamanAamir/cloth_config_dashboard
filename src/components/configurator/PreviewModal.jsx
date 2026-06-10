@@ -64,6 +64,11 @@ const PreviewModal = ({ open, onClose, canvasRef, designColor = 'white' }) => {
     const [sending, setSending] = useState(false);
 
     const sendToIframe = (msg) => {
+        // Log without the base64 data to keep console readable
+        const logMsg = msg.length > 100
+            ? `${msg.substring(0, 80)}... [base64 data, ${Math.round(msg.length / 1024)}KB]`
+            : msg;
+        console.log('[PostMessage →]', logMsg);
         iframeRef.current?.contentWindow?.postMessage(msg, "*");
     };
 
@@ -161,30 +166,53 @@ const PreviewModal = ({ open, onClose, canvasRef, designColor = 'white' }) => {
         return offCanvas.toDataURL("image/png");
     };
 
-    const sendDesign = (garment) => {
+    // Accept optional color override so callers can pass the latest value
+    // and avoid stale closure issues (e.g. inside useEffect handlers)
+    const sendDesign = (garment, colorOverride) => {
         const canvas = canvasRef?.current;
         if (!canvas) return;
 
         const g = garment || GARMENTS.find((item) => item.key === garmentType);
         if (!g) return;
 
+        // Use the explicitly passed color, or fall back to the prop
+        const activeColor = colorOverride !== undefined ? colorOverride : designColor;
+
         setSending(true);
         const scale = 3;
-        
+
         // Use export canvas with white background if available
         const exportCanvas = canvas.getExportCanvas ? canvas.getExportCanvas() : canvas;
-        
-        const diffuse = exportHighResCanvas(exportCanvas, scale);
-        const opacity = createOpacityTexture(exportCanvas, scale);
-        const emissive = createEmissiveTexture(exportCanvas, scale);
 
-        // FIXED MAPPING
-        sendToIframe(`${g.prefix}:back_diffuse: ${diffuse}`);
-        sendToIframe(`${g.prefix}:back_opacity: ${opacity}`);
-        sendToIframe(`${g.prefix}:back_emissive: ${emissive}`);
+        console.log('[sendDesign] designColor:', activeColor, '| garment:', g.prefix);
+
+        if (activeColor === 'black') {
+            // Black garment → white print → send white opacity map only
+            const opacity = createOpacityTexture(exportCanvas, scale);
+            sendToIframe(`${g.prefix}:back_white_opacity: ${opacity}`);
+        } else if (activeColor === 'white') {
+            // White garment → black print → send black diffuse + opacity
+            const diffuse = exportHighResCanvas(exportCanvas, scale);
+            const opacity = createOpacityTexture(exportCanvas, scale);
+            sendToIframe(`${g.prefix}:back_black_diffuse: ${diffuse}`);
+            sendToIframe(`${g.prefix}:back_black_opacity: ${opacity}`);
+        } else {
+            // Normal garment → original print → send normal diffuse
+            const diffuse = exportHighResCanvas(exportCanvas, scale);
+            sendToIframe(`${g.prefix}:back_normal_diffuse: ${diffuse}`);
+        }
 
         setTimeout(() => setSending(false), 500);
     };
+
+    // Keep a ref so the app:ready handler always reads the latest designColor
+    // without needing to re-register the event listener on every render
+    const designColorRef = useRef(designColor);
+    useEffect(() => {
+        designColorRef.current = designColor;
+        console.log("coloooooor",designColor);
+        
+    }, [designColor]);
 
     useEffect(() => {
         const handler = (e) => {
@@ -196,7 +224,8 @@ const PreviewModal = ({ open, onClose, canvasRef, designColor = 'white' }) => {
                 if (g) {
                     sendToIframe(`Page : ${g.page}`);
                     sendToIframe(`${g.prefix}:${selectedColor}`);
-                    setTimeout(() => sendDesign(g), 400);
+                    // Pass the latest designColor via ref to avoid stale closure
+                    setTimeout(() => sendDesign(g, designColorRef.current), 400);
                 }
             }
         };
@@ -213,7 +242,7 @@ const PreviewModal = ({ open, onClose, canvasRef, designColor = 'white' }) => {
         sendToIframe(`Page : ${g.page}`);
         sendToIframe(`${g.prefix}:${selectedColor}`);
         setTimeout(() => {
-            sendDesign(g);
+            sendDesign(g, designColorRef.current);
         }, 300);
     };
 

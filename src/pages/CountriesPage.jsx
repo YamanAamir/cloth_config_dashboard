@@ -7,7 +7,7 @@ import {
 import { PlusOutlined, EditOutlined, DeleteOutlined, InboxOutlined } from '@ant-design/icons';
 import {
     getAllCountries, createCountry, updateCountry, deleteCountry, permanentDeleteCountry,
-    uploadLibraryDesign, getLibraryDesigns, deleteLibraryDesign, toggleCountryStatus
+    uploadLibraryDesign, getLibraryDesigns, deleteLibraryDesign, toggleCountryStatus, updateLibraryDesign
 } from '../api/api';
 import { getUploadsUrl } from '../utils/constants';
 
@@ -32,6 +32,16 @@ const CountriesPage = () => {
     const [selectedPreview, setSelectedPreview] = useState(null);
     const [uploading, setUploading] = useState(false);
     const [uploadForm] = Form.useForm();
+    const [uploadDesignColor, setUploadDesignColor] = useState('white');
+
+    // Per-design color editing
+    const [updatingColorId, setUpdatingColorId] = useState(null);
+
+    const DESIGN_COLOR_OPTIONS = [
+        { value: 'white', label: 'White', sub: 'Black print' },
+        { value: 'black', label: 'Black', sub: 'White print' },
+        { value: 'normal', label: 'Normal', sub: 'Original print' },
+    ];
 
     const fetchCountries = async () => {
         setLoading(true);
@@ -176,6 +186,7 @@ const CountriesPage = () => {
             const formData = new FormData();
             formData.append('name', values.name);
             formData.append('country_id', values.country_id);
+            formData.append('designColor', uploadDesignColor);
             formData.append('design', selectedFile);
             await uploadLibraryDesign(formData);
             message.success('Design uploaded');
@@ -183,6 +194,7 @@ const CountriesPage = () => {
             uploadForm.resetFields();
             setSelectedFile(null);
             setSelectedPreview(null);
+            setUploadDesignColor('white');
 
             // Ensure the country row stays expanded
             if (!expandedRows.includes(values.country_id)) {
@@ -195,6 +207,25 @@ const CountriesPage = () => {
         } catch (error) {
             message.error(error.response?.data?.message || 'Upload failed');
         } finally { setUploading(false); }
+    };
+
+    const handleUpdateDesignColor = async (designId, newColor, countryId) => {
+        setUpdatingColorId(designId);
+        try {
+            await updateLibraryDesign(designId, { designColor: newColor });
+            message.success('Design color updated');
+            // Update local state immediately without full refetch
+            setDesignsMap(prev => ({
+                ...prev,
+                [countryId]: (prev[countryId] || []).map(d =>
+                    d.id === designId ? { ...d, designColor: newColor } : d
+                ),
+            }));
+        } catch (err) {
+            message.error(err.response?.data?.message || 'Failed to update color');
+        } finally {
+            setUpdatingColorId(null);
+        }
     };
 
     // Expanded row: show designs grid
@@ -217,7 +248,7 @@ const CountriesPage = () => {
                 ) : (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
                         {designs.map(d => (
-                            <div key={d.id} style={{ width: 120, textAlign: 'center', position: 'relative' }}>
+                            <div key={d.id} style={{ width: 140, textAlign: 'center', position: 'relative' }}>
                                 <div style={{ position: 'relative' }}>
                                     <Image
                                         src={getUploadsUrl(d.file_path)}
@@ -414,7 +445,7 @@ const CountriesPage = () => {
             </Modal>
 
             <Modal title="Upload Library Design" open={uploadModalOpen}
-                onCancel={() => { setUploadModalOpen(false); uploadForm.resetFields(); setSelectedFile(null); setSelectedPreview(null); }}
+                onCancel={() => { setUploadModalOpen(false); uploadForm.resetFields(); setSelectedFile(null); setSelectedPreview(null); setUploadDesignColor('white'); }}
                 footer={null} destroyOnHidden width={600}>
                 <Form form={uploadForm} layout="vertical" onFinish={handleUploadDesign} style={{ marginTop: 16 }}>
                     <Form.Item name="name" label="Design Name" rules={[{ required: true }]}>
@@ -422,6 +453,28 @@ const CountriesPage = () => {
                     </Form.Item>
                     <Form.Item name="country_id" label="Country" rules={[{ required: true }]}>
                         <Select placeholder="Select country" options={countries.map(c => ({ value: c.id, label: c.name }))} />
+                    </Form.Item>
+                    <Form.Item label="Clothing Color" required>
+                        <Space>
+                            {DESIGN_COLOR_OPTIONS.map(opt => (
+                                <div
+                                    key={opt.value}
+                                    onClick={() => setUploadDesignColor(opt.value)}
+                                    style={{
+                                        cursor: 'pointer',
+                                        padding: '8px 16px',
+                                        borderRadius: 8,
+                                        border: uploadDesignColor === opt.value ? '2px solid #00b96b' : '2px solid #f0f0f0',
+                                        background: uploadDesignColor === opt.value ? '#f0fff8' : '#fafafa',
+                                        textAlign: 'center',
+                                        minWidth: 80,
+                                    }}
+                                >
+                                    <div style={{ fontSize: 13, fontWeight: 500 }}>{opt.label}</div>
+                                    <div style={{ fontSize: 11, color: '#888' }}>{opt.sub}</div>
+                                </div>
+                            ))}
+                        </Space>
                     </Form.Item>
                     <Form.Item label="Design File" required>
                         <Upload beforeUpload={handleFileSelect} showUploadList={false} accept="image/*">

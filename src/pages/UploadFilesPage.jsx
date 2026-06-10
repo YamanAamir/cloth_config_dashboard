@@ -72,10 +72,10 @@ const UploadFilesPage = () => {
                 getMyLogos({ page: 1, limit: 50 }),
                 getMyBackDesigns({ page: 1, limit: 50 })
             ]);
-            const logos = (logoRes.data?.data ?? []).filter(l => l.process_status !== 'rejected' && l.status !== 2);
-            setMyLogos(logos);
+            // Show all: approved, pending, AND rejected (so CR can see & delete rejected ones)
+            setMyLogos(logoRes.data?.data ?? []);
             const filteredDesigns = (designRes.data?.data ?? [])
-                .filter(d => d.isFromConfigurator !== true && d.process_status !== 'rejected' && d.status !== 2);
+                .filter(d => d.isFromConfigurator !== true);
             setMyDesigns(filteredDesigns);
         } catch (error) {
             message.error('Failed to load your uploads');
@@ -276,15 +276,36 @@ const UploadFilesPage = () => {
                                         <Card
                                             hoverable
                                             cover={
-                                                <div style={{ padding: 12, background: '#fafafa', minHeight: 120, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                <div style={{
+                                                    padding: 12,
+                                                    background: item.status === Status.DELETED ? '#fff2f0' : '#fafafa',
+                                                    minHeight: 120,
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    position: 'relative',
+                                                }}>
                                                     <img
                                                         src={getUploadsUrl(item.file_path)}
                                                         alt={item.name}
-                                                        style={{ maxWidth: '100%', maxHeight: 120, objectFit: 'contain' }}
+                                                        style={{
+                                                            maxWidth: '100%', maxHeight: 120, objectFit: 'contain',
+                                                            opacity: item.status === Status.DELETED ? 0.6 : 1,
+                                                        }}
                                                     />
+                                                    {item.status === Status.DELETED && (
+                                                        <div style={{
+                                                            position: 'absolute', top: 6, right: 6,
+                                                            background: '#ff4d4f', borderRadius: 4,
+                                                            padding: '2px 6px', fontSize: 10, color: '#fff', fontWeight: 600,
+                                                        }}>
+                                                            REJECTED
+                                                        </div>
+                                                    )}
                                                 </div>
                                             }
-                                            style={{ borderRadius: 8 }}
+                                            style={{
+                                                borderRadius: 8,
+                                                border: item.status === Status.DELETED ? '1px solid #ffccc7' : undefined,
+                                            }}
                                         >
                                             <Typography.Text strong ellipsis style={{ display: 'block' }}>{item.name}</Typography.Text>
                                             <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -337,15 +358,36 @@ const UploadFilesPage = () => {
                                         <Card
                                             hoverable
                                             cover={
-                                                <div style={{ padding: 12, background: '#fafafa', minHeight: 120, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                <div style={{
+                                                    padding: 12,
+                                                    background: item.status === Status.DELETED ? '#fff2f0' : '#fafafa',
+                                                    minHeight: 120,
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    position: 'relative',
+                                                }}>
                                                     <img
                                                         src={getUploadsUrl(item.file_path)}
                                                         alt={item.name}
-                                                        style={{ maxWidth: '100%', maxHeight: 120, objectFit: 'contain' }}
+                                                        style={{
+                                                            maxWidth: '100%', maxHeight: 120, objectFit: 'contain',
+                                                            opacity: item.status === Status.DELETED ? 0.6 : 1,
+                                                        }}
                                                     />
+                                                    {item.status === Status.DELETED && (
+                                                        <div style={{
+                                                            position: 'absolute', top: 6, right: 6,
+                                                            background: '#ff4d4f', borderRadius: 4,
+                                                            padding: '2px 6px', fontSize: 10, color: '#fff', fontWeight: 600,
+                                                        }}>
+                                                            REJECTED
+                                                        </div>
+                                                    )}
                                                 </div>
                                             }
-                                            style={{ borderRadius: 8 }}
+                                            style={{
+                                                borderRadius: 8,
+                                                border: item.status === Status.DELETED ? '1px solid #ffccc7' : undefined,
+                                            }}
                                         >
                                             {console.log(getUploadsUrl(item.file_path))}
                                             <Typography.Text strong ellipsis style={{ display: 'block' }}>{item.name}</Typography.Text>
