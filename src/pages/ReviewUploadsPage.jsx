@@ -657,7 +657,7 @@ const ReviewUploadsPage = () => {
                                 {[
                                     { value: 'white', label: 'White', bg: '#ffffff', border: '#d9d9d9', printColor: 'Black print' },
                                     { value: 'black', label: 'Black', bg: '#1a1a1a', border: '#1a1a1a', printColor: 'White print' },
-                                    { value: 'normal', label: 'Normal', bg: '#1a1a1a', border: '#1a1a1a', printColor: 'Orignal print' }
+                                    // { value: 'normal', label: 'Normal', bg: '#1a1a1a', border: '#1a1a1a', printColor: 'Orignal print' }
                                 ].map(opt => (
                                     <div
                                         key={opt.value}

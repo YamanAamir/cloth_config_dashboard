@@ -40,7 +40,7 @@ const CountriesPage = () => {
     const DESIGN_COLOR_OPTIONS = [
         { value: 'white', label: 'White', sub: 'Black print' },
         { value: 'black', label: 'Black', sub: 'White print' },
-        { value: 'normal', label: 'Normal', sub: 'Original print' },
+        // { value: 'normal', label: 'Normal', sub: 'Original print' },
     ];
 
     const fetchCountries = async () => {

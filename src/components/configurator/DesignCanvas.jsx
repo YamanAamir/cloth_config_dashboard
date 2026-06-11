@@ -241,7 +241,7 @@ const DesignCanvas = ({
         img.onload = () => {
             const mode = designColor === 'white' ? 'white'
                        : designColor === 'black' ? 'black'
-                       : null; // normal — no processing
+                       : null; // normal — no pixel processing, use image as-is
 
             const processed = mode ? processImageForColor(img, mode) : img;
 
@@ -263,9 +263,11 @@ const DesignCanvas = ({
                 setImageLayout(newLayout);
             };
 
-            if (mode === 'normal') {
+            if (!mode) {
+                // normal — image is original, no processing, apply directly
                 applyProcessed(processed);
             } else {
+                // white/black — processImageForColor returns a new Image, wait for it to load
                 processed.onload = () => applyProcessed(processed);
             }
         };

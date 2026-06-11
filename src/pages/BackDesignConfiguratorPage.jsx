@@ -158,7 +158,9 @@ const BackDesignConfiguratorPage = () => {
                 return d.designColor === 'black';
             }
 
-            return true;
+            // Normal — return true (show all) — currently disabled
+            // return true;
+            return false;
         });
     };
 
@@ -545,7 +547,7 @@ const BackDesignConfiguratorPage = () => {
                                 {[
                                     { value: 'white', label: 'Hvid', bg: '#ffffff', border: '#d9d9d9', printColor: 'Sort tryk' },
                                     { value: 'black', label: 'Sort', bg: '#1a1a1a', border: '#1a1a1a', printColor: 'Hvidt tryk' },
-                                    { value: 'normal', label: 'Normal', bg: '#1a1a1a', border: '#1a1a1a', printColor: 'Originalt tryk' }
+                                    // { value: 'normal', label: 'Normal', bg: '#1a1a1a', border: '#1a1a1a', printColor: 'Originalt tryk' }
                                 ].map(opt => (
                                     <div
                                         key={opt.value}

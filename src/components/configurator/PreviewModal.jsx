@@ -198,8 +198,8 @@ const PreviewModal = ({ open, onClose, canvasRef, designColor = 'white' }) => {
             sendToIframe(`${g.prefix}:back_black_opacity: ${opacity}`);
         } else {
             // Normal garment → original print → send normal diffuse
-            const diffuse = exportHighResCanvas(exportCanvas, scale);
-            sendToIframe(`${g.prefix}:back_normal_diffuse: ${diffuse}`);
+            // const diffuse = exportHighResCanvas(exportCanvas, scale);
+            // sendToIframe(`${g.prefix}:back_normal_diffuse: ${diffuse}`);
         }
 
         setTimeout(() => setSending(false), 500);
