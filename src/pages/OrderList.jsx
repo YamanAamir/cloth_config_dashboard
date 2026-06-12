@@ -2,9 +2,13 @@ import React, { useState, useEffect } from 'react';
 import {
     Table, Button, Card, Typography, Space,
     Input, message, Popconfirm, Tag,
-    Drawer, Descriptions, Divider, Image, List, Row, Col,
+    Drawer, Descriptions, Divider, Image, List, Row, Col, Dropdown, Spin,
 } from 'antd';
-import { CalendarOutlined, EyeOutlined, HistoryOutlined, LockOutlined, UnlockOutlined, MailOutlined } from '@ant-design/icons';
+import {
+    CalendarOutlined, EyeOutlined, HistoryOutlined,
+    LockOutlined, UnlockOutlined, MailOutlined,
+    MoreOutlined, FilePdfOutlined, CheckCircleOutlined
+} from '@ant-design/icons';
 import {
     getAllOrders,
     getOrderDetails,
@@ -13,7 +17,8 @@ import {
     lockOrder,
     sendDeadlineReminder
 } from '../api/api';
-import { Status, Role } from '../utils/constants';
+import { api } from '../api/index';
+import { Status, Role, formatDanishDateTime, formatDanishDate } from '../utils/constants';
 import { useAuth } from '../context/AuthContext';
 import useSocket from '../hooks/useSocket';
 
@@ -124,6 +129,17 @@ const OrderList = () => {
         }
     };
 
+    const handleGenerateFiles = async (orderId) => {
+        const key = `gen_${orderId}`;
+        message.loading({ content: 'Generating production files...', key, duration: 0 });
+        try {
+            await api.post(`/admin/generate-files/order/${orderId}`);
+            message.success({ content: 'Production files generated successfully', key, duration: 3 });
+        } catch (err) {
+            message.error({ content: err.response?.data?.message || 'Failed to generate files', key, duration: 3 });
+        }
+    };
+
     // Shared price map for display
     const ITEM_PRICES = {
         'T-SHIRT': 200, 'SWEATSHIRT': 350, 'HOODIE': 450,
@@ -158,7 +174,7 @@ const OrderList = () => {
                         return (
                             <Tag color={isPast ? 'volcano' : 'blue'} style={{ marginTop: 2, fontSize: 10 }}>
                                 <CalendarOutlined style={{ marginRight: 2 }} />
-                                {new Date(record.class.change_deadline).toLocaleDateString()}
+                                {formatDanishDate(record.class.change_deadline)}
                             </Tag>
                         );
                     })()}
@@ -231,7 +247,7 @@ const OrderList = () => {
                         <Tag color="success">Open</Tag>
                         {record.edit_deadline && (
                             <span style={{ fontSize: 10, color: '#888' }}>
-                                Edit until: {new Date(record.edit_deadline).toLocaleDateString()}
+                                Edit until: {formatDanishDate(record.edit_deadline)}
                             </span>
                         )}
                     </Space>
@@ -241,47 +257,61 @@ const OrderList = () => {
         {
             title: 'Action',
             key: 'action',
-            width: 130,
-            render: (_, record) => (
-                <Space size="small">
-                    <Button
-                        type="text"
-                        icon={<EyeOutlined style={{ color: '#00b96b' }} />}
-                        onClick={() => handleView(record)}
-                        title="View Order Details"
-                    />
-                    <Button
-                        type="text"
-                        icon={<HistoryOutlined style={{ color: '#1890ff' }} />}
-                        onClick={() => handleViewHistory(record.id)}
-                        title="View History"
-                    />
-                    <Popconfirm
-                        title="Send deadline reminder email to this student?"
-                        onConfirm={() => handleSendReminder(record.class_id)}
-                        okText="Send" cancelText="No"
+            width: 60,
+            render: (_, record) => {
+                const menuItems = [
+                    {
+                        key: 'view',
+                        icon: <EyeOutlined style={{ color: '#00b96b' }} />,
+                        label: 'View Details',
+                        onClick: () => handleView(record),
+                    },
+                    {
+                        key: 'history',
+                        icon: <HistoryOutlined style={{ color: '#1890ff' }} />,
+                        label: 'View History',
+                        onClick: () => handleViewHistory(record.id),
+                    },
+                    {
+                        key: 'reminder',
+                        icon: <MailOutlined style={{ color: '#722ed1' }} />,
+                        label: 'Send Reminder',
+                        onClick: () => {
+                            message.confirm
+                                ? message.confirm('Send deadline reminder?')
+                                : handleSendReminder(record.class_id);
+                        },
+                    },
+                    {
+                        key: 'lock',
+                        icon: record.is_locked
+                            ? <UnlockOutlined style={{ color: '#52c41a' }} />
+                            : <LockOutlined style={{ color: '#faad14' }} />,
+                        label: record.is_locked ? 'Unlock Order' : 'Lock Order',
+                        onClick: () => handleToggleLock(record),
+                    },
+                    { type: 'divider' },
+                    {
+                        key: 'generate',
+                        icon: <FilePdfOutlined style={{ color: '#ff4d4f' }} />,
+                        label: 'Generate Production Files',
+                        onClick: () => handleGenerateFiles(record.id),
+                    },
+                ];
+
+                return (
+                    <Dropdown
+                        menu={{ items: menuItems }}
+                        trigger={['click']}
+                        placement="bottomRight"
                     >
                         <Button
                             type="text"
-                            icon={<MailOutlined style={{ color: '#722ed1' }} />}
-                            title="Send Deadline Reminder"
+                            icon={<MoreOutlined style={{ fontSize: 18 }} />}
                         />
-                    </Popconfirm>
-                    <Popconfirm
-                        title={`${record.is_locked ? 'Unlock' : 'Lock'} this order?`}
-                        onConfirm={() => handleToggleLock(record)}
-                        okText="Yes" cancelText="No"
-                    >
-                        <Button
-                            type="text"
-                            icon={record.is_locked
-                                ? <UnlockOutlined style={{ color: '#52c41a' }} />
-                                : <LockOutlined style={{ color: '#d9d9d9' }} />}
-                            title={record.is_locked ? 'Unlock Order' : 'Lock Order'}
-                        />
-                    </Popconfirm>
-                </Space>
-            ),
+                    </Dropdown>
+                );
+            },
         },
     ];
 
@@ -366,12 +396,12 @@ const OrderList = () => {
                             <Descriptions.Item label="Deadline">
                                 {selectedOrderDetails.class?.change_deadline ? (
                                     <Tag color={new Date() > new Date(selectedOrderDetails.class.change_deadline) ? 'volcano' : 'blue'}>
-                                        {new Date(selectedOrderDetails.class.change_deadline).toLocaleString()}
+                                        {formatDanishDateTime(selectedOrderDetails.class.change_deadline)}
                                     </Tag>
                                 ) : '-'}
                             </Descriptions.Item>
                             <Descriptions.Item label="Created At">
-                                {new Date(selectedOrderDetails.created_at).toLocaleString()}
+                                {formatDanishDateTime(selectedOrderDetails.created_at)}
                             </Descriptions.Item>
                         </Descriptions>
 
@@ -526,7 +556,7 @@ const OrderList = () => {
                                                     </Tag>
                                                 </Space>
                                                 <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                                                    {new Date(item.created_at).toLocaleString()}
+                                                    {formatDanishDateTime(item.created_at)}
                                                 </Typography.Text>
                                             </div>
 

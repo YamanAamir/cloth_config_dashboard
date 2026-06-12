@@ -212,13 +212,13 @@ const UploadFilesPage = () => {
                     >
                         Refresh
                     </Button> */}
-                    <Button
+                    {/* <Button
                         icon={<CloseCircleOutlined />}
                         danger
                         onClick={() => { setRejectedModalOpen(true); fetchRejectedFiles(); }}
                     >
                         Rejected Files
-                    </Button>
+                    </Button> */}
                 </Space>
             </div>
 

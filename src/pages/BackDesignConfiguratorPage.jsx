@@ -52,7 +52,7 @@ const BackDesignConfiguratorPage = () => {
     // Text/names
     const [textElements, setTextElements] = useState([]);
     const [currentText, setCurrentText] = useState('');
-    const [currentFontSize, setCurrentFontSize] = useState(16);
+    const [currentFontSize, setCurrentFontSize] = useState(60);
     const [selectedTextId, setSelectedTextId] = useState(null);
 
     // Drag
@@ -368,6 +368,7 @@ const BackDesignConfiguratorPage = () => {
 
     const handleAddText = () => {
         if (!currentText.trim()) return message.warning('Enter a name');
+        if (textElements.length >= 40) return message.warning('Maximum 40 names allowed');
         const newElements = [...textElements, {
             id: Date.now(),
             text: currentText,
@@ -510,7 +511,7 @@ const BackDesignConfiguratorPage = () => {
                     <Title level={4} style={{ margin: 0 }}>Bagdesign Konfigurator</Title>
                     {isOrderLocked && (
                         <Text type="warning" style={{ fontSize: 12 }}>
-                             Bestillinger låst — du kan tilføje nye navne, men eksisterende navne og design kan ikke ændres.
+                            Bestillinger låst — du kan tilføje nye navne, men eksisterende navne og design kan ikke ændres.
                         </Text>
                     )}
                     {!isOrderLocked && autoSaving && <Text type="secondary" style={{ fontSize: 12 }}> Gemmer...</Text>}
@@ -661,10 +662,10 @@ const BackDesignConfiguratorPage = () => {
                                                                         <Text type="secondary" style={{ fontSize: 11 }}>Skriftstørrelse</Text>
                                                                         <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
                                                                             <Button size="small" icon={<MinusCircleOutlined />} disabled={el.locked}
-                                                                                onClick={e => { e.stopPropagation(); setTextElements(prev => prev.map(t => t.id === el.id ? { ...t, fontSize: Math.max(10, t.fontSize - 2) } : t)); }} />
+                                                                                onClick={e => { e.stopPropagation(); setTextElements(prev => prev.map(t => t.id === el.id ? { ...t, fontSize: Math.max(10, t.fontSize - 4) } : t)); }} />
                                                                             <Input size="small" value={el.fontSize} style={{ width: 50, textAlign: 'center' }} readOnly />
                                                                             <Button size="small" icon={<PlusCircleOutlined />} disabled={el.locked}
-                                                                                onClick={e => { e.stopPropagation(); setTextElements(prev => prev.map(t => t.id === el.id ? { ...t, fontSize: Math.min(72, t.fontSize + 2) } : t)); }} />
+                                                                                onClick={e => { e.stopPropagation(); setTextElements(prev => prev.map(t => t.id === el.id ? { ...t, fontSize: Math.min(240, t.fontSize + 4) } : t)); }} />
                                                                         </div>
                                                                     </Col>
                                                                     <Col span={10}>
@@ -703,12 +704,18 @@ const BackDesignConfiguratorPage = () => {
                                             <TextArea placeholder="Indtast navn" value={currentText} onChange={e => setCurrentText(e.target.value)}
                                                 onPressEnter={e => { e.preventDefault(); handleAddText(); }} rows={2} style={{ marginTop: 8 }} />
                                             <Select value={currentFontSize} onChange={setCurrentFontSize} style={{ width: '100%', marginTop: 8 }}>
-                                                {[10, 12, 14, 16, 18, 20, 24, 28, 32, 40, 48].map(v => <Select.Option key={v} value={v}>{v}px</Select.Option>)}
+                                                {[64, 68, 72, 76, 80, 84, 88, 92, 96, 100,
+                                                    104, 108, 112, 116, 120, 124, 128, 132, 136, 140,
+                                                    144, 148, 152, 156, 160, 164, 168, 172, 176, 180,
+                                                    184, 188, 192, 196, 200, 204, 208, 212, 216, 220,
+                                                    224, 228, 232, 236, 240, 244, 248, 250].map(v => <Select.Option key={v} value={v}>{v}px</Select.Option>)}
                                             </Select>
                                             <Select value={currentFontFamily} onChange={setCurrentFontFamily} style={{ width: '100%', marginTop: 8 }} placeholder="Select font" showSearch optionFilterProp="label">
                                                 {fonts.map(f => <Select.Option key={f.id} value={f.name} label={f.name}><span style={{ fontFamily: f.name, fontSize: 15 }}>{f.name}</span></Select.Option>)}
                                             </Select>
-                                            <Button type="primary" icon={<PlusOutlined />} onClick={handleAddText} block style={{ marginTop: 8 }}>Tilføj navn</Button>
+                                            <Button type="primary" icon={<PlusOutlined />} onClick={handleAddText} block style={{ marginTop: 8 }} disabled={textElements.length >= 40}>
+                                                Tilføj navn {textElements.length >= 40 ? '(max 40)' : `(${textElements.length}/40)`}
+                                            </Button>
                                         </>
                                     )
                                 },
@@ -762,7 +769,13 @@ const BackDesignConfiguratorPage = () => {
                                                         disabled={selectedStudents.size === 0}
                                                         onClick={() => {
                                                             const toAdd = students.filter(s => selectedStudents.has(s.id));
-                                                            const newEls = toAdd.map((s, i) => ({
+                                                            const remaining = 40 - textElements.length;
+                                                            if (remaining <= 0) return message.warning('Maximum 40 names already added');
+                                                            const limited = toAdd.slice(0, remaining);
+                                                            if (limited.length < toAdd.length) {
+                                                                message.warning(`Only ${limited.length} name(s) added — max 40 total`);
+                                                            }
+                                                            const newEls = limited.map((s, i) => ({
                                                                 id: Date.now() + i,
                                                                 text: s.name,
                                                                 fontSize: currentFontSize,
@@ -803,7 +816,7 @@ const BackDesignConfiguratorPage = () => {
                                     {uploading ? 'Gemmer...' : 'Gem nye navne'}
                                 </Button>
                                 <Text type="secondary" style={{ display: 'block', marginTop: 8, fontSize: 12, textAlign: 'center' }}>
-                                     Design er låst — kun nye navne vil blive tilføjet til det eksisterende design.
+                                    Design er låst — kun nye navne vil blive tilføjet til det eksisterende design.
                                 </Text>
                             </>
                         ) : (

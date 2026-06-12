@@ -36,7 +36,7 @@ import EmailTemplateEditor from '../components/email/EmailTemplateEditor';
 import EmailAutomationSettings from '../components/email/EmailAutomationSettings';
 import EmailPreviewModal from '../components/email/EmailPreviewModal';
 import { getEmailTemplates, deleteEmailTemplate, toggleEmailTemplateStatus } from '../api/api';
-import { TEMPLATE_CATEGORIES } from '../utils/constants';
+import { TEMPLATE_CATEGORIES, formatDanishDate } from '../utils/constants';
 
 const { Content } = Layout;
 const { Title, Text } = Typography;

@@ -135,3 +135,45 @@ export const getUploadsUrl = (filePath) => {
   const normalizedPath = filePath.replace(/\\/g, '/').replace(/^\/+/, '');
   return `${getApiBase()}/${normalizedPath}`;
 };
+
+// ─── Danish Time Formatting (Europe/Copenhagen, UTC+1/UTC+2 DST) ─────────────
+
+const DK_LOCALE = 'da-DK';
+const DK_TZ    = 'Europe/Copenhagen';
+
+/**
+ * Format a timestamp as full Danish date + time.
+ * e.g. "12. jun. 2026, 14:35:07"
+ */
+export const formatDanishDateTime = (date) => {
+  if (!date) return '—';
+  return new Intl.DateTimeFormat(DK_LOCALE, {
+    timeZone: DK_TZ,
+    day: 'numeric', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+  }).format(new Date(date));
+};
+
+/**
+ * Format a timestamp as Danish date only.
+ * e.g. "12. jun. 2026"
+ */
+export const formatDanishDate = (date) => {
+  if (!date) return '—';
+  return new Intl.DateTimeFormat(DK_LOCALE, {
+    timeZone: DK_TZ,
+    day: 'numeric', month: 'short', year: 'numeric',
+  }).format(new Date(date));
+};
+
+/**
+ * Format a timestamp as Danish time only.
+ * e.g. "14:35"
+ */
+export const formatDanishTime = (date) => {
+  if (!date) return '—';
+  return new Intl.DateTimeFormat(DK_LOCALE, {
+    timeZone: DK_TZ,
+    hour: '2-digit', minute: '2-digit',
+  }).format(new Date(date));
+};

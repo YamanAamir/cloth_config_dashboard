@@ -13,7 +13,7 @@ import {
     getCampaigns, createCampaign, updateCampaign,
     deleteCampaign, sendCampaign, getAllClasses, getAllSchools, getEmailTemplates
 } from '../api/api';
-import { TEMPLATE_CATEGORIES } from '../utils/constants';
+import { TEMPLATE_CATEGORIES, formatDanishDateTime, formatDanishDate } from '../utils/constants';
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
@@ -322,7 +322,7 @@ const CampaignPage = () => {
             title: 'Sent At',
             dataIndex: 'sent_at',
             key: 'sent_at',
-            render: (d) => d ? new Date(d).toLocaleString() : '—',
+            render: (d) => d ? formatDanishDateTime(d) : '—',
         },
         {
             title: 'Actions',

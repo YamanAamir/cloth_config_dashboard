@@ -124,6 +124,14 @@ export const deleteCountry = (id) => api.delete(`/admin/country/${id}/delete`);
 export const toggleCountryStatus = (id) => api.put(`/admin/country/${id}/toggle-status`);
 export const permanentDeleteCountry = (id) => api.delete(`/admin/country/${id}/permanent-delete`, { data: { confirm: "DELETE" } });
 
+// Shipping Rates APIs (Admin)
+export const getShippingRates = () => api.get('/admin/shipping-rates');
+export const getShippingRate = (id) => api.get(`/admin/shipping-rate/${id}`);
+export const createShippingRate = (data) => api.post('/admin/shipping-rate/create', data);
+export const updateShippingRate = (id, data) => api.put(`/admin/shipping-rate/${id}/update`, data);
+export const deleteShippingRate = (id) => api.delete(`/admin/shipping-rate/${id}/delete`);
+export const toggleShippingRateStatus = (id) => api.put(`/admin/shipping-rate/${id}/toggle-status`);
+
 // Library Design APIs (Admin)
 export const uploadLibraryDesign = (formData) => apiFormdata.post('/admin/library-design/upload', formData);
 export const getLibraryDesigns = (params = {}) => api.get('/admin/library-designs', { params });

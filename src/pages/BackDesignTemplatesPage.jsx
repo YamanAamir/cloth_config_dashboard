@@ -18,7 +18,7 @@ import {
     uploadBackDesignTemplate,
     deleteBackDesignTemplate
 } from '../api/api';
-import { getUploadsUrl } from '../utils/constants';
+import { getUploadsUrl, formatDanishDate } from '../utils/constants';
 
 const { Title } = Typography;
 
@@ -173,7 +173,7 @@ const BackDesignTemplatesPage = () => {
             title: 'Created At',
             dataIndex: 'created_at',
             key: 'created_at',
-            render: (date) => new Date(date).toLocaleDateString(),
+            render: (date) => formatDanishDate(date),
         },
         {
             title: 'Action',

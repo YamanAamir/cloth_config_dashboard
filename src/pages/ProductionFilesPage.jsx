@@ -7,7 +7,7 @@ import {
     FilePdfOutlined, FileExcelOutlined, MoreOutlined, ReloadOutlined
 } from '@ant-design/icons';
 import { getProductionPackages } from '../api/api';
-import { getUploadsUrl } from '../utils/constants';
+import { getUploadsUrl, formatDanishDateTime } from '../utils/constants';
 
 const { Title, Text } = Typography;
 
@@ -78,7 +78,7 @@ const ProductionFilesPage = () => {
             key: 'created_at',
             render: (date) => (
                 <Text type="secondary" style={{ fontSize: 12 }}>
-                    {new Date(date).toLocaleString()}
+                    {formatDanishDateTime(date)}
                 </Text>
             ),
         },

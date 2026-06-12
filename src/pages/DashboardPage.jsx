@@ -9,6 +9,7 @@ import {
     XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
 import { adminDashboard } from '../api/api';
+import { formatDanishDate } from '../utils/constants';
 
 const { Title, Text } = Typography;
 
@@ -50,7 +51,11 @@ const DashboardPage = () => {
 
     const monthlyLabels = (data.monthly_data || []).map(d => {
         const [y, m] = d.month.split('-');
-        return new Date(y, m - 1).toLocaleString('en-DK', { month: 'short', year: '2-digit' });
+        // Short month label for chart axis — use Danish locale with Copenhagen tz
+        return new Intl.DateTimeFormat('da-DK', {
+            timeZone: 'Europe/Copenhagen',
+            month: 'short', year: '2-digit'
+        }).format(new Date(y, m - 1));
     });
 
     const ordersData = (data.monthly_data || []).map((d, i) => ({
@@ -223,7 +228,7 @@ const DashboardPage = () => {
                                             </div>
                                         </div>
                                         <Text type="secondary" style={{ fontSize: 11 }}>
-                                            {new Date(rep.created_at || rep.time).toLocaleDateString('da-DK')}
+                                            {formatDanishDate(rep.created_at || rep.time)}
                                         </Text>
                                     </div>
                                 ))}
@@ -249,7 +254,7 @@ const DashboardPage = () => {
                                             </div>
                                         </div>
                                         <Text type="secondary" style={{ fontSize: 11 }}>
-                                            {new Date(student.created_at || student.time).toLocaleDateString('da-DK')}
+                                            {formatDanishDate(student.created_at || student.time)}
                                         </Text>
                                     </div>
                                 ))}
