@@ -39,7 +39,8 @@ const BackDesignConfiguratorPage = () => {
     const [settingCountry, setSettingCountry] = useState(false);
     const [galleryTab, setGalleryTab] = useState('backdesign');
     const [allBackDesigns, setAllBackDesigns] = useState([]);
-    // Selected design
+    // Selected design — full object so we can switch between file_path (white) and file_path_2 (black)
+    const [selectedDesign, setSelectedDesign] = useState(null);
     const [selectedImage, setSelectedImage] = useState(null);
     const [imagePreview, setImagePreview] = useState(null);
     const [selectedDesignId, setSelectedDesignId] = useState(null);
@@ -127,14 +128,10 @@ const BackDesignConfiguratorPage = () => {
 
     useEffect(() => {
         // Guard: allBackDesigns khali hai means data abhi load nahi hua (race condition).
-        // fetchBackDesigns directly setBackDesigns karta hai — ye useEffect sirf
-        // color/data change pe re-filter karne ke liye hai.
         if (allBackDesigns.length === 0) return;
-
-        const filtered = filterByDesignColor(allBackDesigns, designColor);
-        console.log("filtered-back", filtered);
-        setBackDesigns(filtered);
-    }, [designColor, allBackDesigns]);
+        // Show all approved designs — color filtering removed, toggle handles it on canvas
+        setBackDesigns(allBackDesigns.filter(d => !d.isFromConfigurator && d.process_status === 'approved'));
+    }, [allBackDesigns]);
 
     const fetchMyClass = async (silent = false) => {
         if (!silent) setLoading(true);
@@ -145,43 +142,15 @@ const BackDesignConfiguratorPage = () => {
         finally { if (!silent) setLoading(false); }
     };
 
-    const filterByDesignColor = (data, color) => {
-        return data.filter(d => {
-            if (d.isFromConfigurator === true) return false;
-            if (d.process_status !== 'approved') return false;
-
-            if (color === 'white') {
-                return d.designColor === 'white';
-            }
-
-            if (color === 'black') {
-                return d.designColor === 'black';
-            }
-
-            // Normal — return true (show all) — currently disabled
-            // return true;
-            return false;
-        });
-    };
-
     const fetchBackDesigns = async () => {
         setDesignsLoading(true);
-
         try {
             const res = await getMyBackDesigns({ limit: 100 });
-
             if (res.data?.success && res.data?.data) {
-
                 setAllBackDesigns(res.data.data);
-
-                const filtered = filterByDesignColor(
-                    res.data.data,
-                    designColor
-                );
-
-                setBackDesigns(filtered);
-                loadState(filtered);
-
+                const approved = res.data.data.filter(d => !d.isFromConfigurator && d.process_status === 'approved');
+                setBackDesigns(approved);
+                loadState(approved);
             } else {
                 setBackDesigns([]);
                 setAllBackDesigns([]);
@@ -335,8 +304,15 @@ const BackDesignConfiguratorPage = () => {
         } catch { /* no existing design */ }
     };
 
-    const loadDesignForEditing = (design, keepLayout = false) => {
-        const url = `${getUploadsUrl(design.file_path)}?t=${Date.now()}`;
+    const loadDesignForEditing = (design, keepLayout = false, colorOverride = null) => {
+        const activeColor = colorOverride || designColor;
+        // Pick white or black version based on active toggle
+        const activePath = (activeColor === 'black' && design.file_path_2)
+            ? design.file_path_2
+            : design.file_path;
+
+        const url = `${getUploadsUrl(activePath)}?t=${Date.now()}`;
+        setSelectedDesign(design);
         setSelectedDesignId(design.id);
         if (!keepLayout) setImageLayout({ x: 0, y: 0, w: 3508, h: 4961 });
         setImagePreview(url);
@@ -346,17 +322,12 @@ const BackDesignConfiguratorPage = () => {
             .then(blob => {
                 const file = new File([blob], design.name, { type: 'image/png' });
                 setSelectedImage(file);
-
-                // Check A3 dimensions and warn user
                 const img = new Image();
                 img.onload = () => {
                     const { width, height } = img;
-                    const maxWidth = 4000;
-                    const maxHeight = 5600;
-
-                    if (width > maxWidth || height > maxHeight) {
+                    if (width > 4000 || height > 5600) {
                         message.warning({
-                            content: `Selected design (${width}×${height}px) exceeds A3 size limit (${maxWidth}×${maxHeight}px). You can use it for editing, but final export may be rejected.`,
+                            content: `Selected design (${width}×${height}px) exceeds A3 size limit. You can use it for editing, but final export may be rejected.`,
                             duration: 8
                         });
                     }
@@ -364,6 +335,14 @@ const BackDesignConfiguratorPage = () => {
                 img.src = url;
             })
             .catch(err => message.error(`Failed to load: ${err.message}`));
+    };
+
+    // When toggle changes — reload the same design with the new color version
+    const handleDesignColorToggle = (color) => {
+        setDesignColor(color);
+        if (selectedDesign) {
+            loadDesignForEditing(selectedDesign, true, color);
+        }
     };
 
     const handleAddText = () => {
@@ -540,37 +519,6 @@ const BackDesignConfiguratorPage = () => {
                             isLocked={isOrderLocked}
                         />
 
-                        <Divider />
-
-                        <div style={{ marginBottom: 16 }}>
-                            <Text strong style={{ display: 'block', marginBottom: 8 }}>Beklædningsfarve</Text>
-                            <Space>
-                                {[
-                                    { value: 'white', label: 'Hvid', bg: '#ffffff', border: '#d9d9d9', printColor: 'Sort tryk' },
-                                    { value: 'black', label: 'Sort', bg: '#1a1a1a', border: '#1a1a1a', printColor: 'Hvidt tryk' },
-                                    // { value: 'normal', label: 'Normal', bg: '#1a1a1a', border: '#1a1a1a', printColor: 'Originalt tryk' }
-                                ].map(opt => (
-                                    <div
-                                        key={opt.value}
-                                        onClick={() => !isOrderLocked && setDesignColor(opt.value)}
-                                        style={{
-                                            cursor: isOrderLocked ? 'not-allowed' : 'pointer',
-                                            padding: '8px 16px',
-                                            borderRadius: 8,
-                                            border: designColor === opt.value ? '2px solid #00b96b' : '2px solid #f0f0f0',
-                                            display: 'flex', alignItems: 'center', gap: 8,
-                                            background: designColor === opt.value ? '#f0fff8' : '#fafafa',
-                                            opacity: isOrderLocked ? 0.6 : 1,
-                                        }}
-                                    >
-                                        <div>
-                                            <div style={{ fontSize: 13, fontWeight: 500 }}>{opt.label}</div>
-                                            <div style={{ fontSize: 11, color: '#888' }}>{opt.printColor}</div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </Space>
-                        </div>
                         <Divider />
                         <Tabs
                             activeKey={namesTab}
@@ -851,6 +799,31 @@ const BackDesignConfiguratorPage = () => {
                             imageLayout={imageLayout}
                             setImageLayout={setImageLayout}
                             isLocked={isOrderLocked}
+                            colorToggle={imagePreview ? (
+                                <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: '1px solid #d9d9d9' }}>
+                                    {[
+                                        { value: 'white', label: 'Hvid', sub: 'Sort tryk' },
+                                        { value: 'black', label: 'Sort', sub: 'Hvidt tryk' },
+                                    ].map(opt => (
+                                        <div
+                                            key={opt.value}
+                                            onClick={() => !isOrderLocked && handleDesignColorToggle(opt.value)}
+                                            style={{
+                                                padding: '3px 14px',
+                                                cursor: isOrderLocked ? 'not-allowed' : 'pointer',
+                                                background: designColor === opt.value ? '#00b96b' : '#fafafa',
+                                                color: designColor === opt.value ? '#fff' : '#333',
+                                                textAlign: 'center',
+                                                transition: 'all 0.15s',
+                                                borderRight: opt.value === 'white' ? '1px solid #d9d9d9' : 'none',
+                                            }}
+                                        >
+                                            <div style={{ fontSize: 11, fontWeight: 600 }}>{opt.label}</div>
+                                            <div style={{ fontSize: 9, opacity: 1 }}>{opt.sub}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : null}
                         />
                     </Card>
                 </Col>

@@ -1,18 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
-    Card, Typography, Tabs, Upload, Button, Tag,
-    message, Empty, Row, Col, Spin, Space, Modal, Popconfirm,
-    Input
+    Card, Typography, Tabs, Button, Tag,
+    message, Empty, Row, Col, Spin, Space, Popconfirm,
+    Modal, Input, Upload,
 } from 'antd';
 import {
     UploadOutlined, FileImageOutlined, PictureOutlined,
-    InboxOutlined, CheckCircleOutlined, ClockCircleOutlined,
-    CloseCircleOutlined, DeleteOutlined, ReloadOutlined
+    CheckCircleOutlined, ClockCircleOutlined,
+    CloseCircleOutlined, DeleteOutlined, ReloadOutlined, EditOutlined, InboxOutlined,
 } from '@ant-design/icons';
 import {
     getMyClass,
     uploadLogo,
     uploadBackDesign,
+    updateBackDesign,
     deleteLogo,
     deleteMyBackDesign,
     getMyLogos,
@@ -23,6 +24,7 @@ import SimpleUploadModal from '../components/SimpleUploadModal';
 
 const { Title } = Typography;
 const { TabPane } = Tabs;
+const { Dragger } = Upload;
 
 const STATUS_MAP = {
     [Status.ACTIVE]: { label: 'Approved', color: 'success', icon: <CheckCircleOutlined /> },
@@ -46,12 +48,15 @@ const UploadFilesPage = () => {
     const [uploadModalOpen, setUploadModalOpen] = useState(false);
     const [uploadType, setUploadType] = useState('logo');
 
-    // Rejected files modal
-    const [rejectedModalOpen, setRejectedModalOpen] = useState(false);
-    const [rejectedLogos, setRejectedLogos] = useState([]);
-    const [rejectedDesigns, setRejectedDesigns] = useState([]);
-    const [rejectedLoading, setRejectedLoading] = useState(false);
-    const [refreshing, setRefreshing] = useState(false);
+    // Edit back design modal
+    const [editModalOpen, setEditModalOpen] = useState(false);
+    const [editingDesign, setEditingDesign] = useState(null);
+    const [editName, setEditName] = useState('');
+    const [editWhiteFile, setEditWhiteFile] = useState(null);
+    const [editWhitePreview, setEditWhitePreview] = useState(null);
+    const [editBlackFile, setEditBlackFile] = useState(null);
+    const [editBlackPreview, setEditBlackPreview] = useState(null);
+    const [editUploading, setEditUploading] = useState(false);
 
     const fetchMyClass = async () => {
         setLoading(true);
@@ -81,21 +86,6 @@ const UploadFilesPage = () => {
             message.error('Failed to load your uploads');
         } finally {
             setLibraryLoading(false);
-        }
-    };
-
-    const handleRefreshAll = async () => {
-        setRefreshing(true);
-        try {
-            await Promise.all([
-                fetchMyClass(),
-                fetchMyLibrary()
-            ]);
-            message.success('Files refreshed successfully!');
-        } catch (error) {
-            message.error('Failed to refresh some data');
-        } finally {
-            setRefreshing(false);
         }
     };
 
@@ -150,17 +140,41 @@ const UploadFilesPage = () => {
         setUploadModalOpen(true);
     };
 
-    const fetchRejectedFiles = async () => {
-        setRejectedLoading(true);
+    const openEditModal = (item) => {
+        setEditingDesign(item);
+        setEditName(item.name);
+        setEditWhiteFile(null);
+        setEditWhitePreview(item.file_path ? getUploadsUrl(item.file_path) : null);
+        setEditBlackFile(null);
+        setEditBlackPreview(item.file_path_2 ? getUploadsUrl(item.file_path_2) : null);
+        setEditModalOpen(true);
+    };
+
+    const handleEditFileSelect = (file, type) => {
+        if (!file.type.startsWith('image/')) { message.error('Select an image'); return false; }
+        const url = URL.createObjectURL(file);
+        if (type === 'white') { setEditWhiteFile(file); setEditWhitePreview(url); }
+        else { setEditBlackFile(file); setEditBlackPreview(url); }
+        return false;
+    };
+
+    const handleEditSubmit = async () => {
+        if (!editName.trim()) { message.error('Enter a name'); return; }
+        setEditUploading(true);
         try {
-            const [logoRes, designRes] = await Promise.all([
-                getMyLogos({ page: 1, limit: 50, process_status: 'rejected' }),
-                getMyBackDesigns({ page: 1, limit: 50, process_status: 'rejected' })
-            ]);
-            setRejectedLogos(logoRes.data?.data ?? []);
-            setRejectedDesigns((designRes.data?.data ?? []).filter(d => d.isFromConfigurator !== true));
-        } catch { message.error('Failed to load rejected files'); }
-        finally { setRejectedLoading(false); }
+            const fd = new FormData();
+            fd.append('name', editName.trim());
+            if (editWhiteFile) { fd.append('backDesign', editWhiteFile); fd.append('designColor', 'white'); }
+            if (editBlackFile) { fd.append('backDesign_2', editBlackFile); fd.append('designColor_2', 'black'); }
+            await updateBackDesign(editingDesign.id, fd);
+            message.success('Back design updated');
+            setEditModalOpen(false);
+            fetchMyLibrary();
+        } catch (err) {
+            message.error(err.response?.data?.message || 'Update failed');
+        } finally {
+            setEditUploading(false);
+        }
     };
 
     const handleDeleteLogo = async (id) => {
@@ -204,21 +218,6 @@ const UploadFilesPage = () => {
                     </Typography.Text>
                 </div>
                 <Space>
-                    {/* <Button
-                        icon={<ReloadOutlined />}
-                        loading={refreshing}
-                        onClick={handleRefreshAll}
-                        title="Refresh all files"
-                    >
-                        Refresh
-                    </Button> */}
-                    {/* <Button
-                        icon={<CloseCircleOutlined />}
-                        danger
-                        onClick={() => { setRejectedModalOpen(true); fetchRejectedFiles(); }}
-                    >
-                        Rejected Files
-                    </Button> */}
                 </Space>
             </div>
 
@@ -359,29 +358,52 @@ const UploadFilesPage = () => {
                                             hoverable
                                             cover={
                                                 <div style={{
-                                                    padding: 12,
                                                     background: item.status === Status.DELETED ? '#fff2f0' : '#fafafa',
-                                                    minHeight: 120,
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                     position: 'relative',
                                                 }}>
-                                                    <img
-                                                        src={getUploadsUrl(item.file_path)}
-                                                        alt={item.name}
-                                                        style={{
-                                                            maxWidth: '100%', maxHeight: 120, objectFit: 'contain',
-                                                            opacity: item.status === Status.DELETED ? 0.6 : 1,
-                                                        }}
-                                                    />
                                                     {item.status === Status.DELETED && (
                                                         <div style={{
-                                                            position: 'absolute', top: 6, right: 6,
+                                                            position: 'absolute', top: 6, right: 6, zIndex: 1,
                                                             background: '#ff4d4f', borderRadius: 4,
                                                             padding: '2px 6px', fontSize: 10, color: '#fff', fontWeight: 600,
                                                         }}>
                                                             REJECTED
                                                         </div>
                                                     )}
+                                                    <Tabs
+                                                        size="small"
+                                                        defaultActiveKey="white"
+                                                        style={{ padding: '0 8px' }}
+                                                        tabBarStyle={{ marginBottom: 4 }}
+                                                    >
+                                                        <TabPane tab="White" key="white">
+                                                            <div style={{ minHeight: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px 4px 8px' }}>
+                                                                <img
+                                                                    src={getUploadsUrl(item.file_path)}
+                                                                    alt={item.name}
+                                                                    style={{
+                                                                        maxWidth: '100%', maxHeight: 100, objectFit: 'contain',
+                                                                        opacity: item.status === Status.DELETED ? 0.6 : 1,
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                        </TabPane>
+                                                        <TabPane tab="Black" key="black">
+                                                            <div style={{ minHeight: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#1a1a1a', borderRadius: 4, padding: '4px 4px 8px' }}>
+                                                                {item.file_path_2 ? (
+                                                                    <img
+                                                                        src={getUploadsUrl(item.file_path_2)}
+                                                                        alt={`${item.name} (black)`}
+                                                                        style={{ maxWidth: '100%', maxHeight: 100, objectFit: 'contain' }}
+                                                                    />
+                                                                ) : (
+                                                                    <Typography.Text type="secondary" style={{ fontSize: 11, color: '#888' }}>
+                                                                        No black version
+                                                                    </Typography.Text>
+                                                                )}
+                                                            </div>
+                                                        </TabPane>
+                                                    </Tabs>
                                                 </div>
                                             }
                                             style={{
@@ -389,13 +411,20 @@ const UploadFilesPage = () => {
                                                 border: item.status === Status.DELETED ? '1px solid #ffccc7' : undefined,
                                             }}
                                         >
-                                            {console.log(getUploadsUrl(item.file_path))}
                                             <Typography.Text strong ellipsis style={{ display: 'block' }}>{item.name}</Typography.Text>
                                             <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                 {getStatusTag(item.status)}
-                                                <Popconfirm title="Delete this design?" onConfirm={() => handleDeleteDesign(item.id)} okText="Yes" cancelText="No" okType="danger">
-                                                    <Button type="text" danger size="small" icon={<DeleteOutlined />} />
-                                                </Popconfirm>
+                                                <Space size={0}>
+                                                    <Button
+                                                        type="text"
+                                                        size="small"
+                                                        icon={<EditOutlined style={{ color: '#00b96b' }} />}
+                                                        onClick={() => openEditModal(item)}
+                                                    />
+                                                    <Popconfirm title="Delete this design?" onConfirm={() => handleDeleteDesign(item.id)} okText="Yes" cancelText="No" okType="danger">
+                                                        <Button type="text" danger size="small" icon={<DeleteOutlined />} />
+                                                    </Popconfirm>
+                                                </Space>
                                             </div>
                                             {item.status === Status.DELETED && item.admin_comment && (
                                                 <div style={{ marginTop: 6, padding: '6px 8px', background: '#fff2f0', borderRadius: 4, border: '1px solid #ffccc7' }}>
@@ -423,79 +452,84 @@ const UploadFilesPage = () => {
                 loading={uploading}
             />
 
-            {/* Rejected Files Modal */}
+            {/* Edit Back Design Modal */}
             <Modal
-                title={<span><CloseCircleOutlined style={{ color: '#ff4d4f', marginRight: 8 }} />Rejected Files</span>}
-                open={rejectedModalOpen}
-                onCancel={() => setRejectedModalOpen(false)}
-                footer={null}
-                width={800}
-                destroyOnHidden
+                title="Edit Back Design"
+                open={editModalOpen}
+                onCancel={() => setEditModalOpen(false)}
+                footer={[
+                    <Button key="cancel" onClick={() => setEditModalOpen(false)}>Cancel</Button>,
+                    <Button key="save" type="primary" loading={editUploading} onClick={handleEditSubmit} style={{ color: 'white' }}>
+                        Save Changes
+                    </Button>,
+                ]}
+                width={620}
+                destroyOnClose
             >
-                {rejectedLoading ? <Spin style={{ display: 'block', margin: '24px auto' }} /> : (
-                    <Tabs defaultActiveKey="logos">
-                        <TabPane tab={`Logos (${rejectedLogos.length})`} key="logos">
-                            {rejectedLogos.length === 0 ? (
-                                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No rejected logos" />
-                            ) : (
-                                <Row gutter={[16, 16]}>
-                                    {rejectedLogos.map(item => (
-                                        <Col xs={12} sm={8} key={item.id}>
-                                            <Card
-                                                cover={
-                                                    <div style={{ padding: 12, background: '#fafafa', height: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                        <img src={getUploadsUrl(item.file_path)} alt={item.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
-                                                    </div>
-                                                }
-                                                size="small"
-                                            >
-                                                <Typography.Text strong ellipsis style={{ display: 'block' }}>{item.name}</Typography.Text>
-                                                {item.admin_comment && (
-                                                    <div style={{ marginTop: 6, padding: '6px 8px', background: '#fff2f0', borderRadius: 4, border: '1px solid #ffccc7' }}>
-                                                        <Typography.Text type="danger" style={{ fontSize: 11 }}>
-                                                            <CloseCircleOutlined style={{ marginRight: 4 }} />
-                                                            {item.admin_comment}
-                                                        </Typography.Text>
-                                                    </div>
-                                                )}
-                                            </Card>
-                                        </Col>
-                                    ))}
-                                </Row>
-                            )}
-                        </TabPane>
-                        <TabPane tab={`Back Designs (${rejectedDesigns.length})`} key="designs">
-                            {rejectedDesigns.length === 0 ? (
-                                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No rejected back designs" />
-                            ) : (
-                                <Row gutter={[16, 16]}>
-                                    {rejectedDesigns.map(item => (
-                                        <Col xs={12} sm={8} key={item.id}>
-                                            <Card
-                                                cover={
-                                                    <div style={{ padding: 12, background: '#fafafa', height: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                        <img src={getUploadsUrl(item.file_path)} alt={item.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
-                                                    </div>
-                                                }
-                                                size="small"
-                                            >
-                                                <Typography.Text strong ellipsis style={{ display: 'block' }}>{item.name}</Typography.Text>
-                                                {item.admin_comment && (
-                                                    <div style={{ marginTop: 6, padding: '6px 8px', background: '#fff2f0', borderRadius: 4, border: '1px solid #ffccc7' }}>
-                                                        <Typography.Text type="danger" style={{ fontSize: 11 }}>
-                                                            <CloseCircleOutlined style={{ marginRight: 4 }} />
-                                                            {item.admin_comment}
-                                                        </Typography.Text>
-                                                    </div>
-                                                )}
-                                            </Card>
-                                        </Col>
-                                    ))}
-                                </Row>
-                            )}
-                        </TabPane>
-                    </Tabs>
-                )}
+                <Space direction="vertical" size="large" style={{ width: '100%', marginTop: 8 }}>
+                    <div>
+                        <Typography.Text strong>Name *</Typography.Text>
+                        <Input
+                            value={editName}
+                            onChange={e => setEditName(e.target.value)}
+                            style={{ marginTop: 8 }}
+                            maxLength={100}
+                            showCount
+                        />
+                    </div>
+
+                    {/* White version */}
+                    <div>
+                        <Typography.Text strong>White Garment Design</Typography.Text>
+                        <Typography.Text type="secondary" style={{ fontSize: 11, marginLeft: 8 }}>
+                            (leave empty to keep current)
+                        </Typography.Text>
+                        {editWhitePreview && (
+                            <div style={{ margin: '8px 0', textAlign: 'center', background: '#fafafa', padding: 8, borderRadius: 6 }}>
+                                <img src={editWhitePreview} alt="white" style={{ maxHeight: 100, maxWidth: '100%', objectFit: 'contain' }} />
+                            </div>
+                        )}
+                        <Dragger
+                            beforeUpload={f => handleEditFileSelect(f, 'white')}
+                            showUploadList={false}
+                            accept="image/*"
+                            style={{ borderColor: editWhiteFile ? '#52c41a' : '#d9d9d9', background: editWhiteFile ? '#f6ffed' : '#fafafa' }}
+                        >
+                            <p className="ant-upload-drag-icon">
+                                <InboxOutlined style={{ fontSize: 28, color: editWhiteFile ? '#52c41a' : '#d9d9d9' }} />
+                            </p>
+                            <p className="ant-upload-text" style={{ fontSize: 13 }}>
+                                {editWhiteFile ? `✓ ${editWhiteFile.name}` : 'Click or drag to replace white version'}
+                            </p>
+                        </Dragger>
+                    </div>
+
+                    {/* Black version */}
+                    <div>
+                        <Typography.Text strong>Black Garment Design</Typography.Text>
+                        <Typography.Text type="secondary" style={{ fontSize: 11, marginLeft: 8 }}>
+                            (leave empty to keep current)
+                        </Typography.Text>
+                        {editBlackPreview && (
+                            <div style={{ margin: '8px 0', textAlign: 'center', background: '#1a1a1a', padding: 8, borderRadius: 6 }}>
+                                <img src={editBlackPreview} alt="black" style={{ maxHeight: 100, maxWidth: '100%', objectFit: 'contain' }} />
+                            </div>
+                        )}
+                        <Dragger
+                            beforeUpload={f => handleEditFileSelect(f, 'black')}
+                            showUploadList={false}
+                            accept="image/*"
+                            style={{ borderColor: editBlackFile ? '#52c41a' : '#d9d9d9', background: editBlackFile ? '#f6ffed' : '#fafafa' }}
+                        >
+                            <p className="ant-upload-drag-icon">
+                                <InboxOutlined style={{ fontSize: 28, color: editBlackFile ? '#52c41a' : '#d9d9d9' }} />
+                            </p>
+                            <p className="ant-upload-text" style={{ fontSize: 13 }}>
+                                {editBlackFile ? `✓ ${editBlackFile.name}` : 'Click or drag to replace black version'}
+                            </p>
+                        </Dragger>
+                    </div>
+                </Space>
             </Modal>
         </div>
     );

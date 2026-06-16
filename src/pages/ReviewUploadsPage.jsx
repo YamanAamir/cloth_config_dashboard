@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
     Table, Button, Card, Typography, Space, Tag, Tabs,
-    message, Image, Popconfirm, Tooltip, Input, Select, Modal, Upload, Form, Checkbox
+    message, Image, Popconfirm, Tooltip, Input, Select, Modal, Upload, Form, Checkbox, Dropdown
 } from 'antd';
 import {
     CheckCircleOutlined, CloseCircleOutlined, EyeOutlined,
-    FileImageOutlined, ClockCircleOutlined, PlusOutlined, InboxOutlined, DeleteOutlined, GlobalOutlined
+    FileImageOutlined, ClockCircleOutlined, PlusOutlined, InboxOutlined, DeleteOutlined, GlobalOutlined, EditOutlined, MoreOutlined
 } from '@ant-design/icons';
 import {
     getAllLogos, approveLogo, rejectLogo, adminPermanentDeleteLogo,
@@ -38,6 +38,21 @@ const ReviewUploadsPage = () => {
     const [uploading, setUploading] = useState(false);
     const [uploadFile, setUploadFile] = useState(null);
     const [uploadPreview, setUploadPreview] = useState(null);
+    // Back design — two files
+    const [uploadWhiteFile, setUploadWhiteFile] = useState(null);
+    const [uploadWhitePreview, setUploadWhitePreview] = useState(null);
+    const [uploadBlackFile, setUploadBlackFile] = useState(null);
+    const [uploadBlackPreview, setUploadBlackPreview] = useState(null);
+
+    // Edit back design state
+    const [editDesignModal, setEditDesignModal] = useState(false);
+    const [editingDesign, setEditingDesign] = useState(null);
+    const [editDesignForm] = Form.useForm();
+    const [editWhiteFile, setEditWhiteFile] = useState(null);
+    const [editWhitePreview, setEditWhitePreview] = useState(null);
+    const [editBlackFile, setEditBlackFile] = useState(null);
+    const [editBlackPreview, setEditBlackPreview] = useState(null);
+    const [editUploading, setEditUploading] = useState(false);
     const [schools, setSchools] = useState([]);
     const [classes, setClasses] = useState([]);
     const [logoForm] = Form.useForm();
@@ -249,26 +264,18 @@ const ReviewUploadsPage = () => {
     };
 
     const handleAdminUploadDesign = async (values) => {
-        if (!uploadFile) {
-            message.error('Select a file');
-            return;
-        }
+        if (!uploadWhiteFile) { message.error('Select the White design file'); return; }
+        if (!uploadBlackFile) { message.error('Select the Black design file'); return; }
 
         setUploading(true);
-
         try {
             const fd = new FormData();
-
             fd.append('name', values.name);
-
-            if (values.class_id) {
-                fd.append('class_id', values.class_id);
-            }
-
-            fd.append('designColor', designColor); // <-- yahan
-
-            fd.append('design', uploadFile);
-
+            if (values.class_id) fd.append('class_id', values.class_id);
+            fd.append('design', uploadWhiteFile);
+            fd.append('designColor', 'white');
+            fd.append('design_2', uploadBlackFile);
+            fd.append('designColor_2', 'black');
             fd.append('forAllStudents', adminForAllStudents ? 'true' : 'false');
 
             await adminUploadBackDesign(fd);
@@ -276,15 +283,43 @@ const ReviewUploadsPage = () => {
             message.success('Back design uploaded & approved');
             setUploadDesignModal(false);
             designForm.resetFields();
-            setUploadFile(null);
-            setUploadPreview(null);
+            setUploadWhiteFile(null); setUploadWhitePreview(null);
+            setUploadBlackFile(null); setUploadBlackPreview(null);
             setAdminForAllStudents(false);
             fetchBackDesigns();
-
         } catch (err) {
             message.error(err.response?.data?.message || 'Upload failed');
         } finally {
             setUploading(false);
+        }
+    };
+
+    const openEditDesignModal = (record) => {
+        setEditingDesign(record);
+        editDesignForm.setFieldsValue({ name: record.name });
+        setEditWhiteFile(null);
+        setEditWhitePreview(record.file_path ? getUploadsUrl(record.file_path) : null);
+        setEditBlackFile(null);
+        setEditBlackPreview(record.file_path_2 ? getUploadsUrl(record.file_path_2) : null);
+        setEditDesignModal(true);
+    };
+
+    const handleEditDesign = async (values) => {
+        if (!editingDesign) return;
+        setEditUploading(true);
+        try {
+            const fd = new FormData();
+            fd.append('name', values.name);
+            if (editWhiteFile) { fd.append('design', editWhiteFile); fd.append('designColor', 'white'); }
+            if (editBlackFile) { fd.append('design_2', editBlackFile); fd.append('designColor_2', 'black'); }
+            await adminUploadBackDesign(fd); // reuse same endpoint with PUT — replace with adminEditBackDesign if available
+            message.success('Back design updated');
+            setEditDesignModal(false);
+            fetchBackDesigns();
+        } catch (err) {
+            message.error(err.response?.data?.message || 'Update failed');
+        } finally {
+            setEditUploading(false);
         }
     };
 
@@ -335,50 +370,40 @@ const ReviewUploadsPage = () => {
         {
             title: 'Action',
             key: 'action',
+            width: 60,
             render: (_, record) => (
-                <Space>
-                    <Tooltip title="Approve">
-                        <Popconfirm
-                            title="Approve this logo?"
-                            onConfirm={() => handleApprove(record.id, 'logo')}
-                            okText="Yes"
-                            cancelText="No"
-                        >
-                            <Button
-                                type="text"
-                                shape="circle"
-                                icon={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
-                                disabled={record.status === Status.ACTIVE}
-                            />
-                        </Popconfirm>
-                    </Tooltip>
-                    <Tooltip title="Reject">
-                        <Button
-                            type="text"
-                            shape="circle"
-                            icon={<CloseCircleOutlined style={{ color: '#ff4d4f' }} />}
-                            disabled={record.status === Status.DELETED}
-                            onClick={() => handleReject(record.id, 'logo')}
-                        />
-                    </Tooltip>
-                    <Tooltip title="Permanent Delete">
-                        <Popconfirm
-                            title="Permanently delete this logo?"
-                            description="This action cannot be undone!"
-                            onConfirm={() => handlePermanentDelete(record.id, 'logo', record.name)}
-                            okText="Delete Forever"
-                            okType="danger"
-                            cancelText="Cancel"
-                        >
-                            <Button
-                                type="text"
-                                shape="circle"
-                                icon={<DeleteOutlined style={{ color: '#ff4d4f' }} />}
-                                danger
-                            />
-                        </Popconfirm>
-                    </Tooltip>
-                </Space>
+                <Dropdown
+                    trigger={['click']}
+                    placement="bottomRight"
+                    menu={{
+                        items: [
+                            {
+                                key: 'approve',
+                                icon: <CheckCircleOutlined style={{ color: '#52c41a' }} />,
+                                label: 'Approve',
+                                disabled: record.status === Status.ACTIVE,
+                                onClick: () => handleApprove(record.id, 'logo'),
+                            },
+                            {
+                                key: 'reject',
+                                icon: <CloseCircleOutlined style={{ color: '#ff4d4f' }} />,
+                                label: 'Reject',
+                                disabled: record.status === Status.DELETED,
+                                onClick: () => handleReject(record.id, 'logo'),
+                            },
+                            { type: 'divider' },
+                            {
+                                key: 'delete',
+                                icon: <DeleteOutlined />,
+                                label: 'Permanent Delete',
+                                danger: true,
+                                onClick: () => handlePermanentDelete(record.id, 'logo', record.name),
+                            },
+                        ],
+                    }}
+                >
+                    <Button type="text" icon={<MoreOutlined style={{ fontSize: 18 }} />} />
+                </Dropdown>
             ),
         },
     ];
@@ -386,23 +411,46 @@ const ReviewUploadsPage = () => {
  const designColumns = [
     {
         title: 'Preview',
-        dataIndex: 'file_path',
-        key: 'file_path',
-        render: (path) => (
-            <Image
-                width={80}
-                height={80}
-                src={getUploadsUrl(path)}
-                fallback="https://via.placeholder.com/80?text=No+Design"
-                style={{ borderRadius: 8, objectFit: 'contain', border: '1px solid #f0f0f0' }}
-            />
+        key: 'preview',
+        width: 180,
+        render: (_, record) => (
+            <Tabs size="small" defaultActiveKey="white" style={{ width: 160 }} tabBarStyle={{ marginBottom: 4 }}>
+                <TabPane tab="White" key="white">
+                    <div style={{ background: '#fafafa', borderRadius: 4, padding: 4, textAlign: 'center' }}>
+                        <Image
+                            width={80} height={70}
+                            src={getUploadsUrl(record.file_path)}
+                            fallback="https://via.placeholder.com/80?text=—"
+                            style={{ objectFit: 'contain' }}
+                        />
+                    </div>
+                </TabPane>
+                <TabPane tab="Black" key="black">
+                    <div style={{ background: '#1a1a1a', borderRadius: 4, padding: 4, textAlign: 'center' }}>
+                        {record.file_path_2 ? (
+                            <Image
+                                width={80} height={70}
+                                src={getUploadsUrl(record.file_path_2)}
+                                fallback="https://via.placeholder.com/80?text=—"
+                                style={{ objectFit: 'contain' }}
+                            />
+                        ) : (
+                            <Typography.Text style={{ color: '#555', fontSize: 10 }}>—</Typography.Text>
+                        )}
+                    </div>
+                </TabPane>
+            </Tabs>
         ),
     },
     {
         title: 'Name',
         dataIndex: 'name',
         key: 'name',
-        render: (t) => <Typography.Text strong>{t || '—'}</Typography.Text>
+        render: (t, record) => (
+            <Space direction="vertical" size={2}>
+                <Typography.Text strong>{t || '—'}</Typography.Text>
+            </Space>
+        ),
     },
     {
         title: 'Class',
@@ -431,52 +479,47 @@ const ReviewUploadsPage = () => {
     {
         title: 'Action',
         key: 'action',
+        width: 60,
         render: (_, record) => (
-            <Space>
-                <Tooltip title="Approve">
-                    <Popconfirm
-                        title="Approve this design?"
-                        onConfirm={() => handleApprove(record.id, 'design')}
-                        okText="Yes"
-                        cancelText="No"
-                    >
-                        <Button
-                            type="text"
-                            shape="circle"
-                            icon={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
-                            disabled={record.status === Status.ACTIVE}
-                        />
-                    </Popconfirm>
-                </Tooltip>
-
-                <Tooltip title="Reject">
-                    <Button
-                        type="text"
-                        shape="circle"
-                        icon={<CloseCircleOutlined style={{ color: '#ff4d4f' }} />}
-                        disabled={record.status === Status.DELETED}
-                        onClick={() => handleReject(record.id, 'design')}
-                    />
-                </Tooltip>
-
-                <Tooltip title="Permanent Delete">
-                    <Popconfirm
-                        title="Permanently delete this design?"
-                        description="This action cannot be undone!"
-                        onConfirm={() => handlePermanentDelete(record.id, 'design', record.name)}
-                        okText="Delete Forever"
-                        okType="danger"
-                        cancelText="Cancel"
-                    >
-                        <Button
-                            type="text"
-                            shape="circle"
-                            icon={<DeleteOutlined style={{ color: '#ff4d4f' }} />}
-                            danger
-                        />
-                    </Popconfirm>
-                </Tooltip>
-            </Space>
+            <Dropdown
+                trigger={['click']}
+                placement="bottomRight"
+                menu={{
+                    items: [
+                        {
+                            key: 'edit',
+                            icon: <EditOutlined style={{ color: '#00b96b' }} />,
+                            label: 'Edit',
+                            onClick: () => openEditDesignModal(record),
+                        },
+                        { type: 'divider' },
+                        {
+                            key: 'approve',
+                            icon: <CheckCircleOutlined style={{ color: '#52c41a' }} />,
+                            label: 'Approve',
+                            disabled: record.status === Status.ACTIVE,
+                            onClick: () => handleApprove(record.id, 'design'),
+                        },
+                        {
+                            key: 'reject',
+                            icon: <CloseCircleOutlined style={{ color: '#ff4d4f' }} />,
+                            label: 'Reject',
+                            disabled: record.status === Status.DELETED,
+                            onClick: () => handleReject(record.id, 'design'),
+                        },
+                        { type: 'divider' },
+                        {
+                            key: 'delete',
+                            icon: <DeleteOutlined />,
+                            label: 'Permanent Delete',
+                            danger: true,
+                            onClick: () => handlePermanentDelete(record.id, 'design', record.name),
+                        },
+                    ],
+                }}
+            >
+                <Button type="text" icon={<MoreOutlined style={{ fontSize: 18 }} />} />
+            </Dropdown>
         ),
     },
 ];
@@ -638,8 +681,14 @@ const ReviewUploadsPage = () => {
 
             {/* Admin Upload Back Design Modal */}
             <Modal title="Upload Back Design (Approved)" open={uploadDesignModal}
-                onCancel={() => { setUploadDesignModal(false); setUploadFile(null); setUploadPreview(null); setAdminForAllStudents(false); }}
-                footer={null} destroyOnHidden>
+                onCancel={() => {
+                    setUploadDesignModal(false);
+                    setUploadFile(null); setUploadPreview(null);
+                    setUploadWhiteFile(null); setUploadWhitePreview(null);
+                    setUploadBlackFile(null); setUploadBlackPreview(null);
+                    setAdminForAllStudents(false);
+                }}
+                footer={null} destroyOnHidden width={620}>
                 <Form form={designForm} layout="vertical" onFinish={handleAdminUploadDesign} style={{ marginTop: 16 }}>
                     <Form.Item name="name" label="Design Name" rules={[{ required: true }]}>
                         <Input placeholder="e.g. Berlin Back Design" />
@@ -647,54 +696,57 @@ const ReviewUploadsPage = () => {
                     <Form.Item name="class_id" label="Assign to Class (optional)" tooltip="Leave empty for library design">
                         <Select placeholder="Select class (optional)" allowClear options={classes.map(c => ({ value: c.id, label: `${c.name} — ${c.school?.name || ''}` }))} showSearch optionFilterProp="label" />
                     </Form.Item>
-                    <Form.Item
-                        name="designColor"
-                        label="Design Color"
-                        initialValue="white"
-                    >
-                        <div>
-                            <Space style={{ marginTop: 8 }}>
-                                {[
-                                    { value: 'white', label: 'White', bg: '#ffffff', border: '#d9d9d9', printColor: 'Black print' },
-                                    { value: 'black', label: 'Black', bg: '#1a1a1a', border: '#1a1a1a', printColor: 'White print' },
-                                    // { value: 'normal', label: 'Normal', bg: '#1a1a1a', border: '#1a1a1a', printColor: 'Orignal print' }
-                                ].map(opt => (
-                                    <div
-                                        key={opt.value}
-                                        onClick={() => {
-                                            setDesignColor(opt.value);
-                                            designForm.setFieldValue('designColor', opt.value);
-                                        }}
-                                        style={{
-                                            padding: '6px 14px',
-                                            borderRadius: 8,
-                                            cursor: 'pointer',
-                                            border: designColor === opt.value
-                                                ? '2px solid #00b96b'
-                                                : '1px solid #d9d9d9',
-                                            background: designColor === opt.value
-                                                ? '#f6ffed'
-                                                : '#fff',
-                                            fontWeight: 500
-                                        }}
-                                    >
-                                        <div>
-                                            <div style={{ fontSize: 13, fontWeight: 500 }}>{opt.label}</div>
-                                            <div style={{ fontSize: 11, color: '#888' }}>{opt.printColor}</div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </Space>
-                        </div>
+
+                    {/* White design file */}
+                    <Form.Item label="White Garment Design (Black print) *" required>
+                        <Upload
+                            beforeUpload={(file) => {
+                                setUploadWhiteFile(file);
+                                setUploadWhitePreview(URL.createObjectURL(file));
+                                return false;
+                            }}
+                            showUploadList={false}
+                            accept="image/*"
+                        >
+                            <Button type="dashed" icon={<InboxOutlined />} block style={{ height: 70 }}>
+                                {uploadWhiteFile ? `✓ ${uploadWhiteFile.name}` : 'Click to select white version'}
+                            </Button>
+                        </Upload>
+                        {uploadWhitePreview && (
+                            <img src={uploadWhitePreview} alt="white preview"
+                                style={{ marginTop: 8, maxWidth: '100%', maxHeight: 120, objectFit: 'contain', borderRadius: 6, background: '#fafafa', padding: 4 }} />
+                        )}
                     </Form.Item>
+
+                    {/* Black design file */}
+                    <Form.Item label="Black Garment Design (White print) *" required>
+                        <Upload
+                            beforeUpload={(file) => {
+                                setUploadBlackFile(file);
+                                setUploadBlackPreview(URL.createObjectURL(file));
+                                return false;
+                            }}
+                            showUploadList={false}
+                            accept="image/*"
+                        >
+                            <Button type="dashed" icon={<InboxOutlined />} block style={{ height: 70 }}>
+                                {uploadBlackFile ? `✓ ${uploadBlackFile.name}` : 'Click to select black version'}
+                            </Button>
+                        </Upload>
+                        {uploadBlackPreview && (
+                            <div style={{ marginTop: 8, background: '#1a1a1a', padding: 8, borderRadius: 6, textAlign: 'center' }}>
+                                <img src={uploadBlackPreview} alt="black preview"
+                                    style={{ maxWidth: '100%', maxHeight: 120, objectFit: 'contain' }} />
+                            </div>
+                        )}
+                    </Form.Item>
+
                     <Form.Item label="For alle elever (Studietur bibliotek)">
                         <div
                             style={{
-                                padding: '12px 16px',
-                                borderRadius: 8,
+                                padding: '12px 16px', borderRadius: 8,
                                 border: adminForAllStudents ? '1.5px solid #7c3aed' : '1px solid #f0f0f0',
-                                background: adminForAllStudents ? '#f5f0ff' : '#fafafa',
-                                cursor: 'pointer',
+                                background: adminForAllStudents ? '#f5f0ff' : '#fafafa', cursor: 'pointer',
                             }}
                             onClick={() => setAdminForAllStudents(v => !v)}
                         >
@@ -713,21 +765,78 @@ const ReviewUploadsPage = () => {
                             </div>
                         </div>
                     </Form.Item>
-                    <Form.Item label="Design File" required>
 
-                        {!uploadPreview && (
-                            <Upload beforeUpload={handleFileSelect} showUploadList={false} accept="image/*">
-                                <Button type="dashed" icon={<InboxOutlined />} block style={{ height: 80 }}>
-                                    {uploadFile ? `✓ ${uploadFile.name}` : 'Click to select image'}
-                                </Button>
-                            </Upload>
-                        )}
-                        {uploadPreview && <img src={uploadPreview} alt="preview" style={{ marginTop: 8, maxWidth: '100%', maxHeight: 150, objectFit: 'contain' }} />}
-                    </Form.Item>
                     <Form.Item style={{ textAlign: 'right', marginBottom: 0 }}>
                         <Space>
                             <Button onClick={() => setUploadDesignModal(false)}>Cancel</Button>
-                            <Button style={{ color: 'white' }} type="primary" htmlType="submit" loading={uploading}>Upload & Approve</Button>
+                            <Button style={{ color: 'white' }} type="primary" htmlType="submit" loading={uploading}
+                                disabled={!uploadWhiteFile || !uploadBlackFile}>
+                                Upload & Approve
+                            </Button>
+                        </Space>
+                    </Form.Item>
+                </Form>
+            </Modal>
+            {/* Edit Back Design Modal */}
+            <Modal
+                title="Edit Back Design"
+                open={editDesignModal}
+                onCancel={() => setEditDesignModal(false)}
+                footer={null}
+                destroyOnHidden
+                width={620}
+            >
+                <Form form={editDesignForm} layout="vertical" onFinish={handleEditDesign} style={{ marginTop: 16 }}>
+                    <Form.Item name="name" label="Design Name" rules={[{ required: true }]}>
+                        <Input placeholder="e.g. Berlin Back Design" />
+                    </Form.Item>
+
+                    {/* White version */}
+                    <Form.Item label="White Garment Design">
+                        <Typography.Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 6 }}>
+                            Leave empty to keep current file
+                        </Typography.Text>
+                        {editWhitePreview && (
+                            <div style={{ marginBottom: 8, textAlign: 'center', background: '#fafafa', padding: 8, borderRadius: 6 }}>
+                                <img src={editWhitePreview} alt="white" style={{ maxHeight: 100, maxWidth: '100%', objectFit: 'contain' }} />
+                            </div>
+                        )}
+                        <Upload
+                            beforeUpload={(file) => { setEditWhiteFile(file); setEditWhitePreview(URL.createObjectURL(file)); return false; }}
+                            showUploadList={false} accept="image/*"
+                        >
+                            <Button type="dashed" icon={<InboxOutlined />} block style={{ height: 60 }}>
+                                {editWhiteFile ? `✓ ${editWhiteFile.name}` : 'Click to replace white version'}
+                            </Button>
+                        </Upload>
+                    </Form.Item>
+
+                    {/* Black version */}
+                    <Form.Item label="Black Garment Design">
+                        <Typography.Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 6 }}>
+                            Leave empty to keep current file
+                        </Typography.Text>
+                        {editBlackPreview && (
+                            <div style={{ marginBottom: 8, textAlign: 'center', background: '#1a1a1a', padding: 8, borderRadius: 6 }}>
+                                <img src={editBlackPreview} alt="black" style={{ maxHeight: 100, maxWidth: '100%', objectFit: 'contain' }} />
+                            </div>
+                        )}
+                        <Upload
+                            beforeUpload={(file) => { setEditBlackFile(file); setEditBlackPreview(URL.createObjectURL(file)); return false; }}
+                            showUploadList={false} accept="image/*"
+                        >
+                            <Button type="dashed" icon={<InboxOutlined />} block style={{ height: 60 }}>
+                                {editBlackFile ? `✓ ${editBlackFile.name}` : 'Click to replace black version'}
+                            </Button>
+                        </Upload>
+                    </Form.Item>
+
+                    <Form.Item style={{ textAlign: 'right', marginBottom: 0 }}>
+                        <Space>
+                            <Button onClick={() => setEditDesignModal(false)}>Cancel</Button>
+                            <Button type="primary" htmlType="submit" loading={editUploading} style={{ color: 'white' }}>
+                                Save Changes
+                            </Button>
                         </Space>
                     </Form.Item>
                 </Form>

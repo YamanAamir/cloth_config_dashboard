@@ -74,8 +74,8 @@ const ProductionFilesPage = () => {
         },
         {
             title: 'Generated At',
-            dataIndex: 'created_at',
-            key: 'created_at',
+            dataIndex: 'generated_at',
+            key: 'generated_at',
             render: (date) => (
                 <Text type="secondary" style={{ fontSize: 12 }}>
                     {formatDanishDateTime(date)}

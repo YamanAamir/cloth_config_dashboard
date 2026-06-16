@@ -19,6 +19,7 @@ const DesignCanvas = ({
     onCanvasUpdate,
     imageLayout, setImageLayout,
     isLocked = false,
+    colorToggle = null,  // optional JSX rendered left of Preview button
 }) => {
     const [hasOutOfBounds, setHasOutOfBounds] = useState(false);
     const [imgDragging, setImgDragging] = useState(false);
@@ -117,7 +118,7 @@ const DesignCanvas = ({
         canvas.width = CANVAS_W;
         canvas.height = CANVAS_H;
 
-        ctx.fillStyle = designColor === 'black' ? '#7e7e7e' : '#ffffff';
+        ctx.fillStyle = designColor === 'black' ? '#2a2a2a' : '#ffffff';
         ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
         const l = currentLayout || layout;
@@ -466,9 +467,7 @@ const DesignCanvas = ({
                         🔒 This design is locked. Preview is available but editing is disabled.
                     </Typography.Text>
                 ) : (
-                    <Typography.Text type="secondary" style={{ fontSize: 11 }}>
-                        Click image to select · Drag to move · Corner handles to resize · Click empty area to deselect
-                    </Typography.Text>
+                    <span>{colorToggle}</span>
                 )}
                 {hasOutOfBounds && (
                     <Typography.Text type="danger" style={{ fontSize: 11 }}>

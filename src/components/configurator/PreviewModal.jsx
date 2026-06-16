@@ -43,17 +43,26 @@ const GARMENTS = [
 ];
 
 // Color palettes matching student configurator
-const COLORS = [
-    { key: 'red', label: 'Red', hex: '#cc0000', border: '#cc0000' },
-    { key: 'black', label: 'Black', hex: '#1a1a1a', border: '#1a1a1a' },
-    { key: 'white', label: 'White', hex: '#ffffff', border: '#d9d9d9' },
-    { key: 'natural', label: 'Natural', hex: '#faf0dc', border: '#e0d5b0' },
-    { key: 'navy', label: 'Dark Blue', hex: '#0a1628', border: '#0a1628' },
-    { key: 'heatherGrey', label: 'Heather Grey', hex: '#c8c8c8', border: '#c8c8c8' },
-    { key: 'oliveGreen', label: 'Olive Green', hex: '#6b6b3a', border: '#6b6b3a' },
-    { key: 'blue', label: 'Blue', hex: '#0000ee', border: '#0000ee' },
-    { key: 'purple', label: 'Purple', hex: '#4b0082', border: '#4b0082' },
-];
+const COLORS = {
+    white: [
+        { key: 'white', label: 'White', hex: '#ffffff', border: '#d9d9d9' },
+        { key: 'natural', label: 'Natural', hex: '#faf0dc', border: '#e0d5b0' },
+        { key: 'heatherGrey', label: 'Heather Grey', hex: '#c8c8c8', border: '#c8c8c8' },
+        { key: 'red', label: 'Red', hex: '#cc0000', border: '#cc0000' },
+        { key: 'blue', label: 'Blue', hex: '#0000ee', border: '#0000ee' },
+        { key: 'purple', label: 'Purple', hex: '#4b0082', border: '#4b0082' },
+    ],
+
+    black: [
+
+        { key: 'black', label: 'Black', hex: '#1a1a1a', border: '#1a1a1a' },
+        { key: 'red', label: 'Red', hex: '#cc0000', border: '#cc0000' },
+        { key: 'navy', label: 'Dark Blue', hex: '#0a1628', border: '#0a1628' },
+        { key: 'blue', label: 'Blue', hex: '#0000ee', border: '#0000ee' },
+        { key: 'purple', label: 'Purple', hex: '#4b0082', border: '#4b0082' },
+        { key: 'oliveGreen', label: 'Olive Green', hex: '#6b6b3a', border: '#6b6b3a' },
+    ]
+};
 
 const PreviewModal = ({ open, onClose, canvasRef, designColor = 'white' }) => {
     const iframeRef = useRef(null);
@@ -88,7 +97,7 @@ const PreviewModal = ({ open, onClose, canvasRef, designColor = 'white' }) => {
         const d = imgData.data;
         for (let i = 0; i < d.length; i += 4) {
             // Contrast boost: factor 1.3
-            d[i]     = Math.min(255, Math.max(0, 1.3 * (d[i]     - 128) + 128));
+            d[i] = Math.min(255, Math.max(0, 1.3 * (d[i] - 128) + 128));
             d[i + 1] = Math.min(255, Math.max(0, 1.3 * (d[i + 1] - 128) + 128));
             d[i + 2] = Math.min(255, Math.max(0, 1.3 * (d[i + 2] - 128) + 128));
         }
@@ -108,20 +117,20 @@ const PreviewModal = ({ open, onClose, canvasRef, designColor = 'white' }) => {
         ctx.fillRect(0, 0, offCanvas.width, offCanvas.height);
         ctx.drawImage(canvas, 0, 0, offCanvas.width, offCanvas.height);
         const imgData = ctx.getImageData(0, 0, offCanvas.width, offCanvas.height);
-       for (let i = 0; i < imgData.data.length; i += 4) {
-    const brightness =
-        0.299 * imgData.data[i] +
-        0.587 * imgData.data[i + 1] +
-        0.114 * imgData.data[i + 2];
+        for (let i = 0; i < imgData.data.length; i += 4) {
+            const brightness =
+                0.299 * imgData.data[i] +
+                0.587 * imgData.data[i + 1] +
+                0.114 * imgData.data[i + 2];
 
-    // invert + pure black/white
-    const bw = brightness > 128 ? 0 : 255;
+            // invert + pure black/white
+            const bw = brightness > 128 ? 0 : 255;
 
-    imgData.data[i] = bw;
-    imgData.data[i + 1] = bw;
-    imgData.data[i + 2] = bw;
-    imgData.data[i + 3] = 255;
-}
+            imgData.data[i] = bw;
+            imgData.data[i + 1] = bw;
+            imgData.data[i + 2] = bw;
+            imgData.data[i + 3] = 255;
+        }
         ctx.putImageData(imgData, 0, 0);
         return offCanvas.toDataURL("image/png");
     };
@@ -210,8 +219,8 @@ const PreviewModal = ({ open, onClose, canvasRef, designColor = 'white' }) => {
     const designColorRef = useRef(designColor);
     useEffect(() => {
         designColorRef.current = designColor;
-        console.log("coloooooor",designColor);
-        
+        console.log("coloooooor", designColor);
+
     }, [designColor]);
 
     useEffect(() => {
@@ -256,8 +265,11 @@ const PreviewModal = ({ open, onClose, canvasRef, designColor = 'white' }) => {
         if (open) {
             setGarmentType("tshirt");
             setIsAppReady(false);
+            // Default to first color of the correct palette
+            const palette = COLORS[designColor] || COLORS.white;
+            setSelectedColor(palette[0].key);
         }
-    }, [open]);
+    }, [open, designColor]);
 
     return (
         <Modal
@@ -310,7 +322,7 @@ const PreviewModal = ({ open, onClose, canvasRef, designColor = 'white' }) => {
                     Garment Color
                 </Typography.Text>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    {COLORS.map(c => (
+                    {(COLORS[designColor] || COLORS.white).map(c => (
                         <div
                             key={c.key}
                             onClick={() => handleColorChange(c.key)}
