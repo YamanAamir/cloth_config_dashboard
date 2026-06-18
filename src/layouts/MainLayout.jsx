@@ -158,7 +158,7 @@ const MainLayout = () => {
                         style={{ fontSize: '16px', width: 64, height: 64 }}
                     />
                     <Space>
-                        <NotificationBell />
+                        {/* <NotificationBell /> */}
                         <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
                             <Space style={{ cursor: 'pointer' }}>
                                 <Avatar style={{ backgroundColor: '#00b96b' }} icon={<UserOutlined />} />

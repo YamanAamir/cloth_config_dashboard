@@ -43,10 +43,10 @@ const DesignCanvas = ({
     // ─── Helpers ────────────────────────────────────────────────────────────────
 
     const getCorners = (l) => [
-        [l.x,        l.y       ],   // 0: top-left
-        [l.x + l.w,  l.y       ],   // 1: top-right
-        [l.x,        l.y + l.h ],   // 2: bottom-left
-        [l.x + l.w,  l.y + l.h],   // 3: bottom-right
+        [l.x, l.y],   // 0: top-left
+        [l.x + l.w, l.y],   // 1: top-right
+        [l.x, l.y + l.h],   // 2: bottom-left
+        [l.x + l.w, l.y + l.h],   // 3: bottom-right
     ];
 
     const hitHandle = (mx, my, l) => {
@@ -118,7 +118,7 @@ const DesignCanvas = ({
         canvas.width = CANVAS_W;
         canvas.height = CANVAS_H;
 
-        ctx.fillStyle = designColor === 'black' ? '#2a2a2a' : '#ffffff';
+        ctx.fillStyle = designColor === 'black' ? '#000000' : '#ffffff';
         ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
         const l = currentLayout || layout;
@@ -241,27 +241,40 @@ const DesignCanvas = ({
         img.crossOrigin = 'anonymous';
         img.onload = () => {
             const mode = designColor === 'white' ? 'white'
-                       : designColor === 'black' ? 'black'
-                       : null; // normal — no pixel processing, use image as-is
+                : designColor === 'black' ? 'black'
+                    : null; // normal — no pixel processing, use image as-is
 
             const processed = mode ? processImageForColor(img, mode) : img;
 
             const applyProcessed = (processedImg) => {
                 imgRef.current = processedImg;
-                // Reset layout — fit image to 50% of shorter canvas side, centered
-                const maxPx = Math.min(CANVAS_W, CANVAS_H) * DEFAULT_IMG_MAX;
-                let w = img.naturalWidth;
-                let h = img.naturalHeight;
-                const ratio = Math.min(maxPx / w, maxPx / h, 1);
-                w = Math.round(w * ratio);
-                h = Math.round(h * ratio);
-                const newLayout = {
-                    x: Math.round((CANVAS_W - w) / 2),
-                    y: Math.round((CANVAS_H - h) / 2),
-                    w,
-                    h,
-                };
-                setImageLayout(newLayout);
+                // Only auto-fit when layout is at the default placeholder (full canvas, x=0, y=0).
+                // If the layout was already customised by the user, or restored from saved
+                // configurator_state, preserve it — do NOT override with auto-fit.
+                const isDefaultLayout = (
+                    imageLayout.x === 0 && imageLayout.y === 0 &&
+                    imageLayout.w === CANVAS_W && imageLayout.h === CANVAS_H
+                );
+                if (isDefaultLayout) {
+                    // First-time load — auto-fit to 50% of shorter canvas side, centered
+                    const maxPx = Math.min(CANVAS_W, CANVAS_H) * DEFAULT_IMG_MAX;
+                    let w = img.naturalWidth;
+                    let h = img.naturalHeight;
+                    const ratio = Math.min(maxPx / w, maxPx / h, 1);
+                    w = Math.round(w * ratio);
+                    h = Math.round(h * ratio);
+                    const newLayout = {
+                        x: Math.round((CANVAS_W - w) / 2),
+                        y: Math.round((CANVAS_H - h) / 2),
+                        w,
+                        h,
+                    };
+                    setImageLayout(newLayout);
+                } else {
+                    // Layout already customised or restored from state — preserve it.
+                    // Redraw directly using the current (preserved) layout from the closure.
+                    redraw(layout);
+                }
             };
 
             if (!mode) {
@@ -289,6 +302,10 @@ const DesignCanvas = ({
         exportCanvas.width = CANVAS_W;
         exportCanvas.height = CANVAS_H;
         const ctx = exportCanvas.getContext('2d');
+
+        // Preserve selected tab background color in saved image
+        ctx.fillStyle = designColor === 'black' ? '#000000' : '#ffffff';
+        ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
         // No background fill — transparent so garment color shows through in 3D preview
         // Canvas editing background (#2a2a2a or #fff) is display only, not exported

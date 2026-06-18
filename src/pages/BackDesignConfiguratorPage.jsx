@@ -253,13 +253,12 @@ const BackDesignConfiguratorPage = () => {
         try {
             setAutoSaving(true);
             const canvas = canvasRef.current;
-            const exportCanvas = document.createElement('canvas');
-            exportCanvas.width = 3508;
-            exportCanvas.height = 4961;
-            const ctx = exportCanvas.getContext('2d');
+            const exportCanvas = canvas.getExportCanvas ? canvas.getExportCanvas() : document.createElement('canvas');
 
-            // Draw current image from canvas ref
-            if (canvasRef.current) {
+            if (!canvas.getExportCanvas) {
+                exportCanvas.width = 3508;
+                exportCanvas.height = 4961;
+                const ctx = exportCanvas.getContext('2d');
                 ctx.drawImage(canvas, 0, 0);
             }
 
@@ -479,7 +478,7 @@ const BackDesignConfiguratorPage = () => {
     const performUpload = async () => {
         setUploading(true);
         try {
-            // Force canvas redraw with WHITE background for export (A3 size)
+            // Force canvas redraw with correct background color for export (A3 size)
             if (canvasRef.current) {
                 const canvas = canvasRef.current;
                 const ctx = canvas.getContext('2d');
@@ -487,7 +486,7 @@ const BackDesignConfiguratorPage = () => {
                 // A3 at 300 DPI
                 canvas.width = 3508;
                 canvas.height = 4961;
-                ctx.fillStyle = '#ffffff';
+                ctx.fillStyle = designColor === 'black' ? '#000000' : '#ffffff';
                 ctx.fillRect(0, 0, 3508, 4961);
 
                 // Redraw image if exists
@@ -543,11 +542,11 @@ const BackDesignConfiguratorPage = () => {
             // Fixed: Save to correct key based on active color
             if (designColor === 'black') {
                 formData.append('configuredDesign_2', blob, `${fileName}_black_configured.png`);
-                formData.append('backDesign_2', blob, `${fileName}_black_base.png`); // Corrected field name
+                // backDesign_2 omitted to preserve original black base image
                 formData.append('designColor_2', 'black');
             } else {
                 formData.append('configuredDesign', blob, `${fileName}_white_configured.png`);
-                formData.append('backDesign', blob, `${fileName}_white_base.png`); // Corrected field name
+                // backDesign omitted to preserve original white base image
                 formData.append('designColor', 'white');
             }
 
