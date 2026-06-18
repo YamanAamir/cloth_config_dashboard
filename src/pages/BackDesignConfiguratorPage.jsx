@@ -48,9 +48,10 @@ const BackDesignConfiguratorPage = () => {
 
     // Image position & size on canvas — per color so each tab preserves its own layout
     const [imageLayouts, setImageLayouts] = useState({
-        white: { x: 0, y: 0, w: 3508, h: 4961 },
-        black: { x: 0, y: 0, w: 3508, h: 4961 },
+        white: { x: 0, y: 0, w: 7016, h: 9922 },
+        black: { x: 0, y: 0, w: 7016, h: 9922 },
     });
+    const [colorSwitching, setColorSwitching] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
 
     // Text/names
@@ -67,10 +68,10 @@ const BackDesignConfiguratorPage = () => {
     const [designColor, setDesignColor] = useState('white');
 
     // Convenience getter/setter for current color's layout
-    const imageLayout = imageLayouts[designColor] || { x: 0, y: 0, w: 3508, h: 4961 };
+    const imageLayout = imageLayouts[designColor] || { x: 0, y: 0, w: 7016, h: 9922 };
     const setImageLayout = (val) => {
         setImageLayouts(prev => {
-            const current = prev[designColor] || { x: 0, y: 0, w: 3508, h: 4961 };
+            const current = prev[designColor] || { x: 0, y: 0, w: 7016, h: 9922 };
             const newLayout = typeof val === 'function' ? val(current) : val;
             return { ...prev, [designColor]: newLayout };
         });
@@ -85,7 +86,6 @@ const BackDesignConfiguratorPage = () => {
     const [namesTab, setNamesTab] = useState('manual');
     const [students, setStudents] = useState([]);
     const [studentsLoading, setStudentsLoading] = useState(false);
-    const [selectedStudents, setSelectedStudents] = useState(new Set());
 
     const canvasRef = useRef(null);
     const [autoSaving, setAutoSaving] = useState(false);
@@ -218,9 +218,10 @@ const BackDesignConfiguratorPage = () => {
                 const state = design.configurator_state;
 
                 if (state?.baseDesignId) {
-                    // Restore text elements, color, layout
+                    // Restore text elements and layout, but always default to 'white' tab on refresh
                     if (state.textElements?.length > 0) setTextElements(state.textElements);
-                    if (state.designColor) setDesignColor(state.designColor);
+                    // Always start on white/light garment tab on page load
+                    setDesignColor('white');
                     if (state.imageLayout) setImageLayout(state.imageLayout);
 
                     // Load base design by ID
@@ -256,8 +257,8 @@ const BackDesignConfiguratorPage = () => {
             const exportCanvas = canvas.getExportCanvas ? canvas.getExportCanvas() : document.createElement('canvas');
 
             if (!canvas.getExportCanvas) {
-                exportCanvas.width = 3508;
-                exportCanvas.height = 4961;
+                exportCanvas.width = 7016;
+                exportCanvas.height = 9922;
                 const ctx = exportCanvas.getContext('2d');
                 ctx.drawImage(canvas, 0, 0);
             }
@@ -309,7 +310,7 @@ const BackDesignConfiguratorPage = () => {
         setSelectedImage(null);
         setImagePreview(null);
         setSelectedDesign(null);
-        setImageLayouts({ white: { x: 0, y: 0, w: 3508, h: 4961 }, black: { x: 0, y: 0, w: 3508, h: 4961 } });
+        setImageLayouts({ white: { x: 0, y: 0, w: 7016, h: 9922 }, black: { x: 0, y: 0, w: 7016, h: 9922 } });
     };
 
     const handleSetCountry = async (countryId) => {
@@ -354,7 +355,7 @@ const BackDesignConfiguratorPage = () => {
         setSelectedDesignId(design.id);
         // Reset both layouts when selecting a new design (unless keepLayout = true for tab switching)
         if (!keepLayout) {
-            setImageLayouts({ white: { x: 0, y: 0, w: 3508, h: 4961 }, black: { x: 0, y: 0, w: 3508, h: 4961 } });
+            setImageLayouts({ white: { x: 0, y: 0, w: 7016, h: 9922 }, black: { x: 0, y: 0, w: 7016, h: 9922 } });
         }
         setImagePreview(url);
 
@@ -380,49 +381,58 @@ const BackDesignConfiguratorPage = () => {
 
     // When toggle changes — save current canvas to its key, then switch color (layout is per-color, auto-restores)
     const handleDesignColorToggle = async (color) => {
-        // Save current canvas to current color's key first on tab switch
-        if (selectedDesign) {
-            let designId = existingConfiguratorDesign?.id || selectedDesignId;
+        setColorSwitching(true);
+        try {
+            // Save current canvas to current color's key first on tab switch
+            if (selectedDesign) {
+                let designId = existingConfiguratorDesign?.id || selectedDesignId;
 
-            // Create draft if it doesn't exist yet
-            if (!designId) {
-                try {
-                    const draftRes = await saveConfiguratorState({
-                        configurator_state: {
-                            textElements,
+                // Create draft if it doesn't exist yet
+                if (!designId) {
+                    try {
+                        const draftRes = await saveConfiguratorState({
+                            configurator_state: {
+                                textElements,
+                                designColor,
+                                imageLayout,
+                                baseDesignId: selectedDesignId,
+                            },
                             designColor,
-                            imageLayout,
-                            baseDesignId: selectedDesignId,
-                        },
-                        designColor,
-                        name: `configurator_draft_${Date.now()}`,
-                    });
-                    designId = draftRes.data?.data?.id;
-                    if (designId) {
-                        setIsEditMode(true);
-                        setExistingConfiguratorDesign(draftRes.data?.data);
-                    }
-                } catch (e) { console.error("Draft creation failed", e); }
+                            name: `configurator_draft_${Date.now()}`,
+                        });
+                        designId = draftRes.data?.data?.id;
+                        if (designId) {
+                            setIsEditMode(true);
+                            setExistingConfiguratorDesign(draftRes.data?.data);
+                        }
+                    } catch (e) { console.error("Draft creation failed", e); }
+                }
+
+                if (designId) {
+                    await saveCanvasForColor(designColor, textElements, imageLayout, designId);
+                }
             }
 
-            if (designId) {
-                await saveCanvasForColor(designColor, textElements, imageLayout, designId);
+            setDesignColor(color);
+            if (selectedDesign) {
+                // keepLayout = true — layout for this color is stored separately and will be applied
+                loadDesignForEditing(selectedDesign, true, color);
             }
-        }
-
-        setDesignColor(color);
-        if (selectedDesign) {
-            // keepLayout = true — layout for this color is stored separately and will be applied
-            loadDesignForEditing(selectedDesign, true, color);
+        } finally {
+            setColorSwitching(false);
         }
     };
 
     const handleAddText = () => {
         if (!currentText.trim()) return message.warning('Enter a name');
         if (textElements.length >= 40) return message.warning('Maximum 40 names allowed');
+        // Prevent duplicate names
+        if (textElements.some(el => el.text === currentText.trim())) {
+            return message.warning('This name is already added');
+        }
         const newElements = [...textElements, {
             id: Date.now(),
-            text: currentText,
+            text: currentText.trim(),
             fontSize: currentFontSize,
             fontFamily: currentFontFamily,
             x: 680,
@@ -483,11 +493,11 @@ const BackDesignConfiguratorPage = () => {
                 const canvas = canvasRef.current;
                 const ctx = canvas.getContext('2d');
 
-                // A3 at 300 DPI
-                canvas.width = 3508;
-                canvas.height = 4961;
+                // A3 ratio at 600 DPI
+                canvas.width = 7016;
+                canvas.height = 9922;
                 ctx.fillStyle = designColor === 'black' ? '#000000' : '#ffffff';
-                ctx.fillRect(0, 0, 3508, 4961);
+                ctx.fillRect(0, 0, 7016, 9922);
 
                 // Redraw image if exists
                 if (imagePreview) {
@@ -770,24 +780,65 @@ const BackDesignConfiguratorPage = () => {
                                                 <>
                                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                                                         <Text type="secondary" style={{ fontSize: 12 }}>
-                                                            {selectedStudents.size} valgt
+                                                            {students.filter(s => textElements.some(el => el.text === s.name)).length} valgt
                                                         </Text>
                                                         <Space size="small">
-                                                            <Button size="small" onClick={() => setSelectedStudents(new Set(students.map(s => s.id)))}>Alle</Button>
-                                                            <Button size="small" onClick={() => setSelectedStudents(new Set())}>Ingen</Button>
+                                                            <Button size="small" onClick={() => {
+                                                                const toAdd = students.filter(s => !textElements.some(el => el.text === s.name));
+                                                                const remaining = 40 - textElements.length;
+                                                                if (toAdd.length > 0) {
+                                                                    if (remaining <= 0) {
+                                                                        message.warning('Maximum 40 names already added');
+                                                                        return;
+                                                                    }
+                                                                    const limited = toAdd.slice(0, remaining);
+                                                                    if (limited.length < toAdd.length) {
+                                                                        message.warning(`Only ${limited.length} name(s) added — max 40 total`);
+                                                                    }
+                                                                    const newEls = limited.map((s, i) => ({
+                                                                        id: Date.now() + i + Math.random(),
+                                                                        text: s.name,
+                                                                        fontSize: currentFontSize,
+                                                                        fontFamily: currentFontFamily,
+                                                                        x: 680,
+                                                                        y: 80 + (textElements.length + i) * (currentFontSize + 8),
+                                                                        rotation: 0,
+                                                                        locked: false,
+                                                                    }));
+                                                                    setTextElements(prev => [...prev, ...newEls]);
+                                                                }
+                                                            }}>Alle</Button>
+                                                            <Button size="small" onClick={() => {
+                                                                const studentNames = new Set(students.map(s => s.name));
+                                                                setTextElements(prev => prev.filter(el => !studentNames.has(el.text)));
+                                                            }}>Ingen</Button>
                                                         </Space>
                                                     </div>
                                                     {students.map((s, idx) => {
                                                         const isAdded = textElements.some(el => el.text === s.name);
-                                                        const isSelected = selectedStudents.has(s.id);
+                                                        const isSelected = isAdded;
                                                         return (
                                                             <div key={s.id}
                                                                 onClick={() => {
-                                                                    setSelectedStudents(prev => {
-                                                                        const n = new Set(prev);
-                                                                        n.has(s.id) ? n.delete(s.id) : n.add(s.id);
-                                                                        return n;
-                                                                    });
+                                                                    if (isAdded) {
+                                                                        setTextElements(prev => prev.filter(el => el.text !== s.name));
+                                                                    } else {
+                                                                        if (textElements.length >= 40) {
+                                                                            message.warning('Maximum 40 names allowed');
+                                                                            return;
+                                                                        }
+                                                                        const newEl = {
+                                                                            id: Date.now() + Math.random(),
+                                                                            text: s.name,
+                                                                            fontSize: currentFontSize,
+                                                                            fontFamily: currentFontFamily,
+                                                                            x: 680,
+                                                                            y: 80 + textElements.length * (currentFontSize + 8),
+                                                                            rotation: 0,
+                                                                            locked: false,
+                                                                        };
+                                                                        setTextElements(prev => [...prev, newEl]);
+                                                                    }
                                                                 }}
                                                                 style={{
                                                                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -806,30 +857,10 @@ const BackDesignConfiguratorPage = () => {
                                                         );
                                                     })}
                                                     <Button type="primary" block style={{ marginTop: 10 }}
-                                                        disabled={selectedStudents.size === 0}
                                                         onClick={() => {
-                                                            const toAdd = students.filter(s => selectedStudents.has(s.id));
-                                                            const remaining = 40 - textElements.length;
-                                                            if (remaining <= 0) return message.warning('Maximum 40 names already added');
-                                                            const limited = toAdd.slice(0, remaining);
-                                                            if (limited.length < toAdd.length) {
-                                                                message.warning(`Only ${limited.length} name(s) added — max 40 total`);
-                                                            }
-                                                            const newEls = limited.map((s, i) => ({
-                                                                id: Date.now() + i,
-                                                                text: s.name,
-                                                                fontSize: currentFontSize,
-                                                                fontFamily: currentFontFamily,
-                                                                x: 680,
-                                                                y: 80 + (textElements.length + i) * (currentFontSize + 8),
-                                                                rotation: 0,
-                                                                locked: false,
-                                                            }));
-                                                            setTextElements(prev => [...prev, ...newEls]);
-                                                            setSelectedStudents(new Set());
                                                             setNamesTab('manual');
                                                         }}>
-                                                        Tilføj {selectedStudents.size > 0 ? `${selectedStudents.size} ` : ''}til lærred
+                                                        Tilføj til lærred
                                                     </Button>
                                                 </>
                                             )}
@@ -893,28 +924,32 @@ const BackDesignConfiguratorPage = () => {
                             isLocked={isOrderLocked}
                             onCanvasUpdate={() => { /* Auto-save removed as per request */ }}
                             colorToggle={imagePreview ? (
-                                <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: '1px solid #d9d9d9' }}>
-                                    {[
-                                        { value: 'white', label: 'Light Garment', sub: 'Sort tryk' },
-                                        { value: 'black', label: 'Dark Garment', sub: 'Hvidt tryk' },
-                                    ].map(opt => (
-                                        <div
-                                            key={opt.value}
-                                            onClick={() => !isOrderLocked && handleDesignColorToggle(opt.value)}
-                                            style={{
-                                                padding: '3px 14px',
-                                                cursor: isOrderLocked ? 'not-allowed' : 'pointer',
-                                                background: designColor === opt.value ? '#00b96b' : '#fafafa',
-                                                color: designColor === opt.value ? '#fff' : '#333',
-                                                textAlign: 'center',
-                                                transition: 'all 0.15s',
-                                                borderRight: opt.value === 'white' ? '1px solid #d9d9d9' : 'none',
-                                            }}
-                                        >
-                                            <div style={{ fontSize: 11, fontWeight: 600 }}>{opt.label}</div>
-                                            <div style={{ fontSize: 9, opacity: 1 }}>{opt.sub}</div>
-                                        </div>
-                                    ))}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: '1px solid #d9d9d9' }}>
+                                        {[
+                                            { value: 'white', label: 'Light Garment', sub: 'Sort tryk' },
+                                            { value: 'black', label: 'Dark Garment', sub: 'Hvidt tryk' },
+                                        ].map(opt => (
+                                            <div
+                                                key={opt.value}
+                                                onClick={() => !isOrderLocked && !colorSwitching && handleDesignColorToggle(opt.value)}
+                                                style={{
+                                                    padding: '3px 14px',
+                                                    cursor: isOrderLocked || colorSwitching ? 'not-allowed' : 'pointer',
+                                                    background: designColor === opt.value ? '#00b96b' : '#fafafa',
+                                                    color: designColor === opt.value ? '#fff' : '#333',
+                                                    textAlign: 'center',
+                                                    transition: 'all 0.15s',
+                                                    borderRight: opt.value === 'white' ? '1px solid #d9d9d9' : 'none',
+                                                    opacity: colorSwitching ? 0.6 : 1,
+                                                }}
+                                            >
+                                                <div style={{ fontSize: 11, fontWeight: 600 }}>{opt.label}</div>
+                                                <div style={{ fontSize: 9, opacity: 1 }}>{opt.sub}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    {colorSwitching && <Spin size="small" />}
                                 </div>
                             ) : null}
                         />

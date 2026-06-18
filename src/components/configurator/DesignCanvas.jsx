@@ -4,9 +4,9 @@ import { Button, Typography } from 'antd';
 
 const getTextColor = (garmentColor) => (garmentColor === 'black' ? '#ffffff' : '#000000');
 const HANDLE_SIZE = 14;
-// A3 at 300 DPI: 3508 × 4961 px (portrait)
-const CANVAS_W = 3508;
-const CANVAS_H = 4961;
+// 4K resolution with A3 ratio (297:420) — 3840 × 5431 px
+const CANVAS_W = 3840;
+const CANVAS_H = 5431;
 // Image loads at max this fraction of canvas so it fits nicely
 const DEFAULT_IMG_MAX = 0.5; // 50% of shorter side
 
