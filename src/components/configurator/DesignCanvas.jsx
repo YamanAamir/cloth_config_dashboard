@@ -290,8 +290,8 @@ const DesignCanvas = ({
         exportCanvas.height = CANVAS_H;
         const ctx = exportCanvas.getContext('2d');
 
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+        // No background fill — transparent so garment color shows through in 3D preview
+        // Canvas editing background (#2a2a2a or #fff) is display only, not exported
 
         if (imgRef.current) {
             ctx.drawImage(imgRef.current, layout.x, layout.y, layout.w, layout.h);
@@ -299,7 +299,8 @@ const DesignCanvas = ({
 
         textElements.forEach(el => {
             ctx.save();
-            ctx.translate(el.x, el.y);
+            // Center text horizontally for export
+            ctx.translate(CANVAS_W / 2, el.y);
             ctx.rotate((el.rotation * Math.PI) / 180);
             ctx.font = `${el.fontSize}px ${el.fontFamily}`;
             ctx.fillStyle = getTextColor(designColor);

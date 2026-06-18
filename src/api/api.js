@@ -56,6 +56,10 @@ export const adminPermanentDeleteBackDesign = (designId) => api.delete(`/admin/b
 
 export const adminUploadLogo = (formData) => apiFormdata.post('/admin/logo/upload', formData);
 export const adminUploadBackDesign = (formData) => apiFormdata.post('/admin/back-design/upload', formData);
+export const adminEditBackDesign = (designId, formData) => apiFormdata.put(`/admin/back-design/${designId}/edit`, formData);
+export const uploadSchoolLogo = (formData) => apiFormdata.post('/admin/upload-logo', formData);
+export const uploadClassBackDesign = (formData) => apiFormdata.post('/admin/upload-back-design', formData);
+export const reUploadClassBackDesign = (id, formData) => apiFormdata.post(`/admin/upload-back-design/${id}`, formData);
 export const getAllBackDesignTemplates = (params = {}) => api.post('/admin/back-design-templates', params);
 export const uploadBackDesignTemplate = (formData) => apiFormdata.post('/admin/back-design-templates/upload', formData);
 export const deleteBackDesignTemplate = (id) => api.delete(`/admin/back-design-templates/${id}`);
@@ -78,6 +82,7 @@ export const deleteStudent = (id) => api.delete(`/rep/student/${id}/delete`);
 export const uploadLogo = (formData) => apiFormdata.post('/class-rep/upload-logo', formData);
 export const uploadBackDesign = (formData) => apiFormdata.post('/class-rep/upload-back-design', formData);
 export const updateBackDesign = (id, formData) => apiFormdata.post(`/class-rep/upload-back-design/${id}`, formData);
+export const editMyBackDesign = (designId, formData) => apiFormdata.put(`/class-rep/back-design/${designId}/edit`, formData);
 export const deleteLogo = (id) => api.delete(`/class-rep/logo/${id}/delete`);
 export const deleteMyBackDesign = (id) => api.delete(`/class-rep/back-design/${id}/delete`);
 export const getMyLogos = (params = {}) => api.post('/class-rep/my-logos', params);

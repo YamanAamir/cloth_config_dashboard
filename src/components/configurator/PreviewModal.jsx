@@ -88,15 +88,13 @@ const PreviewModal = ({ open, onClose, canvasRef, designColor = 'white' }) => {
         const ctx = exportCanvas.getContext("2d");
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = "high";
-        // White background
-        ctx.fillStyle = "white";
-        ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+        // No background fill — keep transparent so only design/text is sent
         ctx.drawImage(sourceCanvas, 0, 0, exportCanvas.width, exportCanvas.height);
-        // Boost contrast and saturation via filter
+        // Boost contrast (skip transparent pixels)
         const imgData = ctx.getImageData(0, 0, exportCanvas.width, exportCanvas.height);
         const d = imgData.data;
         for (let i = 0; i < d.length; i += 4) {
-            // Contrast boost: factor 1.3
+            if (d[i + 3] < 10) continue; // skip transparent
             d[i] = Math.min(255, Math.max(0, 1.3 * (d[i] - 128) + 128));
             d[i + 1] = Math.min(255, Math.max(0, 1.3 * (d[i + 1] - 128) + 128));
             d[i + 2] = Math.min(255, Math.max(0, 1.3 * (d[i + 2] - 128) + 128));

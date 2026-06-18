@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Tabs, Row, Col, Card, Spin, Empty, Typography, Button, Modal, Select, Space } from 'antd';
 import { GlobalOutlined } from '@ant-design/icons';
-import { getUploadsUrl } from '../../utils/constants';
+import { getUploadsUrl, getBackDesignDisplayUrl } from '../../utils/constants';
 
 const { Text } = Typography;
 
@@ -99,7 +99,7 @@ const DesignGallery = ({
                             styles={{ body: { padding: 8 } }}
                         >
                             <img
-                                src={getUploadsUrl(d.file_path)}
+                                src={getBackDesignDisplayUrl(d)}
                                 alt={d.name}
                                 style={{ width: '100%', height: 80, objectFit: 'contain' }}
                             />
@@ -137,7 +137,7 @@ const DesignGallery = ({
                                                 bodyStyle={{ padding: 8 }}
                                             >
                                                 <img
-                                                    src={`${getUploadsUrl(d.file_path)}?t=${d.updated_at ? new Date(d.updated_at).getTime() : d.id}`}
+                                                    src={`${getBackDesignDisplayUrl(d)}?t=${d.updated_at ? new Date(d.updated_at).getTime() : d.id}`}
                                                     alt={d.name}
                                                     style={{ width: '100%', height: 80, objectFit: 'contain' }}
                                                 />

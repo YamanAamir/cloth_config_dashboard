@@ -45,7 +45,7 @@ import {
     getStudyTripCountries,
     setStudyTripCountry
 } from '../api/api';
-import { getUploadsUrl, Status } from '../utils/constants';
+import { getUploadsUrl, getBackDesignDisplayUrl, Status } from '../utils/constants';
 
 const { Title, Text, Paragraph } = Typography;
 const { Dragger } = Upload;
@@ -579,7 +579,7 @@ const MyClassPageSimple = () => {
                                 <div>
                                     <div style={{ marginBottom: '16px' }}>
                                         <Image
-                                            src={getUploadsUrl(backDesign.file_path)}
+                                            src={getBackDesignDisplayUrl(backDesign)}
                                             alt={backDesign.name}
                                             style={{
                                                 width: '120px',

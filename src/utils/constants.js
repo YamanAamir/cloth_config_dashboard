@@ -136,6 +136,17 @@ export const getUploadsUrl = (filePath) => {
   return `${getApiBase()}/${normalizedPath}`;
 };
 
+/** Preview path for a back design record (configured export vs raw upload). */
+export const getBackDesignDisplayPath = (design, color = 'white') => {
+  if (!design) return '';
+  if (design.configured_file_path) return design.configured_file_path;
+  if (color === 'black' && design.file_path_2) return design.file_path_2;
+  return design.file_path || '';
+};
+
+export const getBackDesignDisplayUrl = (design, color = 'white') =>
+  getUploadsUrl(getBackDesignDisplayPath(design, color));
+
 // ─── Danish Time Formatting (Europe/Copenhagen, UTC+1/UTC+2 DST) ─────────────
 
 const DK_LOCALE = 'da-DK';

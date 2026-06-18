@@ -19,7 +19,7 @@ import {
     getMyLogos,
     getMyBackDesigns
 } from '../api/api';
-import { getUploadsUrl, Status } from '../utils/constants';
+import { getUploadsUrl, getBackDesignDisplayUrl, Status } from '../utils/constants';
 import SimpleUploadModal from '../components/SimpleUploadModal';
 
 const { Title } = Typography;
@@ -144,7 +144,7 @@ const UploadFilesPage = () => {
         setEditingDesign(item);
         setEditName(item.name);
         setEditWhiteFile(null);
-        setEditWhitePreview(item.file_path ? getUploadsUrl(item.file_path) : null);
+        setEditWhitePreview(item.configured_file_path || item.file_path ? getBackDesignDisplayUrl(item) : null);
         setEditBlackFile(null);
         setEditBlackPreview(item.file_path_2 ? getUploadsUrl(item.file_path_2) : null);
         setEditModalOpen(true);
@@ -283,7 +283,7 @@ const UploadFilesPage = () => {
                                                     position: 'relative',
                                                 }}>
                                                     <img
-                                                        src={getUploadsUrl(item.file_path)}
+                                                        src={getBackDesignDisplayUrl(item)}
                                                         alt={item.name}
                                                         style={{
                                                             maxWidth: '100%', maxHeight: 120, objectFit: 'contain',
@@ -379,7 +379,7 @@ const UploadFilesPage = () => {
                                                         <TabPane tab="White" key="white">
                                                             <div style={{ minHeight: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px 4px 8px' }}>
                                                                 <img
-                                                                    src={getUploadsUrl(item.file_path)}
+                                                                    src={getBackDesignDisplayUrl(item)}
                                                                     alt={item.name}
                                                                     style={{
                                                                         maxWidth: '100%', maxHeight: 100, objectFit: 'contain',

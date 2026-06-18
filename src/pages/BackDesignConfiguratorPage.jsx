@@ -8,12 +8,12 @@ import {
     LockOutlined, UnlockOutlined, PlusCircleOutlined, MinusCircleOutlined, EyeOutlined, CheckCircleOutlined
 } from '@ant-design/icons';
 import {
-    getMyClass, uploadBackDesign, updateBackDesign,
+    getMyClass, editMyBackDesign,
     getMyBackDesigns, getClassBackDesign,
     getClassRepLibraryDesigns, getStudyTripCountries, setStudyTripCountry,
     getClassRepFonts, saveConfiguratorState, loadConfiguratorState, getStudents
 } from '../api/api';
-import { getUploadsUrl } from '../utils/constants';
+import { getUploadsUrl, getBackDesignDisplayPath } from '../utils/constants';
 import DesignGallery from '../components/configurator/DesignGallery';
 import DesignCanvas from '../components/configurator/DesignCanvas';
 import PreviewModal from '../components/configurator/PreviewModal';
@@ -46,8 +46,11 @@ const BackDesignConfiguratorPage = () => {
     const [selectedDesignId, setSelectedDesignId] = useState(null);
     const [existingConfiguratorDesign, setExistingConfiguratorDesign] = useState(null);
 
-    // Image position & size on canvas (draggable/resizable)
-    const [imageLayout, setImageLayout] = useState({ x: 0, y: 0, w: 3508, h: 4961 });
+    // Image position & size on canvas — per color so each tab preserves its own layout
+    const [imageLayouts, setImageLayouts] = useState({
+        white: { x: 0, y: 0, w: 3508, h: 4961 },
+        black: { x: 0, y: 0, w: 3508, h: 4961 },
+    });
     const [isEditMode, setIsEditMode] = useState(false);
 
     // Text/names
@@ -60,8 +63,18 @@ const BackDesignConfiguratorPage = () => {
     const [isDragging, setIsDragging] = useState(false);
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
-    // Garment color
+    // Garment color — must be declared before imageLayout derived vars
     const [designColor, setDesignColor] = useState('white');
+
+    // Convenience getter/setter for current color's layout
+    const imageLayout = imageLayouts[designColor] || { x: 0, y: 0, w: 3508, h: 4961 };
+    const setImageLayout = (val) => {
+        setImageLayouts(prev => {
+            const current = prev[designColor] || { x: 0, y: 0, w: 3508, h: 4961 };
+            const newLayout = typeof val === 'function' ? val(current) : val;
+            return { ...prev, [designColor]: newLayout };
+        });
+    };
     const [fonts, setFonts] = useState([]);
     const [currentFontFamily, setCurrentFontFamily] = useState('Arial');
 
@@ -75,7 +88,6 @@ const BackDesignConfiguratorPage = () => {
     const [selectedStudents, setSelectedStudents] = useState(new Set());
 
     const canvasRef = useRef(null);
-    const autoSaveTimer = useRef(null);
     const [autoSaving, setAutoSaving] = useState(false);
     const user = localStorage.getItem('user');
     const classId = user ? JSON.parse(user)?.class_id : null;
@@ -99,11 +111,6 @@ const BackDesignConfiguratorPage = () => {
             setTextElements(prev => prev.map(t =>
                 t.id === editingNameId ? { ...t, text: editingNameValue.trim() } : t
             ));
-            triggerAutoSave(
-                textElements.map(t => t.id === editingNameId ? { ...t, text: editingNameValue.trim() } : t),
-                imageLayout,
-                selectedDesignId
-            );
         }
         // Reset editing state
         setEditingNameId(null);
@@ -240,24 +247,50 @@ const BackDesignConfiguratorPage = () => {
         }
     };
 
-    // Auto-save debounced
-    const triggerAutoSave = (newTextElements, newDesignColor, newImageLayout, newSelectedDesignId) => {
-        if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
-        autoSaveTimer.current = setTimeout(async () => {
-            try {
-                setAutoSaving(true);
-                await saveConfiguratorState({
-                    configurator_state: {
-                        textElements: newTextElements,
-                        imageLayout: newImageLayout,
-                        baseDesignId: newSelectedDesignId,
-                    },
-                    name: `design_draft_${Date.now()}`,
-                });
-            } catch { /* silent */ }
-            finally { setAutoSaving(false); }
-        }, 2000);
+    // Save the current canvas as a PNG blob to the correct file_path key
+    const saveCanvasForColor = async (color, elements, layout, designId) => {
+        if (!canvasRef.current || !selectedDesign || !designId) return;
+        try {
+            setAutoSaving(true);
+            const canvas = canvasRef.current;
+            const exportCanvas = document.createElement('canvas');
+            exportCanvas.width = 3508;
+            exportCanvas.height = 4961;
+            const ctx = exportCanvas.getContext('2d');
+
+            // Draw current image from canvas ref
+            if (canvasRef.current) {
+                ctx.drawImage(canvas, 0, 0);
+            }
+
+            const blob = await new Promise(resolve => exportCanvas.toBlob(resolve, 'image/png'));
+            const fileName = selectedDesign.name.replace(/\.[^/.]+$/, '');
+
+            const fd = new FormData();
+            fd.append('configurator_state', JSON.stringify({
+                textElements: elements,
+                designColor: color,
+                imageLayout: layout,
+                baseDesignId: selectedDesignId,
+            }));
+            // Save to the correct key based on active color
+            if (color === 'black') {
+                fd.append('configuredDesign_2', blob, `${fileName}_black_configured.png`);
+                fd.append('backDesign_2', blob, `${fileName}_black_base.png`); // Corrected field name
+                fd.append('designColor_2', 'black');
+            } else {
+                fd.append('configuredDesign', blob, `${fileName}_white_configured.png`);
+                fd.append('backDesign', blob, `${fileName}_white_base.png`); // Corrected field name
+                fd.append('designColor', 'white');
+            }
+
+            const res = await editMyBackDesign(designId, fd);
+            if (res.data?.data) setExistingConfiguratorDesign(res.data.data);
+        } catch { /* silent auto-save */ }
+        finally { setAutoSaving(false); }
     };
+
+    // Auto-save removed as per request to save only on tab switch
 
     const fetchStudents = async () => {
         setStudentsLoading(true);
@@ -276,7 +309,8 @@ const BackDesignConfiguratorPage = () => {
         setSelectedDesignId(null);
         setSelectedImage(null);
         setImagePreview(null);
-        setImageLayout({ x: 0, y: 0, w: 3508, h: 4961 });
+        setSelectedDesign(null);
+        setImageLayouts({ white: { x: 0, y: 0, w: 3508, h: 4961 }, black: { x: 0, y: 0, w: 3508, h: 4961 } });
     };
 
     const handleSetCountry = async (countryId) => {
@@ -306,15 +340,23 @@ const BackDesignConfiguratorPage = () => {
 
     const loadDesignForEditing = (design, keepLayout = false, colorOverride = null) => {
         const activeColor = colorOverride || designColor;
-        // Pick white or black version based on active toggle
-        const activePath = (activeColor === 'black' && design.file_path_2)
-            ? design.file_path_2
-            : design.file_path;
+        const isBlackVersion = activeColor === 'black';
+
+        // Priority: 1. Configured file, 2. Secondary base file, 3. Primary base file
+        let activePath = design.file_path;
+        if (isBlackVersion) {
+            activePath = design.configured_file_path_2 || design.file_path_2 || design.file_path;
+        } else {
+            activePath = design.configured_file_path || design.file_path;
+        }
 
         const url = `${getUploadsUrl(activePath)}?t=${Date.now()}`;
         setSelectedDesign(design);
         setSelectedDesignId(design.id);
-        if (!keepLayout) setImageLayout({ x: 0, y: 0, w: 3508, h: 4961 });
+        // Reset both layouts when selecting a new design (unless keepLayout = true for tab switching)
+        if (!keepLayout) {
+            setImageLayouts({ white: { x: 0, y: 0, w: 3508, h: 4961 }, black: { x: 0, y: 0, w: 3508, h: 4961 } });
+        }
         setImagePreview(url);
 
         fetch(url)
@@ -337,10 +379,41 @@ const BackDesignConfiguratorPage = () => {
             .catch(err => message.error(`Failed to load: ${err.message}`));
     };
 
-    // When toggle changes — reload the same design with the new color version
-    const handleDesignColorToggle = (color) => {
+    // When toggle changes — save current canvas to its key, then switch color (layout is per-color, auto-restores)
+    const handleDesignColorToggle = async (color) => {
+        // Save current canvas to current color's key first on tab switch
+        if (selectedDesign) {
+            let designId = existingConfiguratorDesign?.id || selectedDesignId;
+
+            // Create draft if it doesn't exist yet
+            if (!designId) {
+                try {
+                    const draftRes = await saveConfiguratorState({
+                        configurator_state: {
+                            textElements,
+                            designColor,
+                            imageLayout,
+                            baseDesignId: selectedDesignId,
+                        },
+                        designColor,
+                        name: `configurator_draft_${Date.now()}`,
+                    });
+                    designId = draftRes.data?.data?.id;
+                    if (designId) {
+                        setIsEditMode(true);
+                        setExistingConfiguratorDesign(draftRes.data?.data);
+                    }
+                } catch (e) { console.error("Draft creation failed", e); }
+            }
+
+            if (designId) {
+                await saveCanvasForColor(designColor, textElements, imageLayout, designId);
+            }
+        }
+
         setDesignColor(color);
         if (selectedDesign) {
+            // keepLayout = true — layout for this color is stored separately and will be applied
             loadDesignForEditing(selectedDesign, true, color);
         }
     };
@@ -360,7 +433,6 @@ const BackDesignConfiguratorPage = () => {
         }];
         setTextElements(newElements);
         setCurrentText('');
-        triggerAutoSave(newElements, imageLayout, selectedDesignId);
     };
 
     const handleRemoveText = (id) => {
@@ -448,24 +520,45 @@ const BackDesignConfiguratorPage = () => {
             await new Promise(resolve => setTimeout(resolve, 100));
             const blob = await new Promise(resolve => canvasRef.current.toBlob(resolve, 'image/png'));
 
+            let designId = existingConfiguratorDesign?.id;
+            if (!designId) {
+                const draftRes = await saveConfiguratorState({
+                    configurator_state: {
+                        textElements,
+                        designColor,
+                        imageLayout,
+                        baseDesignId: selectedDesignId,
+                    },
+                    designColor,
+                    name: `configurator_draft_${Date.now()}`,
+                });
+                designId = draftRes.data?.data?.id;
+                if (!designId) throw new Error('Failed to create design draft');
+            }
+
             const formData = new FormData();
             const fileName = selectedImage.name.replace(/\.[^/.]+$/, '');
             formData.append('name', `${fileName}_configured`);
-            formData.append('backDesign', blob, `${fileName}_configured.png`);
-            formData.append('isFromConfigurator', 'true');
-            // Save configurator state so it can be restored later
+
+            // Fixed: Save to correct key based on active color
+            if (designColor === 'black') {
+                formData.append('configuredDesign_2', blob, `${fileName}_black_configured.png`);
+                formData.append('backDesign_2', blob, `${fileName}_black_base.png`); // Corrected field name
+                formData.append('designColor_2', 'black');
+            } else {
+                formData.append('configuredDesign', blob, `${fileName}_white_configured.png`);
+                formData.append('backDesign', blob, `${fileName}_white_base.png`); // Corrected field name
+                formData.append('designColor', 'white');
+            }
+
             formData.append('configurator_state', JSON.stringify({
                 textElements,
                 designColor,
                 imageLayout,
                 baseDesignId: selectedDesignId,
             }));
-            let res;
-            if (isEditMode && existingConfiguratorDesign?.id) {
-                res = await updateBackDesign(existingConfiguratorDesign.id, formData);
-            } else {
-                res = await uploadBackDesign(formData);
-            }
+
+            const res = await editMyBackDesign(designId, formData);
             message.success(res.data?.message || 'Saved!');
             // Keep editor state - don't reset
             setIsEditMode(true);
@@ -799,11 +892,12 @@ const BackDesignConfiguratorPage = () => {
                             imageLayout={imageLayout}
                             setImageLayout={setImageLayout}
                             isLocked={isOrderLocked}
+                            onCanvasUpdate={() => { /* Auto-save removed as per request */ }}
                             colorToggle={imagePreview ? (
                                 <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: '1px solid #d9d9d9' }}>
                                     {[
-                                        { value: 'white', label: 'Hvid', sub: 'Sort tryk' },
-                                        { value: 'black', label: 'Sort', sub: 'Hvidt tryk' },
+                                        { value: 'white', label: 'Light Garment', sub: 'Sort tryk' },
+                                        { value: 'black', label: 'Dark Garment', sub: 'Hvidt tryk' },
                                     ].map(opt => (
                                         <div
                                             key={opt.value}

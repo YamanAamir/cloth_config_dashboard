@@ -11,7 +11,7 @@ import {
     generateProductionFiles, sendStatusEmail, sendFollowupEmail,
     updateClassProcessStatus, sendDeadlineReminder
 } from '../api/api';
-import { Status, getUploadsUrl } from '../utils/constants';
+import { Status, getUploadsUrl, getBackDesignDisplayUrl } from '../utils/constants';
 import AdminStudentCountModal from '../components/AdminStudentCountModal';
 
 const { Title } = Typography;
@@ -634,7 +634,7 @@ const ClassesPage = () => {
                                 border: '1px solid #f0f0f0'
                             }}>
                                 <Image
-                                    src={getUploadsUrl(classBackDesign.file_path)}
+                                    src={getBackDesignDisplayUrl(classBackDesign)}
                                     alt={classBackDesign.name}
                                     style={{ maxWidth: '100%', maxHeight: 400, objectFit: 'contain' }}
                                 />
@@ -752,7 +752,7 @@ const ClassesPage = () => {
                                 <Space direction="vertical" style={{ width: '100%' }}>
                                     <div style={{ textAlign: 'center', background: '#fafafa', borderRadius: 8, padding: 16 }}>
                                         <Image
-                                            src={getUploadsUrl(viewBackDesign.file_path)}
+                                            src={getBackDesignDisplayUrl(viewBackDesign)}
                                             alt={viewBackDesign.name}
                                             style={{ maxWidth: '100%', maxHeight: 300, objectFit: 'contain' }}
                                         />

@@ -10,10 +10,10 @@ import {
 import {
     getAllLogos, approveLogo, rejectLogo, adminPermanentDeleteLogo,
     getAllBackDesigns, approveBackDesign, rejectBackDesign, adminPermanentDeleteBackDesign,
-    adminUploadLogo, adminUploadBackDesign,
+    adminUploadLogo, adminUploadBackDesign, adminEditBackDesign,
     getAllSchools, getAllClasses
 } from '../api/api';
-import { Status, getUploadsUrl } from '../utils/constants';
+import { Status, getUploadsUrl, getBackDesignDisplayUrl } from '../utils/constants';
 
 const { Title } = Typography;
 const { TabPane } = Tabs;
@@ -53,6 +53,7 @@ const ReviewUploadsPage = () => {
     const [editBlackFile, setEditBlackFile] = useState(null);
     const [editBlackPreview, setEditBlackPreview] = useState(null);
     const [editUploading, setEditUploading] = useState(false);
+    const [editForAllStudents, setEditForAllStudents] = useState(false);
     const [schools, setSchools] = useState([]);
     const [classes, setClasses] = useState([]);
     const [logoForm] = Form.useForm();
@@ -296,9 +297,13 @@ const ReviewUploadsPage = () => {
 
     const openEditDesignModal = (record) => {
         setEditingDesign(record);
-        editDesignForm.setFieldsValue({ name: record.name });
+        editDesignForm.setFieldsValue({
+            name: record.name,
+            class_id: record.class_id || undefined,
+        });
+        setEditForAllStudents(Boolean(record.forAllStudents));
         setEditWhiteFile(null);
-        setEditWhitePreview(record.file_path ? getUploadsUrl(record.file_path) : null);
+        setEditWhitePreview(record.configured_file_path || record.file_path ? getBackDesignDisplayUrl(record) : null);
         setEditBlackFile(null);
         setEditBlackPreview(record.file_path_2 ? getUploadsUrl(record.file_path_2) : null);
         setEditDesignModal(true);
@@ -310,11 +315,19 @@ const ReviewUploadsPage = () => {
         try {
             const fd = new FormData();
             fd.append('name', values.name);
+            if (values.class_id) {
+                fd.append('class_id', values.class_id);
+            } else {
+                fd.append('class_id', '');
+            }
+            fd.append('forAllStudents', editForAllStudents ? 'true' : 'false');
             if (editWhiteFile) { fd.append('design', editWhiteFile); fd.append('designColor', 'white'); }
             if (editBlackFile) { fd.append('design_2', editBlackFile); fd.append('designColor_2', 'black'); }
-            await adminUploadBackDesign(fd); // reuse same endpoint with PUT — replace with adminEditBackDesign if available
+            await adminEditBackDesign(editingDesign.id, fd);
             message.success('Back design updated');
             setEditDesignModal(false);
+            setEditingDesign(null);
+            setEditForAllStudents(false);
             fetchBackDesigns();
         } catch (err) {
             message.error(err.response?.data?.message || 'Update failed');
@@ -408,121 +421,121 @@ const ReviewUploadsPage = () => {
         },
     ];
 
- const designColumns = [
-    {
-        title: 'Preview',
-        key: 'preview',
-        width: 180,
-        render: (_, record) => (
-            <Tabs size="small" defaultActiveKey="white" style={{ width: 160 }} tabBarStyle={{ marginBottom: 4 }}>
-                <TabPane tab="White" key="white">
-                    <div style={{ background: '#fafafa', borderRadius: 4, padding: 4, textAlign: 'center' }}>
-                        <Image
-                            width={80} height={70}
-                            src={getUploadsUrl(record.file_path)}
-                            fallback="https://via.placeholder.com/80?text=—"
-                            style={{ objectFit: 'contain' }}
-                        />
-                    </div>
-                </TabPane>
-                <TabPane tab="Black" key="black">
-                    <div style={{ background: '#1a1a1a', borderRadius: 4, padding: 4, textAlign: 'center' }}>
-                        {record.file_path_2 ? (
+    const designColumns = [
+        {
+            title: 'Preview',
+            key: 'preview',
+            width: 180,
+            render: (_, record) => (
+                <Tabs size="small" defaultActiveKey="white" style={{ width: 160 }} tabBarStyle={{ marginBottom: 4 }}>
+                    <TabPane tab="White" key="white">
+                        <div style={{ background: '#fafafa', borderRadius: 4, padding: 4, textAlign: 'center' }}>
                             <Image
                                 width={80} height={70}
-                                src={getUploadsUrl(record.file_path_2)}
+                                src={getBackDesignDisplayUrl(record)}
                                 fallback="https://via.placeholder.com/80?text=—"
                                 style={{ objectFit: 'contain' }}
                             />
-                        ) : (
-                            <Typography.Text style={{ color: '#555', fontSize: 10 }}>—</Typography.Text>
-                        )}
-                    </div>
-                </TabPane>
-            </Tabs>
-        ),
-    },
-    {
-        title: 'Name',
-        dataIndex: 'name',
-        key: 'name',
-        render: (t, record) => (
-            <Space direction="vertical" size={2}>
-                <Typography.Text strong>{t || '—'}</Typography.Text>
-            </Space>
-        ),
-    },
-    {
-        title: 'Class',
-        key: 'class',
-        render: (_, record) => (
-            <Typography.Text>
-                {record.class?.name || '—'}
-            </Typography.Text>
-        ),
-    },
-    {
-        title: 'School',
-        key: 'school',
-        render: (_, record) => (
-            <Typography.Text>
-                {record.class?.school?.name || '—'}
-            </Typography.Text>
-        ),
-    },
-    {
-        title: 'Status',
-        dataIndex: 'status',
-        key: 'status',
-        render: (status) => getStatusTag(status),
-    },
-    {
-        title: 'Action',
-        key: 'action',
-        width: 60,
-        render: (_, record) => (
-            <Dropdown
-                trigger={['click']}
-                placement="bottomRight"
-                menu={{
-                    items: [
-                        {
-                            key: 'edit',
-                            icon: <EditOutlined style={{ color: '#00b96b' }} />,
-                            label: 'Edit',
-                            onClick: () => openEditDesignModal(record),
-                        },
-                        { type: 'divider' },
-                        {
-                            key: 'approve',
-                            icon: <CheckCircleOutlined style={{ color: '#52c41a' }} />,
-                            label: 'Approve',
-                            disabled: record.status === Status.ACTIVE,
-                            onClick: () => handleApprove(record.id, 'design'),
-                        },
-                        {
-                            key: 'reject',
-                            icon: <CloseCircleOutlined style={{ color: '#ff4d4f' }} />,
-                            label: 'Reject',
-                            disabled: record.status === Status.DELETED,
-                            onClick: () => handleReject(record.id, 'design'),
-                        },
-                        { type: 'divider' },
-                        {
-                            key: 'delete',
-                            icon: <DeleteOutlined />,
-                            label: 'Permanent Delete',
-                            danger: true,
-                            onClick: () => handlePermanentDelete(record.id, 'design', record.name),
-                        },
-                    ],
-                }}
-            >
-                <Button type="text" icon={<MoreOutlined style={{ fontSize: 18 }} />} />
-            </Dropdown>
-        ),
-    },
-];
+                        </div>
+                    </TabPane>
+                    <TabPane tab="Black" key="black">
+                        <div style={{ background: '#1a1a1a', borderRadius: 4, padding: 4, textAlign: 'center' }}>
+                            {record.file_path_2 ? (
+                                <Image
+                                    width={80} height={70}
+                                    src={getUploadsUrl(record.file_path_2)}
+                                    fallback="https://via.placeholder.com/80?text=—"
+                                    style={{ objectFit: 'contain' }}
+                                />
+                            ) : (
+                                <Typography.Text style={{ color: '#555', fontSize: 10 }}>—</Typography.Text>
+                            )}
+                        </div>
+                    </TabPane>
+                </Tabs>
+            ),
+        },
+        {
+            title: 'Name',
+            dataIndex: 'name',
+            key: 'name',
+            render: (t, record) => (
+                <Space direction="vertical" size={2}>
+                    <Typography.Text strong>{t || '—'}</Typography.Text>
+                </Space>
+            ),
+        },
+        {
+            title: 'Class',
+            key: 'class',
+            render: (_, record) => (
+                <Typography.Text>
+                    {record.class?.name || '—'}
+                </Typography.Text>
+            ),
+        },
+        {
+            title: 'School',
+            key: 'school',
+            render: (_, record) => (
+                <Typography.Text>
+                    {record.class?.school?.name || '—'}
+                </Typography.Text>
+            ),
+        },
+        {
+            title: 'Status',
+            dataIndex: 'status',
+            key: 'status',
+            render: (status) => getStatusTag(status),
+        },
+        {
+            title: 'Action',
+            key: 'action',
+            width: 60,
+            render: (_, record) => (
+                <Dropdown
+                    trigger={['click']}
+                    placement="bottomRight"
+                    menu={{
+                        items: [
+                            {
+                                key: 'edit',
+                                icon: <EditOutlined style={{ color: '#00b96b' }} />,
+                                label: 'Edit',
+                                onClick: () => openEditDesignModal(record),
+                            },
+                            { type: 'divider' },
+                            {
+                                key: 'approve',
+                                icon: <CheckCircleOutlined style={{ color: '#52c41a' }} />,
+                                label: 'Approve',
+                                disabled: record.status === Status.ACTIVE,
+                                onClick: () => handleApprove(record.id, 'design'),
+                            },
+                            {
+                                key: 'reject',
+                                icon: <CloseCircleOutlined style={{ color: '#ff4d4f' }} />,
+                                label: 'Reject',
+                                disabled: record.status === Status.DELETED,
+                                onClick: () => handleReject(record.id, 'design'),
+                            },
+                            { type: 'divider' },
+                            {
+                                key: 'delete',
+                                icon: <DeleteOutlined />,
+                                label: 'Permanent Delete',
+                                danger: true,
+                                onClick: () => handlePermanentDelete(record.id, 'design', record.name),
+                            },
+                        ],
+                    }}
+                >
+                    <Button type="text" icon={<MoreOutlined style={{ fontSize: 18 }} />} />
+                </Dropdown>
+            ),
+        },
+    ];
 
     return (
         <div className="fade-in">
@@ -781,7 +794,11 @@ const ReviewUploadsPage = () => {
             <Modal
                 title="Edit Back Design"
                 open={editDesignModal}
-                onCancel={() => setEditDesignModal(false)}
+                onCancel={() => {
+                    setEditDesignModal(false);
+                    setEditingDesign(null);
+                    setEditForAllStudents(false);
+                }}
                 footer={null}
                 destroyOnHidden
                 width={620}
@@ -789,6 +806,15 @@ const ReviewUploadsPage = () => {
                 <Form form={editDesignForm} layout="vertical" onFinish={handleEditDesign} style={{ marginTop: 16 }}>
                     <Form.Item name="name" label="Design Name" rules={[{ required: true }]}>
                         <Input placeholder="e.g. Berlin Back Design" />
+                    </Form.Item>
+                    <Form.Item name="class_id" label="Assign to Class (optional)" tooltip="Leave empty for library design">
+                        <Select
+                            placeholder="Select class (optional)"
+                            allowClear
+                            options={classes.map(c => ({ value: c.id, label: `${c.name} — ${c.school?.name || ''}` }))}
+                            showSearch
+                            optionFilterProp="label"
+                        />
                     </Form.Item>
 
                     {/* White version */}
@@ -811,6 +837,7 @@ const ReviewUploadsPage = () => {
                         </Upload>
                     </Form.Item>
 
+
                     {/* Black version */}
                     <Form.Item label="Black Garment Design">
                         <Typography.Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 6 }}>
@@ -829,6 +856,30 @@ const ReviewUploadsPage = () => {
                                 {editBlackFile ? `✓ ${editBlackFile.name}` : 'Click to replace black version'}
                             </Button>
                         </Upload>
+                    </Form.Item>
+                    <Form.Item label="For alle elever (Studietur bibliotek)">
+                        <div
+                            style={{
+                                padding: '12px 16px', borderRadius: 8,
+                                border: editForAllStudents ? '1.5px solid #7c3aed' : '1px solid #f0f0f0',
+                                background: editForAllStudents ? '#f5f0ff' : '#fafafa', cursor: 'pointer',
+                            }}
+                            onClick={() => setEditForAllStudents(v => !v)}
+                        >
+                            <Checkbox
+                                checked={editForAllStudents}
+                                onChange={e => setEditForAllStudents(e.target.checked)}
+                                onClick={e => e.stopPropagation()}
+                            >
+                                <Space size={6}>
+                                    <GlobalOutlined style={{ color: '#7c3aed' }} />
+                                    <Typography.Text strong style={{ fontSize: 13 }}>For alle elever</Typography.Text>
+                                </Space>
+                            </Checkbox>
+                            <div style={{ marginTop: 4, paddingLeft: 24, fontSize: 12, color: '#888' }}>
+                                Markér dette for at tilføje designet til studietur-biblioteket (is_library: true)
+                            </div>
+                        </div>
                     </Form.Item>
 
                     <Form.Item style={{ textAlign: 'right', marginBottom: 0 }}>

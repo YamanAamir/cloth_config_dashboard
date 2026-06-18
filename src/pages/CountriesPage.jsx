@@ -9,7 +9,7 @@ import {
     getAllCountries, createCountry, updateCountry, deleteCountry, permanentDeleteCountry,
     uploadLibraryDesign, getLibraryDesigns, deleteLibraryDesign, toggleCountryStatus, updateLibraryDesign
 } from '../api/api';
-import { getUploadsUrl } from '../utils/constants';
+import { getUploadsUrl, getBackDesignDisplayUrl } from '../utils/constants';
 
 const { Title, Text } = Typography;
 
@@ -251,7 +251,7 @@ const CountriesPage = () => {
                             <div key={d.id} style={{ width: 140, textAlign: 'center', position: 'relative' }}>
                                 <div style={{ position: 'relative' }}>
                                     <Image
-                                        src={getUploadsUrl(d.file_path)}
+                                        src={getBackDesignDisplayUrl(d)}
                                         width={100} height={100}
                                         style={{ objectFit: 'contain', borderRadius: 6, border: '1px solid #f0f0f0', background: '#fff' }}
                                     />
