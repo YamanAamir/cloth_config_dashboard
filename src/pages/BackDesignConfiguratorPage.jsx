@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import {
     Card, Typography, Button, message, Space, Spin,
     Select, Row, Col, Divider, Input, Tooltip, Tabs, Badge
@@ -42,16 +42,18 @@ const BackDesignConfiguratorPage = () => {
     // Selected design — full object so we can switch between file_path (white) and file_path_2 (black)
     const [selectedDesign, setSelectedDesign] = useState(null);
     const [selectedImage, setSelectedImage] = useState(null);
-    const [imagePreview, setImagePreview] = useState(null);
+    // Separate preview URLs for each garment color
+    const [imagePreviewWhite, setImagePreviewWhite] = useState(null);
+    const [imagePreviewBlack, setImagePreviewBlack] = useState(null);
     const [selectedDesignId, setSelectedDesignId] = useState(null);
     const [existingConfiguratorDesign, setExistingConfiguratorDesign] = useState(null);
 
     // Image position & size on canvas — per color so each tab preserves its own layout
+    // Virgin value (7016 x 9922) = auto-fit will trigger on first image load
     const [imageLayouts, setImageLayouts] = useState({
         white: { x: 0, y: 0, w: 7016, h: 9922 },
         black: { x: 0, y: 0, w: 7016, h: 9922 },
     });
-    const [colorSwitching, setColorSwitching] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
 
     // Text/names
@@ -68,12 +70,20 @@ const BackDesignConfiguratorPage = () => {
     const [designColor, setDesignColor] = useState('white');
 
     // Convenience getter/setter for current color's layout
-    const imageLayout = imageLayouts[designColor] || { x: 0, y: 0, w: 7016, h: 9922 };
+    const imageLayout = imageLayouts[designColor] || { x: 0, y: 0, w: 3508, h: 4961 };
     const setImageLayout = (val) => {
         setImageLayouts(prev => {
-            const current = prev[designColor] || { x: 0, y: 0, w: 7016, h: 9922 };
+            const current = prev[designColor] || { x: 0, y: 0, w: 3508, h: 4961 };
             const newLayout = typeof val === 'function' ? val(current) : val;
             return { ...prev, [designColor]: newLayout };
+        });
+    };
+    // Set a specific color's layout directly (used for background auto-fit)
+    const setImageLayoutForColor = (color, val) => {
+        setImageLayouts(prev => {
+            const current = prev[color] || { x: 0, y: 0, w: 3508, h: 4961 };
+            const newLayout = typeof val === 'function' ? val(current) : val;
+            return { ...prev, [color]: newLayout };
         });
     };
     const [fonts, setFonts] = useState([]);
@@ -218,12 +228,18 @@ const BackDesignConfiguratorPage = () => {
                 const state = design.configurator_state;
 
                 if (state?.baseDesignId) {
-                    // Restore text elements and layout, but always default to 'white' tab on refresh
+                    // Restore text elements
                     if (state.textElements?.length > 0) setTextElements(state.textElements);
                     // Always start on white/light garment tab on page load
                     setDesignColor('white');
-                    // Restore saved layout into the correct color slot
-                    if (state.imageLayout) {
+                    // Restore saved layouts — support both old single-layout and new per-color format
+                    if (state.whiteLayout || state.blackLayout) {
+                        setImageLayouts(prev => ({
+                            white: state.whiteLayout || prev.white,
+                            black: state.blackLayout || prev.black,
+                        }));
+                    } else if (state.imageLayout) {
+                        // Legacy: single saved layout — apply to the color it was saved under
                         const savedColor = state.designColor || 'white';
                         setImageLayouts(prev => ({ ...prev, [savedColor]: state.imageLayout }));
                     }
@@ -261,8 +277,8 @@ const BackDesignConfiguratorPage = () => {
             const exportCanvas = canvas.getExportCanvas ? canvas.getExportCanvas() : document.createElement('canvas');
 
             if (!canvas.getExportCanvas) {
-                exportCanvas.width = 7016;
-                exportCanvas.height = 9922;
+                exportCanvas.width = 3508;
+                exportCanvas.height = 4961;
                 const ctx = exportCanvas.getContext('2d');
                 ctx.drawImage(canvas, 0, 0);
             }
@@ -277,7 +293,6 @@ const BackDesignConfiguratorPage = () => {
                 imageLayout: layout,
                 baseDesignId: selectedDesignId,
             }));
-            // Save to the correct key based on which source file was loaded (currentImageSource)
             if (currentImageSource === 'file_path_2') {
                 fd.append('configuredDesign_2', blob, `${fileName}_dark_configured.png`);
                 fd.append('designColor_2', color);
@@ -310,9 +325,10 @@ const BackDesignConfiguratorPage = () => {
         setGalleryTab(tab);
         setSelectedDesignId(null);
         setSelectedImage(null);
-        setImagePreview(null);
+        setImagePreviewWhite(null);
+        setImagePreviewBlack(null);
         setSelectedDesign(null);
-        setImageLayouts({ white: { x: 0, y: 0, w: 7016, h: 9922 }, black: { x: 0, y: 0, w: 7016, h: 9922 } });
+        setImageLayouts({ white: { x: 0, y: 0, w: 3508, h: 4961 }, black: { x: 0, y: 0, w: 3508, h: 4961 } });
     };
 
     const handleSetCountry = async (countryId) => {
@@ -340,28 +356,47 @@ const BackDesignConfiguratorPage = () => {
         } catch { /* no existing design */ }
     };
 
-    const loadDesignForEditing = (design, keepLayout = false, colorOverride = null) => {
-        const activeColor = colorOverride || designColor;
-        const isBlackVersion = activeColor === 'black';
-
-        // Priority: 1. Configured file, 2. Secondary base file, 3. Primary base file
-        let activePath = design.file_path;
-        if (isBlackVersion) {
-            activePath = design.configured_file_path_2 || design.file_path_2 || design.file_path;
-        } else {
-            activePath = design.configured_file_path || design.file_path;
+    // Deterministic image path selection — no wrong fallbacks
+    const getImagePath = (design, color) => {
+        if (color === 'black') {
+            return (
+                design.file_path_2 ??
+                design.file_path ??
+                design.configured_file_path_2 ??
+                design.configured_file_path
+            );
         }
+        return (
+            design.file_path ??
+            design.file_path_2 ??
+            design.configured_file_path ??
+            design.configured_file_path_2
+        );
+    };
 
-        const url = `${getUploadsUrl(activePath)}?t=${Date.now()}`;
+    const loadDesignForEditing = (design, keepLayout = false) => {
+        const whitePath = getImagePath(design, 'white');
+        const blackPath = getImagePath(design, 'black');
+
+        const ts = Date.now();
+        const whiteUrl = `${getUploadsUrl(whitePath)}?t=${ts}`;
+        const blackUrl = `${getUploadsUrl(blackPath)}?t=${ts}`;
+
         setSelectedDesign(design);
         setSelectedDesignId(design.id);
-        // Reset both layouts when selecting a new design (unless keepLayout = true for tab switching)
-        if (!keepLayout) {
-            setImageLayouts({ white: { x: 0, y: 0, w: 7016, h: 9922 }, black: { x: 0, y: 0, w: 7016, h: 9922 } });
-        }
-        setImagePreview(url);
 
-        fetch(url)
+        if (!keepLayout) {
+            setImageLayouts({
+                white: { x: 0, y: 0, w: 3508, h: 4961 },
+                black: { x: 0, y: 0, w: 3508, h: 4961 },
+            });
+        }
+
+        setImagePreviewWhite(whiteUrl);
+        setImagePreviewBlack(blackUrl);
+
+        // Fetch white version to keep selectedImage for A3 validation
+        fetch(whiteUrl)
             .then(r => { if (!r.ok) throw new Error(r.statusText); return r.blob(); })
             .then(blob => {
                 const file = new File([blob], design.name, { type: 'image/png' });
@@ -371,58 +406,20 @@ const BackDesignConfiguratorPage = () => {
                     const { width, height } = img;
                     if (width > 4000 || height > 5600) {
                         message.warning({
-                            content: `Selected design (${width}×${height}px) exceeds A3 size limit. You can use it for editing, but final export may be rejected.`,
-                            duration: 8
+                            content: `Selected design (${width}×${height}px) exceeds A3 size limit.`,
+                            duration: 8,
                         });
                     }
                 };
-                img.src = url;
+                img.src = whiteUrl;
             })
             .catch(err => message.error(`Failed to load: ${err.message}`));
     };
 
-    // When toggle changes — save current canvas to its key, then switch color (layout is per-color, auto-restores)
-    const handleDesignColorToggle = async (color) => {
-        setColorSwitching(true);
-        try {
-            // Save current canvas to current color's key first on tab switch
-            if (selectedDesign) {
-                let designId = existingConfiguratorDesign?.id || selectedDesignId;
-
-                // Create draft if it doesn't exist yet
-                if (!designId) {
-                    try {
-                        const draftRes = await saveConfiguratorState({
-                            configurator_state: {
-                                textElements,
-                                designColor,
-                                imageLayout,
-                                baseDesignId: selectedDesignId,
-                            },
-                            designColor,
-                            name: `configurator_draft_${Date.now()}`,
-                        });
-                        designId = draftRes.data?.data?.id;
-                        if (designId) {
-                            setIsEditMode(true);
-                            setExistingConfiguratorDesign(draftRes.data?.data);
-                        }
-                    } catch (e) { console.error("Draft creation failed", e); }
-                }
-
-                if (designId) {
-                    await saveCanvasForColor(designColor, textElements, imageLayout, designId);
-                }
-            }
-
-            setDesignColor(color);
-            if (selectedDesign) {
-                // keepLayout = true — layout for this color is stored separately and will be applied
-                loadDesignForEditing(selectedDesign, true, color);
-            }
-        } finally {
-            setColorSwitching(false);
-        }
+    // Toggle: instant in-memory switch — no fetch, no reload
+    const handleDesignColorToggle = (color) => {
+        if (color === designColor) return;
+        setDesignColor(color);
     };
 
     const handleAddText = () => {
@@ -487,50 +484,55 @@ const BackDesignConfiguratorPage = () => {
         }
     };
 
+    // Render canvas for a specific color and return a PNG blob
+    const renderCanvasForColor = async (color) => {
+    const layout = imageLayouts[color] || { x: 0, y: 0, w: 3508, h: 4961 };
+
+    let imageSrc = null;
+    if (selectedDesign) {
+        const path = getImagePath(selectedDesign, color);
+        imageSrc = `${getUploadsUrl(path)}?t=${Date.now()}`;
+    }
+
+    const exportCanvas = document.createElement('canvas');
+    exportCanvas.width = 3508;
+    exportCanvas.height = 4961;
+    const ctx = exportCanvas.getContext('2d');
+
+    ctx.fillStyle = color === 'black' ? '#000000' : '#ffffff';
+    ctx.fillRect(0, 0, 3508, 4961);
+
+    if (imageSrc) {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        await new Promise((resolve) => {
+            img.onload = () => {
+                ctx.drawImage(img, layout.x, layout.y, layout.w, layout.h);
+                resolve();
+            };
+            img.onerror = resolve;
+            img.src = imageSrc;
+        });
+    }
+
+    textElements.forEach(el => {
+        ctx.save();
+        ctx.translate(el.x, el.y);
+        ctx.rotate((el.rotation * Math.PI) / 180);
+        ctx.font = `${el.fontSize}px ${el.fontFamily}`;
+        ctx.fillStyle = color === 'black' ? '#ffffff' : '#000000';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(el.text, 0, 0);
+        ctx.restore();
+    });
+
+    return new Promise(resolve => exportCanvas.toBlob(resolve, 'image/png'));
+};
+
     const performUpload = async () => {
         setUploading(true);
         try {
-            // Force canvas redraw with correct background color for export (A3 size)
-            if (canvasRef.current) {
-                const canvas = canvasRef.current;
-                const ctx = canvas.getContext('2d');
-
-                // A3 ratio at 600 DPI
-                canvas.width = 7016;
-                canvas.height = 9922;
-                ctx.fillStyle = designColor === 'black' ? '#000000' : '#ffffff';
-                ctx.fillRect(0, 0, 7016, 9922);
-
-                // Redraw image if exists
-                if (imagePreview) {
-                    const img = new Image();
-                    img.crossOrigin = 'anonymous';
-                    await new Promise((resolve) => {
-                        img.onload = () => {
-                            ctx.drawImage(img, imageLayout.x, imageLayout.y, imageLayout.w, imageLayout.h);
-                            resolve();
-                        };
-                        img.src = imagePreview;
-                    });
-                }
-
-                // Redraw text elements
-                textElements.forEach(el => {
-                    ctx.save();
-                    ctx.translate(el.x, el.y);
-                    ctx.rotate((el.rotation * Math.PI) / 180);
-                    ctx.font = `${el.fontSize}px ${el.fontFamily}`;
-                    ctx.fillStyle = designColor === 'black' ? '#ffffff' : '#000000'; // Text color based on garment
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText(el.text, 0, 0);
-                    ctx.restore();
-                });
-            }
-
-            await new Promise(resolve => setTimeout(resolve, 100));
-            const blob = await new Promise(resolve => canvasRef.current.toBlob(resolve, 'image/png'));
-
             let designId = existingConfiguratorDesign?.id;
             if (!designId) {
                 const draftRes = await saveConfiguratorState({
@@ -547,25 +549,28 @@ const BackDesignConfiguratorPage = () => {
                 if (!designId) throw new Error('Failed to create design draft');
             }
 
+            // Render both light and dark versions
+            const [lightBlob, darkBlob] = await Promise.all([
+                renderCanvasForColor('white'),
+                renderCanvasForColor('black'),
+            ]);
+
             const formData = new FormData();
             const fileName = selectedImage.name.replace(/\.[^/.]+$/, '');
             formData.append('name', `${fileName}_configured`);
 
-            // Fixed: Save to correct key based on active color
-            if (designColor === 'black') {
-                formData.append('configuredDesign_2', blob, `${fileName}_black_configured.png`);
-                // backDesign_2 omitted to preserve original black base image
-                formData.append('designColor_2', 'black');
-            } else {
-                formData.append('configuredDesign', blob, `${fileName}_white_configured.png`);
-                // backDesign omitted to preserve original white base image
-                formData.append('designColor', 'white');
-            }
+            // Always send both versions
+            formData.append('configuredDesign', lightBlob, `${fileName}_light_configured.png`);
+            formData.append('designColor', 'white');
+            formData.append('configuredDesign_2', darkBlob, `${fileName}_dark_configured.png`);
+            formData.append('designColor_2', 'black');
 
             formData.append('configurator_state', JSON.stringify({
                 textElements,
                 designColor,
-                imageLayout,
+                whiteLayout: imageLayouts.white,
+                blackLayout: imageLayouts.black,
+                imageLayout: imageLayouts[designColor], // legacy compat
                 baseDesignId: selectedDesignId,
             }));
 
@@ -586,7 +591,7 @@ const BackDesignConfiguratorPage = () => {
 
     // When order is locked: existing names are read-only, but new names can still be added
     const isOrderLocked = myClass?.order_locked === true;
-
+    const sizes = Array.from({ length: 12 }, (_, i) => 250 + i * 10);
     return (
         <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -717,7 +722,7 @@ const BackDesignConfiguratorPage = () => {
                                                                                 onClick={e => { e.stopPropagation(); setTextElements(prev => prev.map(t => t.id === el.id ? { ...t, fontSize: Math.max(10, t.fontSize - 4) } : t)); }} />
                                                                             <Input size="small" value={el.fontSize} style={{ width: 50, textAlign: 'center' }} readOnly />
                                                                             <Button size="small" icon={<PlusCircleOutlined />} disabled={el.locked}
-                                                                                onClick={e => { e.stopPropagation(); setTextElements(prev => prev.map(t => t.id === el.id ? { ...t, fontSize: Math.min(240, t.fontSize + 4) } : t)); }} />
+                                                                                onClick={e => { e.stopPropagation(); setTextElements(prev => prev.map(t => t.id === el.id ? { ...t, fontSize: Math.min(360, t.fontSize + 10) } : t)); }} />
                                                                         </div>
                                                                     </Col>
                                                                     <Col span={10}>
@@ -756,11 +761,7 @@ const BackDesignConfiguratorPage = () => {
                                             <TextArea placeholder="Indtast navn" value={currentText} onChange={e => setCurrentText(e.target.value)}
                                                 onPressEnter={e => { e.preventDefault(); handleAddText(); }} rows={2} style={{ marginTop: 8 }} />
                                             <Select value={currentFontSize} onChange={setCurrentFontSize} style={{ width: '100%', marginTop: 8 }}>
-                                                {[64, 68, 72, 76, 80, 84, 88, 92, 96, 100,
-                                                    104, 108, 112, 116, 120, 124, 128, 132, 136, 140,
-                                                    144, 148, 152, 156, 160, 164, 168, 172, 176, 180,
-                                                    184, 188, 192, 196, 200, 204, 208, 212, 216, 220,
-                                                    224, 228, 232, 236, 240, 244, 248, 250].map(v => <Select.Option key={v} value={v}>{v}px</Select.Option>)}
+                                                {sizes.map(v => <Select.Option key={v} value={v}>{v}px</Select.Option>)}
                                             </Select>
                                             <Select value={currentFontFamily} onChange={setCurrentFontFamily} style={{ width: '100%', marginTop: 8 }} placeholder="Select font" showSearch optionFilterProp="label">
                                                 {fonts.map(f => <Select.Option key={f.id} value={f.name} label={f.name}><span style={{ fontFamily: f.name, fontSize: 15 }}>{f.name}</span></Select.Option>)}
@@ -910,7 +911,8 @@ const BackDesignConfiguratorPage = () => {
                     <Card style={{ position: 'sticky', top: 24 }}>
                         <DesignCanvas
                             setPreviewOpen={setPreviewOpen}
-                            imagePreview={imagePreview}
+                            imagePreviewWhite={imagePreviewWhite}
+                            imagePreviewBlack={imagePreviewBlack}
                             textElements={textElements}
                             designColor={designColor}
                             isDragging={isDragging}
@@ -923,9 +925,11 @@ const BackDesignConfiguratorPage = () => {
                             canvasRef={canvasRef}
                             imageLayout={imageLayout}
                             setImageLayout={setImageLayout}
+                            imageLayouts={imageLayouts}
+                            setImageLayoutForColor={setImageLayoutForColor}
                             isLocked={isOrderLocked}
                             onCanvasUpdate={() => { /* Auto-save removed as per request */ }}
-                            colorToggle={imagePreview ? (
+                            colorToggle={imagePreviewWhite ? (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                     <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: '1px solid #d9d9d9' }}>
                                         {[
@@ -934,16 +938,15 @@ const BackDesignConfiguratorPage = () => {
                                         ].map(opt => (
                                             <div
                                                 key={opt.value}
-                                                onClick={() => !isOrderLocked && !colorSwitching && handleDesignColorToggle(opt.value)}
+                                                onClick={() => !isOrderLocked && handleDesignColorToggle(opt.value)}
                                                 style={{
                                                     padding: '3px 14px',
-                                                    cursor: isOrderLocked || colorSwitching ? 'not-allowed' : 'pointer',
+                                                    cursor: isOrderLocked ? 'not-allowed' : 'pointer',
                                                     background: designColor === opt.value ? '#00b96b' : '#fafafa',
                                                     color: designColor === opt.value ? '#fff' : '#333',
                                                     textAlign: 'center',
                                                     transition: 'all 0.15s',
                                                     borderRight: opt.value === 'white' ? '1px solid #d9d9d9' : 'none',
-                                                    opacity: colorSwitching ? 0.6 : 1,
                                                 }}
                                             >
                                                 <div style={{ fontSize: 11, fontWeight: 600 }}>{opt.label}</div>
@@ -951,7 +954,6 @@ const BackDesignConfiguratorPage = () => {
                                             </div>
                                         ))}
                                     </div>
-                                    {colorSwitching && <Spin size="small" />}
                                 </div>
                             ) : null}
                         />

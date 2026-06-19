@@ -1,19 +1,19 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, memo } from 'react';
 import { EyeOutlined, InboxOutlined, WarningOutlined } from '@ant-design/icons';
 import { Button, Typography } from 'antd';
 
 const getTextColor = (garmentColor) => (garmentColor === 'black' ? '#ffffff' : '#000000');
 const HANDLE_SIZE = 14;
-const CANVAS_W = 3840;
-const CANVAS_H = 5431;
+const CANVAS_W = 3508;
+const CANVAS_H = 4961;
 
 // ─── helpers (pure, no state) ────────────────────────────────────────────────
 
 const getCorners = (l) => [
-    [l.x,        l.y       ],
-    [l.x + l.w,  l.y       ],
-    [l.x,        l.y + l.h ],
-    [l.x + l.w,  l.y + l.h ],
+    [l.x, l.y],
+    [l.x + l.w, l.y],
+    [l.x, l.y + l.h],
+    [l.x + l.w, l.y + l.h],
 ];
 
 const hitHandle = (mx, my, l) => {
@@ -28,34 +28,45 @@ const hitHandle = (mx, my, l) => {
 const hitImage = (mx, my, l) =>
     mx >= l.x && mx <= l.x + l.w && my >= l.y && my <= l.y + l.h;
 
+const VIRGIN_LAYOUT = { x: 0, y: 0, w: 3508, h: 4961 };
+
+const isVirginLayout = (l) =>
+    l.x === 0 && l.y === 0 && l.w >= 3508 - 1 && l.h >= 4961 - 1;
+
 // ─── component ───────────────────────────────────────────────────────────────
 
 const DesignCanvas = ({
-    setPreviewOpen, imagePreview, textElements, designColor,
+    setPreviewOpen, imagePreviewWhite, imagePreviewBlack, textElements, designColor,
     isDragging, setIsDragging,
     selectedTextId, setSelectedTextId,
     dragOffset, setDragOffset,
     setTextElements, canvasRef,
     onCanvasUpdate,
     imageLayout, setImageLayout,
+    imageLayouts,               // full { white, black } — used for auto-fit decisions
+    setImageLayoutForColor,     // (color, layout) => void — sets a specific color's layout from parent
     isLocked = false,
     colorToggle = null,
 }) => {
     const [hasOutOfBounds, setHasOutOfBounds] = useState(false);
 
     // Interaction state — kept in refs to avoid triggering re-renders during drag/resize
-    const imgRef        = useRef(null);
+    const imgRef = useRef(null);
     const imgSelectedRef = useRef(false);
     const imgDraggingRef = useRef(false);
-    const resizingRef   = useRef(false);
+    const resizingRef = useRef(false);
     const imgDragOffset = useRef({ x: 0, y: 0 });
-    const resizeStart   = useRef(null);
+    const resizeStart = useRef(null);
+
+    // Cache: one processed HTMLImageElement per color, keyed by URL
+    // { white: { url, img }, black: { url, img } }
+    const processedCacheRef = useRef({ white: null, black: null });
 
     // ─── process image for garment color ─────────────────────────────────────
 
     const processImageForColor = useCallback((img, mode) => {
         const offscreen = document.createElement('canvas');
-        offscreen.width  = img.naturalWidth;
+        offscreen.width = img.naturalWidth;
         offscreen.height = img.naturalHeight;
         const ctx = offscreen.getContext('2d');
         ctx.drawImage(img, 0, 0);
@@ -65,38 +76,30 @@ const DesignCanvas = ({
         const data = imageData.data;
 
         if (mode === 'white') {
+            // Remove near-white background pixels so design floats on light garment
             const tol = 60;
             for (let i = 0; i < data.length; i += 4) {
-                if (data[i] > 255 - tol && data[i+1] > 255 - tol && data[i+2] > 255 - tol)
-                    data[i+3] = 0;
+                if (
+                    data[i] > 255 - tol &&
+                    data[i + 1] > 255 - tol &&
+                    data[i + 2] > 255 - tol
+                ) {
+                    data[i + 3] = 0;
+                }
             }
         } else if (mode === 'black') {
-            const bgTol = 64;
-            const corners = [
-                0,
-                (width - 1) * 4,
-                (height - 1) * width * 4,
-                ((height - 1) * width + (width - 1)) * 4,
-            ];
-            let br = 0, bg = 0, bb = 0;
-            corners.forEach(p => { br += data[p]; bg += data[p+1]; bb += data[p+2]; });
-            const bgR = br / 4, bgG = bg / 4, bgB = bb / 4;
-            const distSq = (i) => {
-                const dr = data[i] - bgR, dg = data[i+1] - bgG, db = data[i+2] - bgB;
-                return dr*dr + dg*dg + db*db;
-            };
-            const visited = new Uint8Array(width * height);
-            const stack = [[0,0],[width-1,0],[0,height-1],[width-1,height-1]];
-            while (stack.length) {
-                const [x, y] = stack.pop();
-                if (x < 0 || x >= width || y < 0 || y >= height) continue;
-                const pos = y * width + x;
-                if (visited[pos]) continue;
-                visited[pos] = 1;
-                const idx = pos * 4;
-                if (data[idx+3] < 10 || distSq(idx) > bgTol) continue;
-                data[idx+3] = 0;
-                stack.push([x+1,y],[x-1,y],[x,y+1],[x,y-1]);
+            // Near-white → transparent; dark pixels → white (for white-on-black printing)
+            for (let i = 0; i < data.length; i += 4) {
+                if (data[i + 3] < 10) continue;
+                const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                if (avg > 200) {
+                    data[i + 3] = 0;
+                } else {
+                    data[i] = 255;
+                    data[i + 1] = 255;
+                    data[i + 2] = 255;
+                    data[i + 3] = 255;
+                }
             }
         }
 
@@ -106,60 +109,119 @@ const DesignCanvas = ({
         return result;
     }, []);
 
-    // ─── load image whenever preview URL or color changes ────────────────────
+    // ─── Load a single color's image into cache ───────────────────────────────
 
-    useEffect(() => {
-        if (!imagePreview) {
-            imgRef.current = null;
-            imgSelectedRef.current = false;
+    const loadColorImage = useCallback((url, colorKey, onReady) => {
+        if (!url) {
+            processedCacheRef.current[colorKey] = null;
+            onReady?.();
+            return;
+        }
+        // Already cached for this exact URL — skip fetch
+        if (processedCacheRef.current[colorKey]?.url === url) {
+            onReady?.();
             return;
         }
 
         const img = new Image();
         img.crossOrigin = 'anonymous';
-
         img.onload = () => {
-            const mode = designColor === 'white' ? 'white'
-                       : designColor === 'black' ? 'black'
-                       : null;
-
-            const apply = (processedImg) => {
-                imgRef.current = processedImg;
-
-                // Auto-fit only when layout is the sentinel "full-canvas" default
-                const isDefault = (
-                    imageLayout.x === 0 && imageLayout.y === 0 &&
-                    imageLayout.w >= CANVAS_W - 1 && imageLayout.h >= CANVAS_H - 1
-                );
-
-                if (isDefault) {
-                    // Fit to 50% of canvas width, centred
-                    const targetW = CANVAS_W * 0.5;
-                    const ratio   = targetW / img.naturalWidth;
-                    const newLayout = {
-                        x: Math.round((CANVAS_W - targetW) / 2),
-                        y: Math.round((CANVAS_H - img.naturalHeight * ratio) / 2),
-                        w: Math.round(targetW),
-                        h: Math.round(img.naturalHeight * ratio),
-                    };
-                    // setImageLayout triggers the redraw useEffect — no manual redraw needed
-                    setImageLayout(newLayout);
-                }
-                // If layout is already set (restored from saved state), just leave it —
-                // the redraw useEffect will pick up imgRef.current and draw correctly.
+            const processed = processImageForColor(img, colorKey);
+            processed.onload = () => {
+                processedCacheRef.current[colorKey] = { url, img: processed, naturalW: img.naturalWidth, naturalH: img.naturalHeight };
+                onReady?.(img); // pass original for dimension check
             };
-
-            if (!mode) {
-                apply(img);
-            } else {
-                const processed = processImageForColor(img, mode);
-                processed.onload = () => apply(processed);
-            }
         };
+        img.onerror = () => {
+            processedCacheRef.current[colorKey] = null;
+            onReady?.();
+        };
+        img.src = url;
+    }, [processImageForColor]);
 
-        img.onerror = () => { imgRef.current = null; };
-        img.src = imagePreview;
-    }, [imagePreview, designColor]); // intentionally NOT including imageLayout
+    // ─── Load white image when its URL changes ────────────────────────────────
+
+    useEffect(() => {
+        if (!imagePreviewWhite) {
+            processedCacheRef.current.white = null;
+            if (designColor === 'white') {
+                imgRef.current = null;
+                setImageLayout(prev => ({ ...prev }));
+            }
+            return;
+        }
+        loadColorImage(imagePreviewWhite, 'white', (originalImg) => {
+            if (designColor === 'white') {
+                imgRef.current = processedCacheRef.current.white?.img || null;
+            }
+            // Auto-fit white's slot if virgin — use color-specific setter
+            const currentLayout = imageLayouts?.white || imageLayout;
+            if (originalImg && isVirginLayout(currentLayout)) {
+                const targetW = CANVAS_W * 0.8;
+                const ratio = targetW / originalImg.naturalWidth;
+                const fitted = {
+                    x: Math.round((CANVAS_W - targetW) / 2),
+                    y: Math.round((CANVAS_H - originalImg.naturalHeight * ratio) / 2),
+                    w: Math.round(targetW),
+                    h: Math.round(originalImg.naturalHeight * ratio),
+                };
+                // setImageLayout sets current designColor's layout — only call if white is active
+                // Otherwise call setImageLayoutForColor to set white's slot directly
+                if (designColor === 'white') {
+                    setImageLayout(fitted);
+                } else {
+                    setImageLayoutForColor?.('white', fitted);
+                }
+            } else if (designColor === 'white') {
+                setImageLayout(prev => ({ ...prev }));
+            }
+        });
+    }, [imagePreviewWhite]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // ─── Load black image when its URL changes ────────────────────────────────
+
+    useEffect(() => {
+        if (!imagePreviewBlack) {
+            processedCacheRef.current.black = null;
+            if (designColor === 'black') {
+                imgRef.current = null;
+                setImageLayout(prev => ({ ...prev }));
+            }
+            return;
+        }
+        loadColorImage(imagePreviewBlack, 'black', (originalImg) => {
+            if (designColor === 'black') {
+                imgRef.current = processedCacheRef.current.black?.img || null;
+            }
+            // Auto-fit black's slot if virgin
+            const currentLayout = imageLayouts?.black || imageLayout;
+            if (originalImg && isVirginLayout(currentLayout)) {
+                const targetW = CANVAS_W * 0.8;
+                const ratio = targetW / originalImg.naturalWidth;
+                const fitted = {
+                    x: Math.round((CANVAS_W - targetW) / 2),
+                    y: Math.round((CANVAS_H - originalImg.naturalHeight * ratio) / 2),
+                    w: Math.round(targetW),
+                    h: Math.round(originalImg.naturalHeight * ratio),
+                };
+                if (designColor === 'black') {
+                    setImageLayout(fitted);
+                } else {
+                    setImageLayoutForColor?.('black', fitted);
+                }
+            } else if (designColor === 'black') {
+                setImageLayout(prev => ({ ...prev }));
+            }
+        });
+    }, [imagePreviewBlack]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // ─── Switch active image instantly when color changes ────────────────────
+
+    useEffect(() => {
+        const cached = processedCacheRef.current[designColor];
+        imgRef.current = cached?.img || null;
+        setImageLayout(prev => ({ ...prev })); // trigger redraw — layout already correct for this color
+    }, [designColor]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // ─── SINGLE redraw effect (only source of truth) ──────────────────────────
 
@@ -168,7 +230,7 @@ const DesignCanvas = ({
         if (!canvas) return;
 
         const ctx = canvas.getContext('2d');
-        canvas.width  = CANVAS_W;
+        canvas.width = CANVAS_W;
         canvas.height = CANVAS_H;
 
         // Background
@@ -203,10 +265,10 @@ const DesignCanvas = ({
             ctx.setLineDash([]);
             getCorners(l).forEach(([cx, cy]) => {
                 ctx.fillStyle = '#ffffff';
-                ctx.fillRect(cx - HANDLE_SIZE/2, cy - HANDLE_SIZE/2, HANDLE_SIZE, HANDLE_SIZE);
+                ctx.fillRect(cx - HANDLE_SIZE / 2, cy - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE);
                 ctx.strokeStyle = '#00b96b';
                 ctx.lineWidth = 2;
-                ctx.strokeRect(cx - HANDLE_SIZE/2, cy - HANDLE_SIZE/2, HANDLE_SIZE, HANDLE_SIZE);
+                ctx.strokeRect(cx - HANDLE_SIZE / 2, cy - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE);
             });
         }
 
@@ -228,7 +290,7 @@ const DesignCanvas = ({
     const getExportCanvas = useCallback(() => {
         if (!canvasRef.current) return null;
         const exp = document.createElement('canvas');
-        exp.width  = CANVAS_W;
+        exp.width = CANVAS_W;
         exp.height = CANVAS_H;
         const ctx = exp.getContext('2d');
 
@@ -266,7 +328,7 @@ const DesignCanvas = ({
         const rect = canvas.getBoundingClientRect();
         return {
             mx: (e.clientX - rect.left) * (canvas.width / rect.width),
-            my: (e.clientY - rect.top)  * (canvas.height / rect.height),
+            my: (e.clientY - rect.top) * (canvas.height / rect.height),
         };
     };
 
@@ -318,7 +380,7 @@ const DesignCanvas = ({
         if (imgRef.current && imageLayout && hitImage(mx, my, imageLayout)) {
             imgSelectedRef.current = true;
             imgDraggingRef.current = true;
-            imgDragOffset.current  = { x: mx - imageLayout.x, y: my - imageLayout.y };
+            imgDragOffset.current = { x: mx - imageLayout.x, y: my - imageLayout.y };
             setSelectedTextId(null);
             setImageLayout({ ...imageLayout }); // trigger redraw to show selection
             return;
@@ -338,10 +400,10 @@ const DesignCanvas = ({
             const { layout: orig, handleIdx, mx: sx, my: sy } = resizeStart.current;
             const dx = mx - sx, dy = my - sy;
             let nl = { ...orig };
-            if (handleIdx === 0) { nl.x = orig.x+dx; nl.y = orig.y+dy; nl.w = orig.w-dx; nl.h = orig.h-dy; }
-            else if (handleIdx === 1) { nl.y = orig.y+dy; nl.w = orig.w+dx; nl.h = orig.h-dy; }
-            else if (handleIdx === 2) { nl.x = orig.x+dx; nl.w = orig.w-dx; nl.h = orig.h+dy; }
-            else { nl.w = orig.w+dx; nl.h = orig.h+dy; }
+            if (handleIdx === 0) { nl.x = orig.x + dx; nl.y = orig.y + dy; nl.w = orig.w - dx; nl.h = orig.h - dy; }
+            else if (handleIdx === 1) { nl.y = orig.y + dy; nl.w = orig.w + dx; nl.h = orig.h - dy; }
+            else if (handleIdx === 2) { nl.x = orig.x + dx; nl.w = orig.w - dx; nl.h = orig.h + dy; }
+            else { nl.w = orig.w + dx; nl.h = orig.h + dy; }
             if (nl.w > 30 && nl.h > 30) setImageLayout(nl); // → triggers redraw
             return;
         }
@@ -367,9 +429,9 @@ const DesignCanvas = ({
     };
 
     const handleMouseUp = () => {
-        resizingRef.current   = false;
+        resizingRef.current = false;
         imgDraggingRef.current = false;
-        resizeStart.current   = null;
+        resizeStart.current = null;
         setIsDragging(false);
     };
 
@@ -382,7 +444,7 @@ const DesignCanvas = ({
 
     // ─── Render ───────────────────────────────────────────────────────────────
 
-    if (!imagePreview) return (
+    if (!imagePreviewWhite && !imagePreviewBlack) return (
         <div style={{ textAlign: 'center', padding: 60, color: '#bbb' }}>
             <InboxOutlined style={{ fontSize: 48, marginBottom: 12 }} />
             <div>Select a design from the left to start</div>
@@ -404,7 +466,7 @@ const DesignCanvas = ({
                         <WarningOutlined /> Name outside print area
                     </Typography.Text>
                 )}
-                <Button type="default" icon={<EyeOutlined />} disabled={!imagePreview} onClick={() => setPreviewOpen(true)}>
+                <Button type="default" icon={<EyeOutlined />} disabled={!imagePreviewWhite && !imagePreviewBlack} onClick={() => setPreviewOpen(true)}>
                     Preview in 3D
                 </Button>
             </div>
