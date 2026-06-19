@@ -222,7 +222,11 @@ const BackDesignConfiguratorPage = () => {
                     if (state.textElements?.length > 0) setTextElements(state.textElements);
                     // Always start on white/light garment tab on page load
                     setDesignColor('white');
-                    if (state.imageLayout) setImageLayout(state.imageLayout);
+                    // Restore saved layout into the correct color slot
+                    if (state.imageLayout) {
+                        const savedColor = state.designColor || 'white';
+                        setImageLayouts(prev => ({ ...prev, [savedColor]: state.imageLayout }));
+                    }
 
                     // Load base design by ID
                     const found = backDesignsList.find(d => d.id === state.baseDesignId);
