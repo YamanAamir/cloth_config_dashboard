@@ -465,23 +465,23 @@ const BackDesignConfiguratorPage = () => {
 
                     if (width > maxWidth || height > maxHeight) {
                         message.error(`Base design is too large! Maximum size is ${maxWidth} × ${maxHeight} pixels (A3 format). Selected image is ${width} × ${height} pixels. Please select a smaller design.`);
-                        resolve();
+                        resolve(false);
                         return;
                     }
 
                     // Proceed with upload if validation passes
-                    performUpload();
-                    resolve();
+                    performUpload().then(() => resolve(true)).catch(() => resolve(false));
                 };
 
                 img.onerror = () => {
                     message.error('Failed to read base image dimensions');
-                    resolve();
+                    resolve(false);
                 };
 
                 img.src = URL.createObjectURL(selectedImage);
             });
         }
+        return false;
     };
 
     // Render canvas for a specific color and return a PNG blob
@@ -910,7 +910,10 @@ const BackDesignConfiguratorPage = () => {
                 <Col xs={24} lg={14}>
                     <Card style={{ position: 'sticky', top: 24 }}>
                         <DesignCanvas
-                            setPreviewOpen={setPreviewOpen}
+                            setPreviewOpen={async () => {
+                                const success = await handleSubmit();
+                                if (success !== false) setPreviewOpen(true);
+                            }}
                             imagePreviewWhite={imagePreviewWhite}
                             imagePreviewBlack={imagePreviewBlack}
                             textElements={textElements}
