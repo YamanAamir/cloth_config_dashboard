@@ -238,6 +238,15 @@ const DesignCanvas = ({
         const l = imageLayout;
         if (imgRef.current && l) {
             ctx.drawImage(imgRef.current, l.x, l.y, l.w, l.h);
+
+            // Always-visible boundary box around image
+            ctx.save();
+            ctx.strokeStyle = designColor === 'black' ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.15)';
+            ctx.lineWidth = Math.max(2, CANVAS_W * 0.0006);
+            ctx.setLineDash([Math.round(CANVAS_W * 0.006), Math.round(CANVAS_W * 0.003)]);
+            ctx.strokeRect(l.x, l.y, l.w, l.h);
+            ctx.setLineDash([]);
+            ctx.restore();
         }
 
         // Text (centered horizontally on export)
@@ -286,12 +295,13 @@ const DesignCanvas = ({
 
     const getExportCanvas = useCallback(() => {
         if (!canvasRef.current) return null;
+
+        // ── Diffuse canvas: full design with background ──
         const exp = document.createElement('canvas');
         exp.width = CANVAS_W;
         exp.height = CANVAS_H;
         const ctx = exp.getContext('2d');
 
-        // Preserve garment background color in the saved/exported image
         ctx.fillStyle = designColor === 'black' ? '#000000' : '#ffffff';
         ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
@@ -301,7 +311,7 @@ const DesignCanvas = ({
 
         textElements.forEach(el => {
             ctx.save();
-            ctx.translate(CANVAS_W / 2, el.y);  // center text horizontally
+            ctx.translate(CANVAS_W / 2, el.y);
             ctx.rotate((el.rotation * Math.PI) / 180);
             ctx.font = `${el.fontSize}px ${el.fontFamily}`;
             ctx.fillStyle = getTextColor(designColor);
@@ -310,6 +320,44 @@ const DesignCanvas = ({
             ctx.fillText(el.text, 0, 0);
             ctx.restore();
         });
+
+        // ── Opacity canvas: white = print area, black = transparent ──
+        const opacityCanvas = document.createElement('canvas');
+        opacityCanvas.width = CANVAS_W * 2;
+        opacityCanvas.height = CANVAS_H * 2;
+        const octx = opacityCanvas.getContext('2d');
+        octx.clearRect(0, 0, CANVAS_W * 2, CANVAS_H * 2);
+
+        if (imgRef.current && imageLayout) {
+            octx.drawImage(imgRef.current, imageLayout.x, imageLayout.y, imageLayout.w, imageLayout.h);
+        }
+
+        textElements.forEach(el => {
+            octx.save();
+            octx.translate(CANVAS_W / 2, el.y);
+            octx.rotate((el.rotation * Math.PI) / 180);
+            octx.font = `${el.fontSize}px ${el.fontFamily}`;
+            octx.fillStyle = '#ffffff';
+            octx.textAlign = 'center';
+            octx.textBaseline = 'middle';
+            octx.fillText(el.text, 0, 0);
+            octx.restore();
+        });
+
+        // Convert to black/white mask (white = visible, black = transparent)
+        const imgData = octx.getImageData(0, 0, CANVAS_W*2, CANVAS_H*2);
+        const d = imgData.data;
+        for (let i = 0; i < d.length; i += 4) {
+            const a = d[i + 3];
+            const brightness = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+            const bw = (a > 10 && brightness < 240) ? 255 : 0;
+            d[i] = d[i + 1] = d[i + 2] = bw;
+            d[i + 3] = 255;
+        }
+        octx.putImageData(imgData, 0, 0);
+
+        // Attach opacityCanvas so PreviewModal can access both
+        exp.opacityCanvas = opacityCanvas;
 
         return exp;
     }, [textElements, designColor, imageLayout]);

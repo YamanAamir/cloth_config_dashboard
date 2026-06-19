@@ -967,6 +967,15 @@ const BackDesignConfiguratorPage = () => {
                 onClose={() => setPreviewOpen(false)}
                 canvasRef={canvasRef}
                 designColor={designColor}
+                configuredImageUrl={
+                    designColor === 'black'
+                        ? (existingConfiguratorDesign?.configured_file_path_2
+                            ? getUploadsUrl(existingConfiguratorDesign.configured_file_path_2)
+                            : null)
+                        : (existingConfiguratorDesign?.configured_file_path
+                            ? getUploadsUrl(existingConfiguratorDesign.configured_file_path)
+                            : null)
+                }
             />
 
         </div>

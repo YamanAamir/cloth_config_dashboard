@@ -64,7 +64,7 @@ const COLORS = {
     ]
 };
 
-const PreviewModal = ({ open, onClose, canvasRef, designColor = 'white' }) => {
+const PreviewModal = ({ open, onClose, canvasRef, designColor = 'white', configuredImageUrl = null }) => {
     const iframeRef = useRef(null);
 
     const [garmentType, setGarmentType] = useState("tshirt");
@@ -75,9 +75,9 @@ const PreviewModal = ({ open, onClose, canvasRef, designColor = 'white' }) => {
     const sendToIframe = (msg) => {
         // Log without the base64 data to keep console readable
         const logMsg = msg.length > 100
-            ? `${msg.substring(0, 80)}... [base64 data, ${Math.round(msg.length / 1024)}KB]`
+            ? `${msg.substring(0, 80)}... [base64 data, ${Math.round(msg.length / 2048)}KB]`
             : msg;
-      
+
         iframeRef.current?.contentWindow?.postMessage(msg, "*");
     };
 
@@ -198,29 +198,95 @@ const PreviewModal = ({ open, onClose, canvasRef, designColor = 'white' }) => {
 
         img.src = base64;
     };
+    // Keep configuredImageUrl in a ref so sendDesign always reads the latest value
+    const configuredImageUrlRef = useRef(configuredImageUrl);
+    useEffect(() => {
+        configuredImageUrlRef.current = configuredImageUrl;
+    }, [configuredImageUrl]);
+
     // Accept optional color override so callers can pass the latest value
     // and avoid stale closure issues (e.g. inside useEffect handlers)
     const sendDesign = (garment, colorOverride) => {
-        const canvas = canvasRef?.current;
-        if (!canvas) return;
-
         const g = garment || GARMENTS.find((item) => item.key === garmentType);
         if (!g) return;
 
         const activeColor = colorOverride !== undefined ? colorOverride : designColor;
-
         setSending(true);
+
+        const configuredUrl = configuredImageUrlRef.current;
+
+        const processAndSend = (scaledCanvas, color) => {
+            const dataUrl = scaledCanvas.toDataURL("image/png", 1.0);
+
+            if (color === 'black') {
+                // Dark garment, white print
+                // opacity mask: white pixels = print area, black = transparent (image as-is works)
+                // diffuse: create pure white canvas same size (the ink color is white)
+                const whiteCanvas = document.createElement('canvas');
+                whiteCanvas.width = scaledCanvas.width;
+                whiteCanvas.height = scaledCanvas.height;
+                const wctx = whiteCanvas.getContext('2d');
+                wctx.fillStyle = '#ffffff';
+                wctx.fillRect(0, 0, whiteCanvas.width, whiteCanvas.height);
+                const whiteDiffuse = whiteCanvas.toDataURL('image/png', 1.0);
+
+                sendToIframe(`${g.prefix}:back_white_diffuse: ${whiteDiffuse}`);
+                sendToIframe(`${g.prefix}:back_white_opacity: ${dataUrl}`);
+            } else {
+                // Light garment, dark/black print
+                const opacity = createOpacityTexture(scaledCanvas, 1);
+                sendToIframe(`${g.prefix}:back_black_diffuse: ${dataUrl}`);
+                sendToIframe(`${g.prefix}:back_black_opacity: ${opacity}`);
+            }
+            setTimeout(() => setSending(false), 500);
+        };
+
+        if (configuredUrl) {
+            // Use the server-saved configured image — higher quality, no canvas re-render needed
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+                const BIG_CANVAS = 2048;
+
+                const scaled = document.createElement('canvas');
+                scaled.width = BIG_CANVAS;
+                scaled.height = BIG_CANVAS;
+                const sctx = scaled.getContext('2d');
+                sctx.imageSmoothingEnabled = true;
+                sctx.imageSmoothingQuality = 'high';
+
+               // Fit image inside 60% of the big canvas while preserving aspect ratio
+                const TARGET_PERCENT = 0.5;
+                const targetSize = BIG_CANVAS * TARGET_PERCENT;
+                const ratio = Math.min(targetSize / img.naturalWidth, targetSize / img.naturalHeight);
+                const dw = img.naturalWidth * ratio;
+                const dh = img.naturalHeight * ratio;
+                const dx = (BIG_CANVAS - dw) / 2;
+                const dy = (BIG_CANVAS - dh) / 2;
+
+                sctx.drawImage(img, dx, dy, dw, dh);
+                processAndSend(scaled, activeColor);
+            };
+            img.onerror = () => {
+                fallbackFromCanvas(g, activeColor);
+            };
+            img.src = configuredUrl;
+        } else {
+            fallbackFromCanvas(g, activeColor);
+        }
+    };
+
+    const fallbackFromCanvas = (g, activeColor) => {
+        const canvas = canvasRef?.current;
+        if (!canvas) { setSending(false); return; }
 
         const exportCanvas = canvas.getExportCanvas ? canvas.getExportCanvas() : canvas;
 
-        // Downscale to max 1024px — canvas is A3 (3508×4961), scale=3 was 10k+ px
-        // 1024px is plenty for 3D preview quality and reduces data 10x
-        const MAX_PX = 1024;
-        const srcW = exportCanvas.width;
-        const srcH = exportCanvas.height;
-        const ratio = Math.min(MAX_PX / srcW, MAX_PX / srcH, 1);
-        const dstW = Math.round(srcW * ratio);
-        const dstH = Math.round(srcH * ratio);
+        // Scale down for preview (1024px max)
+        const MAX_PX = 2048;
+        const ratio = Math.min(MAX_PX / exportCanvas.width, MAX_PX / exportCanvas.height, 1);
+        const dstW = Math.round(exportCanvas.width * ratio);
+        const dstH = Math.round(exportCanvas.height * ratio);
 
         const scaled = document.createElement('canvas');
         scaled.width = dstW;
@@ -230,31 +296,47 @@ const PreviewModal = ({ open, onClose, canvasRef, designColor = 'white' }) => {
         sctx.imageSmoothingQuality = 'high';
         sctx.drawImage(exportCanvas, 0, 0, dstW, dstH);
 
-       
-        if (activeColor === 'black') {
-            const opacity = createOpacityTexture(scaled, 1);
-            invertTexture(opacity, (invOpacity) => {
-                sendToIframe(`${g.prefix}:back_white_diffuse: ${invOpacity}`);
-                sendToIframe(`${g.prefix}:back_white_opacity: ${invOpacity}`);
-                setTimeout(() => setSending(false), 500);
-            });
-        } else if (activeColor === 'white') {
-            const diffuse = exportHighResCanvas(scaled, 1);
-            const opacity = createOpacityTexture(scaled, 1);
-            sendToIframe(`${g.prefix}:back_black_diffuse: ${diffuse}`);
-            sendToIframe(`${g.prefix}:back_black_opacity: ${opacity}`);
-            setTimeout(() => setSending(false), 500);
-        } else {
-            setSending(false);
+        // Scale opacity mask too if available
+        let opacityDataUrl = null;
+        if (exportCanvas.opacityCanvas) {
+            const scaledOp = document.createElement('canvas');
+            scaledOp.width = dstW;
+            scaledOp.height = dstH;
+            const octx = scaledOp.getContext('2d');
+            octx.imageSmoothingEnabled = true;
+            octx.imageSmoothingQuality = 'high';
+            octx.drawImage(exportCanvas.opacityCanvas, 0, 0, dstW, dstH);
+            opacityDataUrl = scaledOp.toDataURL('image/png', 1.0);
         }
+
+        const diffuseDataUrl = scaled.toDataURL('image/png', 1.0);
+        const opacityFinal = opacityDataUrl || createOpacityTexture(scaled, 1);
+
+        if (activeColor === 'black') {
+            const whiteCanvas = document.createElement('canvas');
+            whiteCanvas.width = dstW;
+            whiteCanvas.height = dstH;
+            const wctx = whiteCanvas.getContext('2d');
+            wctx.fillStyle = '#ffffff';
+            wctx.fillRect(0, 0, dstW, dstH);
+            sendToIframe(`${g.prefix}:back_white_diffuse: ${whiteCanvas.toDataURL('image/png', 1.0)}`);
+            sendToIframe(`${g.prefix}:back_white_opacity: ${opacityFinal}`);
+        } else {
+            sendToIframe(`${g.prefix}:back_black_diffuse: ${diffuseDataUrl}`);
+            sendToIframe(`${g.prefix}:back_black_opacity: ${opacityFinal}`);
+        }
+        setTimeout(() => setSending(false), 500);
     };
 
-    // Keep a ref so the app:ready handler always reads the latest designColor
-    // without needing to re-register the event listener on every render
     const designColorRef = useRef(designColor);
     useEffect(() => {
         designColorRef.current = designColor;
     }, [designColor]);
+
+    const selectedColorRef = useRef(selectedColor);
+    useEffect(() => {
+        selectedColorRef.current = selectedColor;
+    }, [selectedColor]);
 
     useEffect(() => {
         const handler = (e) => {
@@ -265,7 +347,8 @@ const PreviewModal = ({ open, onClose, canvasRef, designColor = 'white' }) => {
 
                 if (g) {
                     sendToIframe(`Page : ${g.page}`);
-                    sendToIframe(`${g.prefix}:${selectedColor}`);
+                    // Use ref to avoid stale closure — always send latest garment color
+                    sendToIframe(`${g.prefix}:${selectedColorRef.current}`);
                     // Pass the latest designColor via ref to avoid stale closure
                     setTimeout(() => sendDesign(g, designColorRef.current), 400);
                 }
