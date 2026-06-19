@@ -65,6 +65,9 @@ const DesignCanvas = ({
     // ─── process image for garment color ─────────────────────────────────────
 
     const processImageForColor = useCallback((img, mode) => {
+        // Black mode: file_path_2 is already the dark-garment version — return as-is
+        if (mode === 'black') return img;
+
         const offscreen = document.createElement('canvas');
         offscreen.width = img.naturalWidth;
         offscreen.height = img.naturalHeight;
@@ -85,20 +88,6 @@ const DesignCanvas = ({
                     data[i + 2] > 255 - tol
                 ) {
                     data[i + 3] = 0;
-                }
-            }
-        } else if (mode === 'black') {
-            // Near-white → transparent; dark pixels → white (for white-on-black printing)
-            for (let i = 0; i < data.length; i += 4) {
-                if (data[i + 3] < 10) continue;
-                const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
-                if (avg > 200) {
-                    data[i + 3] = 0;
-                } else {
-                    data[i] = 255;
-                    data[i + 1] = 255;
-                    data[i + 2] = 255;
-                    data[i + 3] = 255;
                 }
             }
         }
@@ -127,10 +116,18 @@ const DesignCanvas = ({
         img.crossOrigin = 'anonymous';
         img.onload = () => {
             const processed = processImageForColor(img, colorKey);
-            processed.onload = () => {
-                processedCacheRef.current[colorKey] = { url, img: processed, naturalW: img.naturalWidth, naturalH: img.naturalHeight };
-                onReady?.(img); // pass original for dimension check
+
+            const store = (finalImg) => {
+                processedCacheRef.current[colorKey] = { url, img: finalImg, naturalW: img.naturalWidth, naturalH: img.naturalHeight };
+                onReady?.(img); // pass original for dimension/auto-fit
             };
+
+            if (processed === img) {
+                // black mode — returned as-is, already loaded
+                store(img);
+            } else {
+                processed.onload = () => store(processed);
+            }
         };
         img.onerror = () => {
             processedCacheRef.current[colorKey] = null;
