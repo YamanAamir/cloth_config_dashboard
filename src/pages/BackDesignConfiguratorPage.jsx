@@ -273,15 +273,13 @@ const BackDesignConfiguratorPage = () => {
                 imageLayout: layout,
                 baseDesignId: selectedDesignId,
             }));
-            // Save to the correct key based on active color
-            if (color === 'black') {
-                fd.append('configuredDesign_2', blob, `${fileName}_black_configured.png`);
-                fd.append('backDesign_2', blob, `${fileName}_black_base.png`); // Corrected field name
-                fd.append('designColor_2', 'black');
+            // Save to the correct key based on which source file was loaded (currentImageSource)
+            if (currentImageSource === 'file_path_2') {
+                fd.append('configuredDesign_2', blob, `${fileName}_dark_configured.png`);
+                fd.append('designColor_2', color);
             } else {
-                fd.append('configuredDesign', blob, `${fileName}_white_configured.png`);
-                fd.append('backDesign', blob, `${fileName}_white_base.png`); // Corrected field name
-                fd.append('designColor', 'white');
+                fd.append('configuredDesign', blob, `${fileName}_light_configured.png`);
+                fd.append('designColor', color);
             }
 
             const res = await editMyBackDesign(designId, fd);

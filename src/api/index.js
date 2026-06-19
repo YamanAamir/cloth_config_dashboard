@@ -33,8 +33,6 @@
 
     const handleUnauthorized = (error) => {
         if (error?.response?.status === 401) {
-            console.log("Session expired. Logging out...");
-            // Only clear current session token, keep other role tokens
             const tokenKey = localStorage.getItem('current_token_key');
             if (tokenKey) localStorage.removeItem(tokenKey);
             localStorage.removeItem("current_token_key");

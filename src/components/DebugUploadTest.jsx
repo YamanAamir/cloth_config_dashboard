@@ -9,35 +9,25 @@ const DebugUploadTest = () => {
     const [selectedFile, setSelectedFile] = useState(null);
 
     const handleFileSelect = (file) => {
-        console.log('🔥 DEBUG: File selected in test component:', {
-            name: file.name,
-            type: file.type,
-            size: file.size,
-            lastModified: file.lastModified
-        });
+
 
         // Simple validation
         if (!file.type.startsWith('image/')) {
-            console.log('❌ DEBUG: Not an image file');
             message.error('Please select an image file');
             return false;
         }
 
         if (file.size > 5 * 1024 * 1024) {
-            console.log('❌ DEBUG: File too large');
             message.error('File too large (max 5MB)');
             return false;
         }
-
-        console.log('✅ DEBUG: File validation passed');
         setSelectedFile(file);
         message.success(`File selected: ${file.name}`);
-        
+
         return false; // Prevent automatic upload
     };
 
     const handleClear = () => {
-        console.log('🧹 DEBUG: Clearing selection');
         setSelectedFile(null);
     };
 
@@ -58,13 +48,13 @@ const DebugUploadTest = () => {
                 }}
             >
                 <p className="ant-upload-drag-icon">
-                    <InboxOutlined style={{ 
+                    <InboxOutlined style={{
                         fontSize: '48px',
                         color: selectedFile ? '#52c41a' : '#d9d9d9'
                     }} />
                 </p>
                 <p className="ant-upload-text">
-                    {selectedFile 
+                    {selectedFile
                         ? `✅ Selected: ${selectedFile.name}`
                         : 'Click or drag image here'
                     }
@@ -75,28 +65,27 @@ const DebugUploadTest = () => {
             </Dragger>
 
             {selectedFile && (
-                <div style={{ 
-                    padding: '12px', 
-                    background: '#f6ffed', 
+                <div style={{
+                    padding: '12px',
+                    background: '#f6ffed',
                     border: '1px solid #b7eb8f',
                     borderRadius: '6px',
                     marginBottom: '16px'
                 }}>
-                    <Text strong>Selected File Details:</Text><br/>
-                    <Text>Name: {selectedFile.name}</Text><br/>
-                    <Text>Type: {selectedFile.type}</Text><br/>
-                    <Text>Size: {(selectedFile.size / 1024 / 1024).toFixed(2)} MB</Text><br/>
+                    <Text strong>Selected File Details:</Text><br />
+                    <Text>Name: {selectedFile.name}</Text><br />
+                    <Text>Type: {selectedFile.type}</Text><br />
+                    <Text>Size: {(selectedFile.size / 1024 / 1024).toFixed(2)} MB</Text><br />
                     <Text>Last Modified: {new Date(selectedFile.lastModified).toLocaleString()}</Text>
                 </div>
             )}
 
             <div>
-                <Button 
-                    type="primary" 
+                <Button
+                    type="primary"
                     disabled={!selectedFile}
                     style={{ marginRight: '8px' }}
                     onClick={() => {
-                        console.log('🚀 DEBUG: Test upload button clicked');
                         message.info('Test upload would happen here');
                     }}
                 >

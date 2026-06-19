@@ -100,24 +100,18 @@ const UploadFilesPage = () => {
     }, [myClass]);
 
     const handleSimpleUpload = async (formData) => {
-        console.log('🎯 handleSimpleUpload called');
-        console.log('📦 FormData received:', formData);
-        console.log('🏷️ Upload type:', uploadType);
 
         setUploading(true);
         try {
             let response;
             if (uploadType === 'logo') {
-                console.log('📤 Uploading logo...');
                 response = await uploadLogo(formData);
                 message.success('Logo uploaded successfully!');
             } else {
-                console.log('📤 Uploading back design...');
                 response = await uploadBackDesign(formData);
                 message.success('Back design uploaded successfully!');
             }
 
-            console.log('✅ Upload response:', response);
             setUploadModalOpen(false);
             fetchMyLibrary();
         } catch (error) {

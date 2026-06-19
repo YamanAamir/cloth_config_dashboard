@@ -11,26 +11,18 @@ const ImageUploadTest = () => {
     const [preview, setPreview] = useState(null);
 
     const handleFileSelect = (file) => {
-        console.log('File selected:', {
-            name: file.name,
-            type: file.type,
-            size: file.size,
-            lastModified: file.lastModified
-        });
+       
 
-        // Validate file type
         if (!file.type.startsWith('image/')) {
             message.error('Please select an image file');
             return false;
         }
 
-        // Validate file size (5MB max)
         if (file.size > 5 * 1024 * 1024) {
             message.error('File size must be less than 5MB');
             return false;
         }
 
-        // Create preview
         const reader = new FileReader();
         reader.onload = (e) => {
             setPreview(e.target.result);
@@ -40,7 +32,7 @@ const ImageUploadTest = () => {
         setSelectedFile(file);
         message.success(`File selected: ${file.name}`);
         
-        return false; // Prevent automatic upload
+        return false;
     };
 
     const clearSelection = () => {

@@ -888,8 +888,7 @@ const TemplateEditorPage = () => {
                                 setMode('advanced'); // Switch to advanced mode if canvas elements exist
                             }
                         } catch (error) {
-                            console.log('Could not parse design_json, using HTML mode');
-                            setMode('html');
+                               setMode('html');
                         }
                     } else {
                         // No design_json, use HTML mode

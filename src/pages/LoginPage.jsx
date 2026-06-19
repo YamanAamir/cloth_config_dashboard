@@ -16,7 +16,7 @@ const LoginPage = () => {
         setLoading(true);
         try {
             const { data } = await loginUser({ email: values.username, password: values.password });
-            console.log(data);
+        
 
             if (data.token) {
                 const userObj = data.data.user || { name: 'Admin', email: values.username };

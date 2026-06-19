@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from "react";
-import { Modal, Button, Space, Tooltip, Alert, Typography, Spin } from "antd";
+import { Modal, Button, Space, Tooltip, Alert, Typography } from "antd";
 
 const GARMENTS = [
     {
@@ -77,7 +77,7 @@ const PreviewModal = ({ open, onClose, canvasRef, designColor = 'white' }) => {
         const logMsg = msg.length > 100
             ? `${msg.substring(0, 80)}... [base64 data, ${Math.round(msg.length / 1024)}KB]`
             : msg;
-        console.log('[PostMessage →]', logMsg);
+      
         iframeRef.current?.contentWindow?.postMessage(msg, "*");
     };
 
@@ -172,7 +172,32 @@ const PreviewModal = ({ open, onClose, canvasRef, designColor = 'white' }) => {
 
         return offCanvas.toDataURL("image/png");
     };
+    const invertTexture = (base64, cb) => {
+        const img = new Image();
 
+        img.onload = () => {
+            const c = document.createElement("canvas");
+            c.width = img.width;
+            c.height = img.height;
+
+            const ctx = c.getContext("2d");
+            ctx.drawImage(img, 0, 0);
+
+            const data = ctx.getImageData(0, 0, c.width, c.height);
+
+            for (let i = 0; i < data.data.length; i += 4) {
+                data.data[i] = 255 - data.data[i];
+                data.data[i + 1] = 255 - data.data[i + 1];
+                data.data[i + 2] = 255 - data.data[i + 2];
+                data.data[i + 3] = 255;
+            }
+
+            ctx.putImageData(data, 0, 0);
+            cb(c.toDataURL("image/png"));
+        };
+
+        img.src = base64;
+    };
     // Accept optional color override so callers can pass the latest value
     // and avoid stale closure issues (e.g. inside useEffect handlers)
     const sendDesign = (garment, colorOverride) => {
@@ -182,34 +207,46 @@ const PreviewModal = ({ open, onClose, canvasRef, designColor = 'white' }) => {
         const g = garment || GARMENTS.find((item) => item.key === garmentType);
         if (!g) return;
 
-        // Use the explicitly passed color, or fall back to the prop
         const activeColor = colorOverride !== undefined ? colorOverride : designColor;
 
         setSending(true);
-        const scale = 3;
 
-        // Use export canvas with white background if available
         const exportCanvas = canvas.getExportCanvas ? canvas.getExportCanvas() : canvas;
 
-        console.log('[sendDesign] designColor:', activeColor, '| garment:', g.prefix);
+        // Downscale to max 1024px — canvas is A3 (3508×4961), scale=3 was 10k+ px
+        // 1024px is plenty for 3D preview quality and reduces data 10x
+        const MAX_PX = 1024;
+        const srcW = exportCanvas.width;
+        const srcH = exportCanvas.height;
+        const ratio = Math.min(MAX_PX / srcW, MAX_PX / srcH, 1);
+        const dstW = Math.round(srcW * ratio);
+        const dstH = Math.round(srcH * ratio);
 
+        const scaled = document.createElement('canvas');
+        scaled.width = dstW;
+        scaled.height = dstH;
+        const sctx = scaled.getContext('2d');
+        sctx.imageSmoothingEnabled = true;
+        sctx.imageSmoothingQuality = 'high';
+        sctx.drawImage(exportCanvas, 0, 0, dstW, dstH);
+
+       
         if (activeColor === 'black') {
-            // Black garment → white print → send white opacity map only
-            const opacity = createOpacityTexture(exportCanvas, scale);
-            sendToIframe(`${g.prefix}:back_white_opacity: ${opacity}`);
+            const opacity = createOpacityTexture(scaled, 1);
+            invertTexture(opacity, (invOpacity) => {
+                sendToIframe(`${g.prefix}:back_white_diffuse: ${invOpacity}`);
+                sendToIframe(`${g.prefix}:back_white_opacity: ${invOpacity}`);
+                setTimeout(() => setSending(false), 500);
+            });
         } else if (activeColor === 'white') {
-            // White garment → black print → send black diffuse + opacity
-            const diffuse = exportHighResCanvas(exportCanvas, scale);
-            const opacity = createOpacityTexture(exportCanvas, scale);
+            const diffuse = exportHighResCanvas(scaled, 1);
+            const opacity = createOpacityTexture(scaled, 1);
             sendToIframe(`${g.prefix}:back_black_diffuse: ${diffuse}`);
             sendToIframe(`${g.prefix}:back_black_opacity: ${opacity}`);
+            setTimeout(() => setSending(false), 500);
         } else {
-            // Normal garment → original print → send normal diffuse
-            // const diffuse = exportHighResCanvas(exportCanvas, scale);
-            // sendToIframe(`${g.prefix}:back_normal_diffuse: ${diffuse}`);
+            setSending(false);
         }
-
-        setTimeout(() => setSending(false), 500);
     };
 
     // Keep a ref so the app:ready handler always reads the latest designColor
@@ -217,8 +254,6 @@ const PreviewModal = ({ open, onClose, canvasRef, designColor = 'white' }) => {
     const designColorRef = useRef(designColor);
     useEffect(() => {
         designColorRef.current = designColor;
-        console.log("coloooooor", designColor);
-
     }, [designColor]);
 
     useEffect(() => {
@@ -263,9 +298,14 @@ const PreviewModal = ({ open, onClose, canvasRef, designColor = 'white' }) => {
         if (open) {
             setGarmentType("tshirt");
             setIsAppReady(false);
-            // Default to first color of the correct palette
+            // Default garment color matches print type:
+            // dark garment (black designColor) → black garment
+            // light garment (white designColor) → white garment
+            const defaultGarment = designColor === 'black' ? 'black' : 'white';
             const palette = COLORS[designColor] || COLORS.white;
-            setSelectedColor(palette[0].key);
+            // Use palette's first color, but prefer the matching garment color if available
+            const paletteMatch = palette.find(c => c.key === defaultGarment);
+            setSelectedColor(paletteMatch ? paletteMatch.key : palette[0].key);
         }
     }, [open, designColor]);
 
@@ -340,26 +380,50 @@ const PreviewModal = ({ open, onClose, canvasRef, designColor = 'white' }) => {
             </div>
 
             <div style={{ position: "relative" }}>
-                {!isAppReady && (
+                {/* Show loader until app is ready AND design has been sent */}
+                {/* {(!isAppReady || sending) && (
                     <div
                         style={{
                             position: "absolute",
                             inset: 0,
                             display: "flex",
+                            flexDirection: "column",
                             alignItems: "center",
                             justifyContent: "center",
-                            background: "#f5f5f5",
+                            background: "#ffffff",
                             zIndex: 1,
+                            gap: 20,
                         }}
                     >
-                        <Space direction="vertical" align="center">
-                            <Spin size="large" />
-                            <Typography.Text type="secondary">
-                                Loading 3D preview...
-                            </Typography.Text>
-                        </Space>
+                        <img
+                            src="/clothLogo.png"
+                            alt="ClothConfig"
+                            style={{ width: 220, height: 120, objectFit: 'contain', opacity: 0.85 }}
+                        />
+                        <div style={{ width: 200 }}>
+                            <div style={{
+                                height: 3,
+                                borderRadius: 2,
+                                background: '#e0e0e0',
+                                overflow: 'hidden',
+                            }}>
+                                <div style={{
+                                    height: '100%',
+                                    borderRadius: 2,
+                                    background: '#00b96b',
+                                    animation: 'previewLoadingBar 1.4s ease-in-out infinite',
+                                }} />
+                            </div>
+                        </div>
+                        <style>{`
+                            @keyframes previewLoadingBar {
+                                0%   { width: 0%;   margin-left: 0; }
+                                50%  { width: 60%;  margin-left: 20%; }
+                                100% { width: 0%;   margin-left: 100%; }
+                            }
+                        `}</style>
                     </div>
-                )}
+                )} */}
 
                 <iframe
                     ref={iframeRef}
@@ -367,9 +431,11 @@ const PreviewModal = ({ open, onClose, canvasRef, designColor = 'white' }) => {
                     src="https://playcanv.as/e/p/1b1eadeb/"
                     style={{
                         width: "100%",
-                        height: "calc(90vh - 120px)",
+                        height: "calc(90vh - 160px)",
                         border: "none",
                         display: "block",
+                        // Keep iframe mounted but invisible during load so postMessage works
+                        // visibility: 'visible',
                     }}
                     allow="autoplay"
                     title="3D Garment Preview"

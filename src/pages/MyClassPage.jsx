@@ -115,8 +115,7 @@ const MyClassPageSimple = () => {
             if (classData?.id) {
                 try {
                     const studentCountRes = await getClassRepStudentCount(classData.id);
-                    console.log('Student count response:', studentCountRes.data); // Debug log
-                    setStudentCount(studentCountRes.data?.data);
+                     setStudentCount(studentCountRes.data?.data);
                 } catch (error) {
                     console.error('Student count error:', error); // Debug log
                     setStudentCount(null);
