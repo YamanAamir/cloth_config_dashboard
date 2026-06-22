@@ -256,7 +256,7 @@ const PreviewModal = ({ open, onClose, canvasRef, designColor = 'white', configu
                 sctx.imageSmoothingQuality = 'high';
 
                // Fit image inside 60% of the big canvas while preserving aspect ratio
-                const TARGET_PERCENT = 0.5;
+                const TARGET_PERCENT = 0.9;
                 const targetSize = BIG_CANVAS * TARGET_PERCENT;
                 const ratio = Math.min(targetSize / img.naturalWidth, targetSize / img.naturalHeight);
                 const dw = img.naturalWidth * ratio;
