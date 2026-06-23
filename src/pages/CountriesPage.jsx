@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
     Table, Button, Card, Typography, Space, Modal,
     Form, Input, message, Popconfirm, Upload, Image, Empty, Select, Tag,
-    Switch, Checkbox
+    Switch, Checkbox, Tabs
 } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, InboxOutlined, GlobalOutlined } from '@ant-design/icons';
 import {
@@ -12,6 +12,7 @@ import {
 import { getUploadsUrl, getBackDesignDisplayUrl } from '../utils/constants';
 
 const { Title, Text } = Typography;
+const { TabPane } = Tabs;
 
 const CountriesPage = () => {
     const [countries, setCountries] = useState([]);
@@ -270,13 +271,36 @@ const CountriesPage = () => {
                 ) : (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
                         {designs.map(d => (
-                            <div key={d.id} style={{ width: 140, textAlign: 'center', position: 'relative' }}>
+                            <div key={d.id} style={{ width: 160, textAlign: 'center', position: 'relative', border: '1px solid #f0f0f0', padding: 8, borderRadius: 8, background: '#fff' }}>
                                 <div style={{ position: 'relative' }}>
-                                    <Image
-                                        src={getBackDesignDisplayUrl(d)}
-                                        width={100} height={100}
-                                        style={{ objectFit: 'contain', borderRadius: 6, border: '1px solid #f0f0f0', background: '#fff' }}
-                                    />
+                                    <Tabs size="small" defaultActiveKey="white" style={{ width: '100%' }} tabBarStyle={{ marginBottom: 4 }}>
+                                        <TabPane tab="White" key="white">
+                                            <div style={{ background: '#fafafa', borderRadius: 4, padding: 4, textAlign: 'center' }}>
+                                                <Image
+                                                    width={100} height={100}
+                                                    src={getBackDesignDisplayUrl(d)}
+                                                    fallback="https://via.placeholder.com/100?text=—"
+                                                    style={{ objectFit: 'contain' }}
+                                                />
+                                            </div>
+                                        </TabPane>
+                                        <TabPane tab="Black" key="black">
+                                            <div style={{ background: '#1a1a1a', borderRadius: 4, padding: 4, textAlign: 'center' }}>
+                                                {d.file_path_2 ? (
+                                                    <Image
+                                                        width={100} height={100}
+                                                        src={getUploadsUrl(d.file_path_2)}
+                                                        fallback="https://via.placeholder.com/100?text=—"
+                                                        style={{ objectFit: 'contain' }}
+                                                    />
+                                                ) : (
+                                                    <div style={{ height: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                        <Typography.Text style={{ color: '#555', fontSize: 12 }}>—</Typography.Text>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </TabPane>
+                                    </Tabs>
                                     <Button
                                         type="text"
                                         danger
@@ -284,8 +308,8 @@ const CountriesPage = () => {
                                         icon={<DeleteOutlined />}
                                         style={{
                                             position: 'absolute',
-                                            top: 2,
-                                            right: 2,
+                                            top: 0,
+                                            right: 0,
                                             background: 'rgba(255,255,255,0.9)',
                                             border: '1px solid #ff4d4f',
                                             borderRadius: 4,
@@ -293,7 +317,8 @@ const CountriesPage = () => {
                                             height: 24,
                                             display: 'flex',
                                             alignItems: 'center',
-                                            justifyContent: 'center'
+                                            justifyContent: 'center',
+                                            zIndex: 10
                                         }}
                                         onClick={() => handleDeleteLibraryDesign(d.id, d.name, record.id)}
                                     />
