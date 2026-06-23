@@ -37,7 +37,7 @@ const isVirginLayout = (l) =>
 
 const DesignCanvas = ({
     setPreviewOpen, imagePreviewWhite, imagePreviewBlack, textElements, designColor,
-    isDragging, setIsDragging,
+    isDragging, loading, setIsDragging,
     selectedTextId, setSelectedTextId,
     dragOffset, setDragOffset,
     setTextElements, canvasRef,
@@ -345,7 +345,7 @@ const DesignCanvas = ({
         });
 
         // Convert to black/white mask (white = visible, black = transparent)
-        const imgData = octx.getImageData(0, 0, CANVAS_W*2, CANVAS_H*2);
+        const imgData = octx.getImageData(0, 0, CANVAS_W * 2, CANVAS_H * 2);
         const d = imgData.data;
         for (let i = 0; i < d.length; i += 4) {
             const a = d[i + 3];
@@ -512,7 +512,7 @@ const DesignCanvas = ({
                     </Typography.Text>
                 )}
                 <Button type="default" icon={<EyeOutlined />} disabled={!imagePreviewWhite && !imagePreviewBlack} onClick={() => setPreviewOpen(true)}>
-                    Preview in 3D
+                    {loading ? "Gemmer..." : "Preview in 3D"}
                 </Button>
             </div>
             <canvas

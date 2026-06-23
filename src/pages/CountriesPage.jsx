@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import {
     Table, Button, Card, Typography, Space, Modal,
     Form, Input, message, Popconfirm, Upload, Image, Empty, Select, Tag,
-    Switch
+    Switch, Checkbox
 } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, InboxOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, InboxOutlined, GlobalOutlined } from '@ant-design/icons';
 import {
     getAllCountries, createCountry, updateCountry, deleteCountry, permanentDeleteCountry,
     uploadLibraryDesign, getLibraryDesigns, deleteLibraryDesign, toggleCountryStatus, updateLibraryDesign
@@ -25,23 +25,21 @@ const CountriesPage = () => {
     const [designsMap, setDesignsMap] = useState({});
     const [loadingDesigns, setLoadingDesigns] = useState({});
     const [expandedRows, setExpandedRows] = useState([]);
+    const [uploadWhiteFile, setUploadWhiteFile] = useState(null);
+    const [uploadWhitePreview, setUploadWhitePreview] = useState(null);
 
+    const [uploadBlackFile, setUploadBlackFile] = useState(null);
+    const [uploadBlackPreview, setUploadBlackPreview] = useState(null);
+
+    const [adminForAllStudents, setAdminForAllStudents] = useState(false);
     // Upload modal
     const [uploadModalOpen, setUploadModalOpen] = useState(false);
-    const [selectedFile, setSelectedFile] = useState(null);
-    const [selectedPreview, setSelectedPreview] = useState(null);
     const [uploading, setUploading] = useState(false);
     const [uploadForm] = Form.useForm();
-    const [uploadDesignColor, setUploadDesignColor] = useState('white');
 
     // Per-design color editing
     const [updatingColorId, setUpdatingColorId] = useState(null);
 
-    const DESIGN_COLOR_OPTIONS = [
-        { value: 'white', label: 'White', sub: 'Black print' },
-        { value: 'black', label: 'Black', sub: 'White print' },
-        // { value: 'normal', label: 'Normal', sub: 'Original print' },
-    ];
 
     const fetchCountries = async () => {
         setLoading(true);
@@ -64,9 +62,9 @@ const CountriesPage = () => {
         finally { setLoadingDesigns(prev => ({ ...prev, [countryId]: false })); }
     };
 
-    useEffect(() => { fetchCountries(); }, []);
-    useEffect(() => { fetchCountries(); }, [pagination.current, pagination.limit, pagination.search]);
-
+    useEffect(() => {
+        fetchCountries();
+    }, [pagination.current, pagination.limit, pagination.search]);
     const handleSaveCountry = async (values) => {
         try {
             if (editingCountry) {
@@ -95,13 +93,7 @@ const CountriesPage = () => {
         }
     };
 
-    const handleDelete = async (id) => {
-        try {
-            await deleteCountry(id);
-            message.success('Country deleted');
-            fetchCountries();
-        } catch { message.error('Delete failed'); }
-    };
+   
 
     const handlePermanentDelete = async (id, name) => {
         Modal.confirm({
@@ -171,42 +163,61 @@ const CountriesPage = () => {
         });
     };
 
-    const handleFileSelect = (file) => {
-        if (!file.type.startsWith('image/')) { message.error('Select an image'); return false; }
-        if (selectedPreview) URL.revokeObjectURL(selectedPreview);
-        setSelectedFile(file);
-        setSelectedPreview(URL.createObjectURL(file));
-        return false;
-    };
 
     const handleUploadDesign = async (values) => {
-        if (!selectedFile) { message.error('Select a design file'); return; }
+        if (!uploadWhiteFile) {
+            message.error('Select the White design file');
+            return;
+        }
+
+        if (!uploadBlackFile) {
+            message.error('Select the Black design file');
+            return;
+        }
         setUploading(true);
+
         try {
             const formData = new FormData();
             formData.append('name', values.name);
             formData.append('country_id', values.country_id);
-            formData.append('designColor', uploadDesignColor);
-            formData.append('design', selectedFile);
+
+            // white version
+            formData.append('design', uploadWhiteFile);
+            formData.append('designColor', 'white');
+
+            // black version
+            formData.append('design_2', uploadBlackFile);
+            formData.append('designColor_2', 'black');
+
+            // optional flag
+            formData.append('forAllStudents', adminForAllStudents ? 'true' : 'false');
+
             await uploadLibraryDesign(formData);
+
             message.success('Design uploaded');
+
             setUploadModalOpen(false);
             uploadForm.resetFields();
-            setSelectedFile(null);
-            setSelectedPreview(null);
-            setUploadDesignColor('white');
+
+            setUploadWhiteFile(null);
+            setUploadWhitePreview(null);
+            setUploadBlackFile(null);
+            setUploadBlackPreview(null);
+            setAdminForAllStudents(false);
 
             // Ensure the country row stays expanded
             if (!expandedRows.includes(values.country_id)) {
                 setExpandedRows(prev => [...prev, values.country_id]);
             }
 
-            // Force refetch the designs for this country
+            // Force refetch
             await fetchDesignsForCountry(values.country_id, true);
 
         } catch (error) {
             message.error(error.response?.data?.message || 'Upload failed');
-        } finally { setUploading(false); }
+        } finally {
+            setUploading(false);
+        }
     };
 
     const handleUpdateDesignColor = async (designId, newColor, countryId) => {
@@ -237,7 +248,18 @@ const CountriesPage = () => {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                     <Text strong style={{ fontSize: 13 }}>Library Designs — {record.name}</Text>
                     <Button size="small" type="primary" icon={<PlusOutlined />}
-                        onClick={() => { uploadForm.setFieldsValue({ country_id: record.id }); setUploadModalOpen(true); }}>
+                        onClick={() => {
+                            uploadForm.resetFields();
+                            uploadForm.setFieldsValue({ country_id: record.id });
+
+                            setUploadWhiteFile(null);
+                            setUploadWhitePreview(null);
+                            setUploadBlackFile(null);
+                            setUploadBlackPreview(null);
+                            setAdminForAllStudents(false);
+
+                            setUploadModalOpen(true);
+                        }}>
                         Upload Design
                     </Button>
                 </div>
@@ -444,50 +466,203 @@ const CountriesPage = () => {
                 </Form>
             </Modal>
 
-            <Modal title="Upload Library Design" open={uploadModalOpen}
-                onCancel={() => { setUploadModalOpen(false); uploadForm.resetFields(); setSelectedFile(null); setSelectedPreview(null); setUploadDesignColor('white'); }}
-                footer={null} destroyOnHidden width={600}>
-                <Form form={uploadForm} layout="vertical" onFinish={handleUploadDesign} style={{ marginTop: 16 }}>
-                    <Form.Item name="name" label="Design Name" rules={[{ required: true }]}>
+            <Modal
+                title="Upload Library Design"
+                open={uploadModalOpen}
+                onCancel={() => {
+                    setUploadModalOpen(false);
+                    uploadForm.resetFields();
+
+                    setUploadWhiteFile(null);
+                    setUploadWhitePreview(null);
+
+                    setUploadBlackFile(null);
+                    setUploadBlackPreview(null);
+
+                    setAdminForAllStudents(false);
+                }}
+                footer={null}
+                destroyOnHidden
+                width={620}
+            >
+                <Form
+                    form={uploadForm}
+                    layout="vertical"
+                    onFinish={handleUploadDesign}
+                    style={{ marginTop: 16 }}
+                >
+                    <Form.Item
+                        name="name"
+                        label="Design Name"
+                        rules={[{ required: true, message: "Please enter design name" }]}
+                    >
                         <Input placeholder="e.g. Rome Colosseum" />
                     </Form.Item>
-                    <Form.Item name="country_id" label="Country" rules={[{ required: true }]}>
-                        <Select placeholder="Select country" options={countries.map(c => ({ value: c.id, label: c.name }))} />
+
+                    <Form.Item
+                        name="country_id"
+                        label="Country"
+                        rules={[{ required: true, message: "Please select country" }]}
+                    >
+                        <Select
+                            placeholder="Select country"
+                            options={countries.map((c) => ({
+                                value: c.id,
+                                label: c.name,
+                            }))}
+                        />
                     </Form.Item>
-                    <Form.Item label="Clothing Color" required>
-                        <Space>
-                            {DESIGN_COLOR_OPTIONS.map(opt => (
-                                <div
-                                    key={opt.value}
-                                    onClick={() => setUploadDesignColor(opt.value)}
-                                    style={{
-                                        cursor: 'pointer',
-                                        padding: '8px 16px',
-                                        borderRadius: 8,
-                                        border: uploadDesignColor === opt.value ? '2px solid #00b96b' : '2px solid #f0f0f0',
-                                        background: uploadDesignColor === opt.value ? '#f0fff8' : '#fafafa',
-                                        textAlign: 'center',
-                                        minWidth: 80,
-                                    }}
-                                >
-                                    <div style={{ fontSize: 13, fontWeight: 500 }}>{opt.label}</div>
-                                    <div style={{ fontSize: 11, color: '#888' }}>{opt.sub}</div>
-                                </div>
-                            ))}
-                        </Space>
-                    </Form.Item>
-                    <Form.Item label="Design File" required>
-                        <Upload beforeUpload={handleFileSelect} showUploadList={false} accept="image/*">
-                            <Button type="dashed" icon={<InboxOutlined />} block style={{ height: 80 }}>
-                                {selectedFile ? `✓ ${selectedFile.name}` : 'Click to select image'}
+
+                    {/* White design file */}
+                    <Form.Item label="White Garment Design (Black print) *" required>
+                        <Upload
+                            beforeUpload={(file) => {
+                                setUploadWhiteFile(file);
+                                setUploadWhitePreview(URL.createObjectURL(file));
+                                return false;
+                            }}
+                            showUploadList={false}
+                            accept="image/*"
+                        >
+                            <Button
+                                type="dashed"
+                                icon={<InboxOutlined />}
+                                block
+                                style={{ height: 70 }}
+                            >
+                                {uploadWhiteFile
+                                    ? `✓ ${uploadWhiteFile.name}`
+                                    : "Click to select white version"}
                             </Button>
                         </Upload>
-                        {selectedPreview && <img src={selectedPreview} alt="preview" style={{ marginTop: 8, maxWidth: '100%', maxHeight: 200, objectFit: 'contain', borderRadius: 6 }} />}
+
+                        {uploadWhitePreview && (
+                            <img
+                                src={uploadWhitePreview}
+                                alt="white preview"
+                                style={{
+                                    marginTop: 8,
+                                    maxWidth: "100%",
+                                    maxHeight: 120,
+                                    objectFit: "contain",
+                                    borderRadius: 6,
+                                    background: "#fafafa",
+                                    padding: 4,
+                                }}
+                            />
+                        )}
                     </Form.Item>
-                    <Form.Item style={{ textAlign: 'right', marginBottom: 0 }}>
+
+                    {/* Black design file */}
+                    <Form.Item label="Black Garment Design (White print) *" required>
+                        <Upload
+                            beforeUpload={(file) => {
+                                setUploadBlackFile(file);
+                                setUploadBlackPreview(URL.createObjectURL(file));
+                                return false;
+                            }}
+                            showUploadList={false}
+                            accept="image/*"
+                        >
+                            <Button
+                                type="dashed"
+                                icon={<InboxOutlined />}
+                                block
+                                style={{ height: 70 }}
+                            >
+                                {uploadBlackFile
+                                    ? `✓ ${uploadBlackFile.name}`
+                                    : "Click to select black version"}
+                            </Button>
+                        </Upload>
+
+                        {uploadBlackPreview && (
+                            <div
+                                style={{
+                                    marginTop: 8,
+                                    background: "#1a1a1a",
+                                    padding: 8,
+                                    borderRadius: 6,
+                                    textAlign: "center",
+                                }}
+                            >
+                                <img
+                                    src={uploadBlackPreview}
+                                    alt="black preview"
+                                    style={{
+                                        maxWidth: "100%",
+                                        maxHeight: 120,
+                                        objectFit: "contain",
+                                    }}
+                                />
+                            </div>
+                        )}
+                    </Form.Item>
+
+                    <Form.Item label="For alle elever (Studietur bibliotek)">
+                        <div
+                            style={{
+                                padding: "12px 16px",
+                                borderRadius: 8,
+                                border: adminForAllStudents
+                                    ? "1.5px solid #7c3aed"
+                                    : "1px solid #f0f0f0",
+                                background: adminForAllStudents ? "#f5f0ff" : "#fafafa",
+                                cursor: "pointer",
+                            }}
+                            onClick={() => setAdminForAllStudents((v) => !v)}
+                        >
+                            <Checkbox
+                                checked={adminForAllStudents}
+                                onChange={(e) => setAdminForAllStudents(e.target.checked)}
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <Space size={6}>
+                                    <GlobalOutlined style={{ color: "#7c3aed" }} />
+                                    <Typography.Text strong style={{ fontSize: 13 }}>
+                                        For alle elever
+                                    </Typography.Text>
+                                </Space>
+                            </Checkbox>
+
+                            <div
+                                style={{
+                                    marginTop: 4,
+                                    paddingLeft: 24,
+                                    fontSize: 12,
+                                    color: "#888",
+                                }}
+                            >
+                                Markér dette for at tilføje designet til studietur-biblioteket
+                                (is_library: true)
+                            </div>
+                        </div>
+                    </Form.Item>
+
+                    <Form.Item style={{ textAlign: "right", marginBottom: 0 }}>
                         <Space>
-                            <Button onClick={() => setUploadModalOpen(false)}>Cancel</Button>
-                            <Button type="primary" htmlType="submit" loading={uploading} disabled={!selectedFile}>Upload</Button>
+                            <Button
+                                onClick={() => {
+                                    setUploadModalOpen(false);
+                                    uploadForm.resetFields();
+                                    setUploadWhiteFile(null);
+                                    setUploadWhitePreview(null);
+                                    setUploadBlackFile(null);
+                                    setUploadBlackPreview(null);
+                                    setAdminForAllStudents(false);
+                                }}
+                            >
+                                Cancel
+                            </Button>
+
+                            <Button
+                                type="primary"
+                                htmlType="submit"
+                                loading={uploading}
+                                disabled={!uploadWhiteFile || !uploadBlackFile}
+                            >
+                                Upload
+                            </Button>
                         </Space>
                     </Form.Item>
                 </Form>

@@ -449,28 +449,30 @@ const BackDesignConfiguratorPage = () => {
     };
 
     const handleSubmit = async () => {
-        if (!selectedImage) return message.error('Select an image first');
-        if (textElements.length === 0) return message.warning('Add at least one name');
+        if (!selectedImage) {
+            message.error('Select an image first');
+            return false;
+        }
 
-        // A3 validation for base image dimensions
-        if (selectedImage) {
-            return new Promise((resolve) => {
+        try {
+            // A3 validation
+            const isValid = await new Promise((resolve) => {
                 const img = new Image();
+
                 img.onload = () => {
                     const { width, height } = img;
-
-                    // A3 dimensions at 300 DPI: max 4000 × 5600 pixels
                     const maxWidth = 4000;
                     const maxHeight = 5600;
 
                     if (width > maxWidth || height > maxHeight) {
-                        message.error(`Base design is too large! Maximum size is ${maxWidth} × ${maxHeight} pixels (A3 format). Selected image is ${width} × ${height} pixels. Please select a smaller design.`);
+                        message.error(
+                            `Base design is too large! Maximum size is ${maxWidth} × ${maxHeight}px. Selected image is ${width} × ${height}px.`
+                        );
                         resolve(false);
                         return;
                     }
 
-                    // Proceed with upload if validation passes
-                    performUpload().then(() => resolve(true)).catch(() => resolve(false));
+                    resolve(true);
                 };
 
                 img.onerror = () => {
@@ -480,60 +482,67 @@ const BackDesignConfiguratorPage = () => {
 
                 img.src = URL.createObjectURL(selectedImage);
             });
+
+            if (!isValid) return false;
+
+            await performUpload();
+            return true;
+        } catch (error) {
+            return false;
         }
-        return false;
     };
 
     // Render canvas for a specific color and return a PNG blob
     const renderCanvasForColor = async (color) => {
-    const layout = imageLayouts[color] || { x: 0, y: 0, w: 3508, h: 4961 };
+        const layout = imageLayouts[color] || { x: 0, y: 0, w: 3508, h: 4961 };
 
-    let imageSrc = null;
-    if (selectedDesign) {
-        const path = getImagePath(selectedDesign, color);
-        imageSrc = `${getUploadsUrl(path)}?t=${Date.now()}`;
-    }
+        let imageSrc = null;
+        if (selectedDesign) {
+            const path = getImagePath(selectedDesign, color);
+            imageSrc = `${getUploadsUrl(path)}?t=${Date.now()}`;
+        }
 
-    const exportCanvas = document.createElement('canvas');
-    exportCanvas.width = 3508;
-    exportCanvas.height = 4961;
-    const ctx = exportCanvas.getContext('2d');
+        const exportCanvas = document.createElement('canvas');
+        exportCanvas.width = 3508;
+        exportCanvas.height = 4961;
+        const ctx = exportCanvas.getContext('2d');
 
-    ctx.fillStyle = color === 'black' ? '#000000' : '#ffffff';
-    ctx.fillRect(0, 0, 3508, 4961);
+        ctx.fillStyle = color === 'black' ? '#000000' : '#ffffff';
+        ctx.fillRect(0, 0, 3508, 4961);
 
-    if (imageSrc) {
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        await new Promise((resolve) => {
-            img.onload = () => {
-                ctx.drawImage(img, layout.x, layout.y, layout.w, layout.h);
-                resolve();
-            };
-            img.onerror = resolve;
-            img.src = imageSrc;
+        if (imageSrc) {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            await new Promise((resolve) => {
+                img.onload = () => {
+                    ctx.drawImage(img, layout.x, layout.y, layout.w, layout.h);
+                    resolve();
+                };
+                img.onerror = resolve;
+                img.src = imageSrc;
+            });
+        }
+
+        textElements.forEach(el => {
+            ctx.save();
+            ctx.translate(el.x, el.y);
+            ctx.rotate((el.rotation * Math.PI) / 180);
+            ctx.font = `${el.fontSize}px ${el.fontFamily}`;
+            ctx.fillStyle = color === 'black' ? '#ffffff' : '#000000';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(el.text, 0, 0);
+            ctx.restore();
         });
-    }
 
-    textElements.forEach(el => {
-        ctx.save();
-        ctx.translate(el.x, el.y);
-        ctx.rotate((el.rotation * Math.PI) / 180);
-        ctx.font = `${el.fontSize}px ${el.fontFamily}`;
-        ctx.fillStyle = color === 'black' ? '#ffffff' : '#000000';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(el.text, 0, 0);
-        ctx.restore();
-    });
-
-    return new Promise(resolve => exportCanvas.toBlob(resolve, 'image/png'));
-};
+        return new Promise(resolve => exportCanvas.toBlob(resolve, 'image/png'));
+    };
 
     const performUpload = async () => {
         setUploading(true);
         try {
             let designId = existingConfiguratorDesign?.id;
+
             if (!designId) {
                 const draftRes = await saveConfiguratorState({
                     configurator_state: {
@@ -545,11 +554,11 @@ const BackDesignConfiguratorPage = () => {
                     designColor,
                     name: `configurator_draft_${Date.now()}`,
                 });
+
                 designId = draftRes.data?.data?.id;
                 if (!designId) throw new Error('Failed to create design draft');
             }
 
-            // Render both light and dark versions
             const [lightBlob, darkBlob] = await Promise.all([
                 renderCanvasForColor('white'),
                 renderCanvasForColor('black'),
@@ -557,9 +566,8 @@ const BackDesignConfiguratorPage = () => {
 
             const formData = new FormData();
             const fileName = selectedImage.name.replace(/\.[^/.]+$/, '');
-            formData.append('name', `${fileName}_configured`);
 
-            // Always send both versions
+            formData.append('name', `${fileName}_configured`);
             formData.append('configuredDesign', lightBlob, `${fileName}_light_configured.png`);
             formData.append('designColor', 'white');
             formData.append('configuredDesign_2', darkBlob, `${fileName}_dark_configured.png`);
@@ -570,20 +578,23 @@ const BackDesignConfiguratorPage = () => {
                 designColor,
                 whiteLayout: imageLayouts.white,
                 blackLayout: imageLayouts.black,
-                imageLayout: imageLayouts[designColor], // legacy compat
+                imageLayout: imageLayouts[designColor],
                 baseDesignId: selectedDesignId,
             }));
 
             const res = await editMyBackDesign(designId, formData);
+
             message.success(res.data?.message || 'Saved!');
-            // Keep editor state - don't reset
             setIsEditMode(true);
-            if (res.data?.data) setExistingConfiguratorDesign(res.data.data);
-            // Don't call fetchBackDesigns - it triggers loadState which resets gallery tab
+
+            if (res.data?.data) {
+                setExistingConfiguratorDesign(res.data.data);
+            }
         } catch (err) {
             message.error(err?.response?.data?.message || 'Failed');
+            throw err;
         } finally {
-            setUploading(false);
+            setUploading(false); // ye sahi hai
         }
     };
 
@@ -898,7 +909,7 @@ const BackDesignConfiguratorPage = () => {
                                 type="primary" icon={<SaveOutlined />} onClick={handleSubmit}
                                 block loading={uploading}
                                 style={{ color: 'white' }}
-                                disabled={!selectedImage || textElements.length === 0}
+                                disabled={!selectedImage}
                             >
                                 {uploading ? 'Gemmer...' : (isEditMode ? 'Opdater bagdesign' : 'Indsend bagdesign')}
                             </Button>
@@ -914,6 +925,7 @@ const BackDesignConfiguratorPage = () => {
                                 const success = await handleSubmit();
                                 if (success !== false) setPreviewOpen(true);
                             }}
+                            loading={uploading}
                             imagePreviewWhite={imagePreviewWhite}
                             imagePreviewBlack={imagePreviewBlack}
                             textElements={textElements}
