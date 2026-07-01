@@ -334,7 +334,7 @@ const BackDesignTemplatesPage = () => {
                                     borderColor: selectedFile ? '#00b96b' : '#d9d9d9'
                                 }}
                             >
-                                {selectedFile ? '✓ Template Selected - Click to Change' : 'Click to Select Template'}
+                                {selectedFile ? 'Template Selected - Click to Change' : 'Click to Select Template'}
                             </Button>
                         </Upload>
                         
@@ -367,7 +367,7 @@ const BackDesignTemplatesPage = () => {
                                 />
                             </div>
                             <Typography.Text type="success" style={{ display: 'block', marginTop: 8, fontSize: 12 }}>
-                                ✓ {selectedFile.name}
+                                {selectedFile.name}
                             </Typography.Text>
                         </div>
                     )}

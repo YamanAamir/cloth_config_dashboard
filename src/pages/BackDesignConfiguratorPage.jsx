@@ -866,7 +866,7 @@ const BackDesignConfiguratorPage = () => {
                                                                     </div>
                                                                     <Text strong style={{ fontSize: 13 }}>{idx + 1}. {s.name}</Text>
                                                                 </div>
-                                                                {isAdded && <Text type="success" style={{ fontSize: 11 }}>✓ Tilføjet</Text>}
+                                                                {isAdded && <Text type="success" style={{ fontSize: 11 }}>Tilføjet</Text>}
                                                             </div>
                                                         );
                                                     })}

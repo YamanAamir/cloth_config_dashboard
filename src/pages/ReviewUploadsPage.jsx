@@ -677,7 +677,7 @@ const ReviewUploadsPage = () => {
                         {!uploadPreview && (
                             <Upload beforeUpload={handleFileSelect} showUploadList={false} accept="image/*">
                                 <Button type="dashed" icon={<InboxOutlined />} block style={{ height: 80 }}>
-                                    {uploadFile ? `✓ ${uploadFile.name}` : 'Click to select image'}
+                                    {uploadFile ? `${uploadFile.name}` : 'Click to select image'}
                                 </Button>
                             </Upload>
                         )}
@@ -722,7 +722,7 @@ const ReviewUploadsPage = () => {
                             accept="image/*"
                         >
                             <Button type="dashed" icon={<InboxOutlined />} block style={{ height: 70 }}>
-                                {uploadWhiteFile ? `✓ ${uploadWhiteFile.name}` : 'Click to select white version'}
+                                {uploadWhiteFile ? `${uploadWhiteFile.name}` : 'Click to select white version'}
                             </Button>
                         </Upload>
                         {uploadWhitePreview && (
@@ -743,7 +743,7 @@ const ReviewUploadsPage = () => {
                             accept="image/*"
                         >
                             <Button type="dashed" icon={<InboxOutlined />} block style={{ height: 70 }}>
-                                {uploadBlackFile ? `✓ ${uploadBlackFile.name}` : 'Click to select black version'}
+                                {uploadBlackFile ? `${uploadBlackFile.name}` : 'Click to select black version'}
                             </Button>
                         </Upload>
                         {uploadBlackPreview && (
@@ -832,7 +832,7 @@ const ReviewUploadsPage = () => {
                             showUploadList={false} accept="image/*"
                         >
                             <Button type="dashed" icon={<InboxOutlined />} block style={{ height: 60 }}>
-                                {editWhiteFile ? `✓ ${editWhiteFile.name}` : 'Click to replace white version'}
+                                {editWhiteFile ? `${editWhiteFile.name}` : 'Click to replace white version'}
                             </Button>
                         </Upload>
                     </Form.Item>
@@ -853,7 +853,7 @@ const ReviewUploadsPage = () => {
                             showUploadList={false} accept="image/*"
                         >
                             <Button type="dashed" icon={<InboxOutlined />} block style={{ height: 60 }}>
-                                {editBlackFile ? `✓ ${editBlackFile.name}` : 'Click to replace black version'}
+                                {editBlackFile ? `${editBlackFile.name}` : 'Click to replace black version'}
                             </Button>
                         </Upload>
                     </Form.Item>

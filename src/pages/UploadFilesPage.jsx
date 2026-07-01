@@ -493,7 +493,7 @@ const UploadFilesPage = () => {
                                 <InboxOutlined style={{ fontSize: 28, color: editWhiteFile ? '#52c41a' : '#d9d9d9' }} />
                             </p>
                             <p className="ant-upload-text" style={{ fontSize: 13 }}>
-                                {editWhiteFile ? `✓ ${editWhiteFile.name}` : 'Click or drag to replace white version'}
+                                {editWhiteFile ? `${editWhiteFile.name}` : 'Click or drag to replace white version'}
                             </p>
                         </Dragger>
                     </div>
@@ -519,7 +519,7 @@ const UploadFilesPage = () => {
                                 <InboxOutlined style={{ fontSize: 28, color: editBlackFile ? '#52c41a' : '#d9d9d9' }} />
                             </p>
                             <p className="ant-upload-text" style={{ fontSize: 13 }}>
-                                {editBlackFile ? `✓ ${editBlackFile.name}` : 'Click or drag to replace black version'}
+                                {editBlackFile ? `${editBlackFile.name}` : 'Click or drag to replace black version'}
                             </p>
                         </Dragger>
                     </div>

@@ -58,7 +58,7 @@ const ImageUploadTest = () => {
                     <InboxOutlined style={{ fontSize: '48px', color: selectedFile ? '#52c41a' : '#d9d9d9' }} />
                 </p>
                 <p className="ant-upload-text">
-                    {selectedFile ? '✓ File Selected - Click or drag to change' : 'Click or drag image here'}
+                    {selectedFile ? 'File Selected - Click or drag to change' : 'Click or drag image here'}
                 </p>
                 <p className="ant-upload-hint">
                     Support for JPG, PNG, GIF files up to 5MB

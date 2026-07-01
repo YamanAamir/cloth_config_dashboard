@@ -783,7 +783,7 @@ const MyClassPageSimple = () => {
                             color: selectedFile ? '#52c41a' : undefined,
                             fontWeight: selectedFile ? 'bold' : 'normal'
                         }}>
-                            {selectedFile ? '✓ Fil valgt – Klik eller træk for at skifte' :
+                            {selectedFile ? 'Fil valgt – Klik eller træk for at skifte' :
                                 'Klik eller træk billede hertil for at vælge'}
                         </p>
                         <p className="ant-upload-hint">

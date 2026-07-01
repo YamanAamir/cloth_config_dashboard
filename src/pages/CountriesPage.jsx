@@ -556,7 +556,7 @@ const CountriesPage = () => {
                                 style={{ height: 70 }}
                             >
                                 {uploadWhiteFile
-                                    ? `✓ ${uploadWhiteFile.name}`
+                                    ? `${uploadWhiteFile.name}`
                                     : "Click to select white version"}
                             </Button>
                         </Upload>
@@ -596,7 +596,7 @@ const CountriesPage = () => {
                                 style={{ height: 70 }}
                             >
                                 {uploadBlackFile
-                                    ? `✓ ${uploadBlackFile.name}`
+                                    ? `${uploadBlackFile.name}`
                                     : "Click to select black version"}
                             </Button>
                         </Upload>

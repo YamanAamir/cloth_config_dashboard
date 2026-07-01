@@ -193,7 +193,7 @@ const AdminDesignEditor = ({ onExport }) => {
                             <AntText strong style={{ display: 'block', marginBottom: 8 }}>Upload Design</AntText>
                             <Upload beforeUpload={handleFileSelect} showUploadList={false} accept="image/*">
                                 <Button icon={<InboxOutlined />} block type="dashed">
-                                    {logoSrc ? '✓ Change Design' : 'Click to Upload'}
+                                    {logoSrc ? 'Change Design' : 'Click to Upload'}
                                 </Button>
                             </Upload>
                         </div>

@@ -23,7 +23,7 @@ const FileUploader = ({ label, file, preview, onSelect, maxMB = 5, required = tr
                 <InboxOutlined style={{ fontSize: 36, color: file ? '#52c41a' : '#d9d9d9' }} />
             </p>
             <p className="ant-upload-text" style={{ color: file ? '#52c41a' : undefined, fontWeight: file ? 'bold' : 'normal' }}>
-                {file ? `✓ ${file.name}` : 'Click or drag image here'}
+                {file ? `${file.name}` : 'Click or drag image here'}
             </p>
             <p className="ant-upload-hint">Max {maxMB}MB · JPG, PNG</p>
         </Dragger>

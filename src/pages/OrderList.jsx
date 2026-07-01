@@ -5,7 +5,7 @@ import {
     Drawer, Descriptions, Divider, Image, List, Row, Col, Dropdown, Spin,
 } from 'antd';
 import {
-    CalendarOutlined, EyeOutlined, HistoryOutlined,
+    CalendarOutlined, EyeOutlined, // HistoryOutlined,
     LockOutlined, UnlockOutlined, MailOutlined,
     MoreOutlined, FilePdfOutlined, CheckCircleOutlined
 } from '@ant-design/icons';
@@ -33,9 +33,9 @@ const OrderList = () => {
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
     const [drawerLoading, setDrawerLoading] = useState(false);
-    const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false);
-    const [orderHistory, setOrderHistory] = useState([]);
-    const [historyLoading, setHistoryLoading] = useState(false);
+    // const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false);
+    // const [orderHistory, setOrderHistory] = useState([]);
+    // const [historyLoading, setHistoryLoading] = useState(false);
     const [pagination, setPagination] = useState({
         current: 1,
         limit: 10,
@@ -91,19 +91,19 @@ const OrderList = () => {
         }
     };
 
-    const handleViewHistory = async (orderId) => {
-        setHistoryLoading(true);
-        setHistoryDrawerOpen(true);
-        try {
-            const response = await getOrderHistory(orderId);
-            setOrderHistory(response.data.data || []);
-        } catch (error) {
-            message.error('Failed to fetch order history');
-            setHistoryDrawerOpen(false);
-        } finally {
-            setHistoryLoading(false);
-        }
-    };
+    // const handleViewHistory = async (orderId) => {
+    //     setHistoryLoading(true);
+    //     setHistoryDrawerOpen(true);
+    //     try {
+    //         const response = await getOrderHistory(orderId);
+    //         setOrderHistory(response.data.data || []);
+    //     } catch (error) {
+    //         message.error('Failed to fetch order history');
+    //         setHistoryDrawerOpen(false);
+    //     } finally {
+    //         setHistoryLoading(false);
+    //     }
+    // };
 
     const handleSendReminder = async (classId) => {
         try {
@@ -266,12 +266,12 @@ const OrderList = () => {
                         label: 'View Details',
                         onClick: () => handleView(record),
                     },
-                    {
-                        key: 'history',
-                        icon: <HistoryOutlined style={{ color: '#1890ff' }} />,
-                        label: 'View History',
-                        onClick: () => handleViewHistory(record.id),
-                    },
+                    // {
+                    //     key: 'history',
+                    //     icon: <HistoryOutlined style={{ color: '#1890ff' }} />,
+                    //     label: 'View History',
+                    //     onClick: () => handleViewHistory(record.id),
+                    // },
                     {
                         key: 'reminder',
                         icon: <MailOutlined style={{ color: '#722ed1' }} />,
@@ -376,7 +376,7 @@ const OrderList = () => {
                 {selectedOrderDetails && (
                     <div style={{ padding: '0 10px' }}>
                         <Descriptions title="Order Info" bordered column={2}>
-                            <Descriptions.Item label="Order ID">{selectedOrderDetails.id}</Descriptions.Item>
+                            {/* <Descriptions.Item label="Order ID">{selectedOrderDetails.id}</Descriptions.Item> */}
                             <Descriptions.Item label="Status">
                                 <Tag color={selectedOrderDetails.process_status === 'completed' ? 'success' : 'processing'}>
                                     {selectedOrderDetails.process_status.toUpperCase()}
@@ -400,9 +400,9 @@ const OrderList = () => {
                                     </Tag>
                                 ) : '-'}
                             </Descriptions.Item>
-                            <Descriptions.Item label="Created At">
+                            {/* <Descriptions.Item label="Created At">
                                 {formatDanishDateTime(selectedOrderDetails.created_at)}
-                            </Descriptions.Item>
+                            </Descriptions.Item> */}
                         </Descriptions>
 
                         <Divider />
@@ -435,10 +435,53 @@ const OrderList = () => {
                             dataSource={selectedOrderDetails.order_items}
                             renderItem={(item) => {
                                 const d = item.design_config || {};
-                                const hasLeftChest = d.leftChestText;
-                                const hasRightChest = d.rightChestText;
-                                const hasLeftSleeve = d.leftSleeveText;
-                                const hasRightSleeve = d.rightSleeveText;
+                                const isSweatpants = item.product_type?.toUpperCase() === 'SWEATPANTS';
+
+                                // Helper to render a print area row with flag image + logo image + text
+                                const renderPrintArea = (label, area) => {
+                                    if (!area) return null;
+                                    const hasContent = area.text || area.flag || area.flagUrl || area.logoUrl || area.logo;
+                                    if (!hasContent) return null;
+                                    return (
+                                        <Descriptions.Item label={label} key={label}>
+                                            <Space wrap size={6} align="center">
+                                                {area.flagUrl && (
+                                                    <img src={area.flagUrl} alt={area.flag}
+                                                        style={{ width: 30, height: 20, objectFit: 'cover', borderRadius: 2, border: '1px solid #eee', verticalAlign: 'middle' }} />
+                                                )}
+                                                {area.flag && <Tag style={{ margin: 0 }}>{area.flag}</Tag>}
+                                                {area.logoUrl && (
+                                                    <img src={area.logoUrl} alt={area.logo}
+                                                        style={{ width: 30, height: 30, objectFit: 'contain', borderRadius: 3, border: '1px solid #eee', background: '#fafafa', verticalAlign: 'middle' }} />
+                                                )}
+                                                {area.logo && !area.logoUrl && (
+                                                    <Tag color="purple" style={{ margin: 0 }}>{area.logo}</Tag>
+                                                )}
+                                                {area.text && (
+                                                    <span style={{
+                                                        background: '#f5f5f5', border: '1px solid #ddd',
+                                                        padding: '1px 8px', borderRadius: 3, fontSize: 12,
+                                                    }}>
+                                                        {area.text}
+                                                    </span>
+                                                )}
+                                            </Space>
+                                        </Descriptions.Item>
+                                    );
+                                };
+
+                                const printRows = isSweatpants
+                                    ? [
+                                        renderPrintArea('Left Leg',  { type: d.leftLegType,  text: d.leftLegText,  flag: d.leftLegFlag,  flagUrl: d.leftLegFlagUrl,  logo: d.leftLegLogoCustom  || d.leftLegLogoPredefined }),
+                                        renderPrintArea('Right Leg', { type: d.rightLegType, text: d.rightLegText, flag: d.rightLegFlag, flagUrl: d.rightLegFlagUrl, logo: d.rightLegLogoCustom || d.rightLegLogoPredefined }),
+                                    ].filter(Boolean)
+                                    : [
+                                        renderPrintArea('Left Chest',   { text: d.leftChestText,   flag: d.leftChestFlag,   flagUrl: d.leftChestFlagUrl,  logo: d.leftChestLogoCustom   || d.leftChestLogoPredefined }),
+                                        renderPrintArea('Right Chest',  { text: d.rightChestText,  flag: d.rightChestFlag,  flagUrl: d.rightChestFlagUrl, logo: d.rightChestLogoCustom  || d.rightChestLogoPredefined }),
+                                        renderPrintArea('Left Sleeve',  { text: d.leftSleeveText,  flag: d.leftSleeveFlag,  flagUrl: d.leftSleeveFlagUrl  || d.leftSleeveFlagUrl2,  logo: d.leftSleeveLogoCustom  || d.leftSleeveLogoPredefined,  logoUrl: d.leftSleeveLogoPredefinedUrl }),
+                                        renderPrintArea('Right Sleeve', { text: d.rightSleeveText, flag: d.rightSleeveFlag, flagUrl: d.rightSleeveFlagUrl || d.rightSleeveFlagUrl2, logo: d.rightSleeveLogoCustom || d.rightSleeveLogoPredefined, logoUrl: d.rightSleeveLogoPredefinedUrl }),
+                                    ].filter(Boolean);
+
                                 return (
                                 <List.Item>
                                     <Card
@@ -457,37 +500,17 @@ const OrderList = () => {
                                     >
                                         <Row gutter={[16, 16]}>
                                             <Col xs={24} md={d.backDesign?.src ? 16 : 24}>
-                                                <Descriptions bordered size="small" column={1}>
-                                                    {hasLeftChest && (
-                                                        <Descriptions.Item label="Left Chest">
-                                                            {d.leftChestText}
-                                                            {d.leftChestFlag && <Tag style={{ marginLeft: 6 }}>{d.leftChestFlag}</Tag>}
-                                                        </Descriptions.Item>
-                                                    )}
-                                                    {hasRightChest && (
-                                                        <Descriptions.Item label="Right Chest">
-                                                            {d.rightChestText}
-                                                            {d.rightChestFlag && <Tag style={{ marginLeft: 6 }}>{d.rightChestFlag}</Tag>}
-                                                        </Descriptions.Item>
-                                                    )}
-                                                    {hasLeftSleeve && (
-                                                        <Descriptions.Item label="Left Sleeve">
-                                                            {d.leftSleeveText}
-                                                            {d.leftSleeveFlag && <Tag style={{ marginLeft: 6 }}>{d.leftSleeveFlag}</Tag>}
-                                                        </Descriptions.Item>
-                                                    )}
-                                                    {hasRightSleeve && (
-                                                        <Descriptions.Item label="Right Sleeve">
-                                                            {d.rightSleeveText}
-                                                            {d.rightSleeveFlag && <Tag style={{ marginLeft: 6 }}>{d.rightSleeveFlag}</Tag>}
-                                                        </Descriptions.Item>
-                                                    )}
-                                                    {!hasLeftChest && !hasRightChest && !hasLeftSleeve && !hasRightSleeve && (
+                                                {printRows.length > 0 ? (
+                                                    <Descriptions bordered size="small" column={1}>
+                                                        {printRows}
+                                                    </Descriptions>
+                                                ) : (
+                                                    <Descriptions bordered size="small" column={1}>
                                                         <Descriptions.Item label="Print Areas">
-                                                            <span style={{ color: '#bbb' }}>No text added</span>
+                                                            <span style={{ color: '#bbb' }}>No print areas configured</span>
                                                         </Descriptions.Item>
-                                                    )}
-                                                </Descriptions>
+                                                    </Descriptions>
+                                                )}
                                             </Col>
                                             {d.backDesign?.src && (
                                                 <Col xs={24} md={8} style={{ textAlign: 'center' }}>
@@ -498,6 +521,9 @@ const OrderList = () => {
                                                         style={{ borderRadius: 6, border: '1px solid #f0f0f0' }}
                                                         fallback="https://via.placeholder.com/120?text=No+Design"
                                                     />
+                                                    {d.backDesign.designId && (
+                                                        <div style={{ fontSize: 10, color: '#aaa', marginTop: 4 }}>Design #{d.backDesign.designId}</div>
+                                                    )}
                                                 </Col>
                                             )}
                                         </Row>
@@ -511,7 +537,7 @@ const OrderList = () => {
             </Drawer>
 
             {/* Order History Drawer */}
-            <Drawer
+            {/* <Drawer
                 title="Order History & Versions"
                 placement="right"
                 size="large"
@@ -547,7 +573,6 @@ const OrderList = () => {
                                 <List.Item key={item.id}>
                                     <Card style={{ width: '100%' }} size="small">
                                         <Space direction="vertical" style={{ width: '100%' }} size="small">
-                                            {/* Header Row */}
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
                                                 <Space>
                                                     <Tag color="blue">V{item.version}</Tag>
@@ -584,7 +609,6 @@ const OrderList = () => {
                                                 )}
                                             </Descriptions>
 
-                                            {/* Per-item breakdown */}
                                             {prevItems.length > 0 && (
                                                 <div style={{ marginTop: 8 }}>
                                                     <Typography.Text strong style={{ fontSize: 12 }}>Garments in this version:</Typography.Text>
@@ -621,7 +645,7 @@ const OrderList = () => {
                         }}
                     />
                 )}
-            </Drawer>
+            </Drawer> */}
         </div>
     );
 };

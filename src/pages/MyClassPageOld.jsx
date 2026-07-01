@@ -698,7 +698,7 @@ const MyClassPage = () => {
                                     borderColor: selectedLogoFile ? '#00b96b' : '#d9d9d9'
                                 }}
                             >
-                                {selectedLogoFile ? '✓ Logo Selected - Click to Change' : 'Click to Select Logo'}
+                                {selectedLogoFile ? 'Logo Selected - Click to Change' : 'Click to Select Logo'}
                             </Button>
                         </Upload>
                     </div>
@@ -722,7 +722,7 @@ const MyClassPage = () => {
                                 />
                             </div>
                             <Typography.Text type="success" style={{ display: 'block', marginTop: 8, fontSize: 12 }}>
-                                ✓ {selectedLogoFile.name}
+                                {selectedLogoFile.name}
                             </Typography.Text>
                         </div>
                     )}
