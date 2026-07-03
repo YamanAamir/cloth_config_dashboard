@@ -63,22 +63,30 @@ const LogoPreviewModal = ({ open, onClose, logoUrl, logoName = 'Logo' }) => {
         const img = new Image();
         img.crossOrigin = 'anonymous';
         img.onload = () => {
-            // Diffuse — image as-is scaled to 512px max
-            const MAX = 512;
-            const ratio = Math.min(MAX / img.naturalWidth, MAX / img.naturalHeight, 1);
-            const dw = Math.round(img.naturalWidth  * ratio);
-            const dh = Math.round(img.naturalHeight * ratio);
+            const CANVAS_WIDTH = 320;
+            const TEXT_HEIGHT = 120;
+            const FLAG_HEIGHT = 240;
+            const CANVAS_HEIGHT = TEXT_HEIGHT + FLAG_HEIGHT;
+
+            const ratio = Math.min(CANVAS_WIDTH / img.naturalWidth, (FLAG_HEIGHT / img.naturalHeight) * 0.8);
+            
+            const LOGO_W_SCALE = 0.8;
+            const LOGO_H_SCALE = 1;
+            const w = img.naturalWidth * ratio * LOGO_W_SCALE;
+            const h = img.naturalHeight * ratio * LOGO_H_SCALE;
+            const x = (CANVAS_WIDTH - w) / 2;
+            const y = TEXT_HEIGHT + (FLAG_HEIGHT - h) / 20;
 
             const diffuseCanvas = document.createElement('canvas');
-            diffuseCanvas.width  = dw;
-            diffuseCanvas.height = dh;
+            diffuseCanvas.width  = CANVAS_WIDTH;
+            diffuseCanvas.height = CANVAS_HEIGHT;
             const dctx = diffuseCanvas.getContext('2d');
             dctx.imageSmoothingEnabled = true;
             dctx.imageSmoothingQuality = 'high';
             // Fill with white to prevent dark fringes
             dctx.fillStyle = '#ffffff';
-            dctx.fillRect(0, 0, dw, dh);
-            dctx.drawImage(img, 0, 0, dw, dh);
+            dctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+            dctx.drawImage(img, x, y, w, h);
             const diffuseDataUrl = diffuseCanvas.toDataURL('image/png', 1.0);
 
             // Determine if image has alpha
@@ -96,11 +104,11 @@ const LogoPreviewModal = ({ open, onClose, logoUrl, logoName = 'Logo' }) => {
 
             // Opacity mask
             const opacityCanvas = document.createElement('canvas');
-            opacityCanvas.width  = dw;
-            opacityCanvas.height = dh;
+            opacityCanvas.width  = CANVAS_WIDTH;
+            opacityCanvas.height = CANVAS_HEIGHT;
             const octx = opacityCanvas.getContext('2d');
-            octx.drawImage(img, 0, 0, dw, dh);
-            const id = octx.getImageData(0, 0, dw, dh);
+            octx.drawImage(img, x, y, w, h);
+            const id = octx.getImageData(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
             if (imgHasAlpha) {
                 for (let i = 0; i < id.data.length; i += 4) {
