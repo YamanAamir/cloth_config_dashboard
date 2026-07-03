@@ -43,7 +43,8 @@ import {
     getClassRepStudentCount,
     setClassRepExpectedStudentCount,
     getStudyTripCountries,
-    setStudyTripCountry
+    setStudyTripCountry,
+    getClassRepLibraryDesigns
 } from '../api/api';
 import { getUploadsUrl, getBackDesignDisplayUrl, Status } from '../utils/constants';
 
@@ -97,6 +98,10 @@ const MyClassPageSimple = () => {
     const [selectedCountry, setSelectedCountry] = useState(null);
     const [settingCountry, setSettingCountry] = useState(false);
 
+    // Country Logos
+    const [countryLogos, setCountryLogos] = useState([]);
+    const [countryLogosLoading, setCountryLogosLoading] = useState(false);
+
     // Fetch all data
     const fetchAllData = async (showMessage = false) => {
         if (showMessage) setRefreshing(true);
@@ -115,7 +120,7 @@ const MyClassPageSimple = () => {
             if (classData?.id) {
                 try {
                     const studentCountRes = await getClassRepStudentCount(classData.id);
-                     setStudentCount(studentCountRes.data?.data);
+                    setStudentCount(studentCountRes.data?.data);
                 } catch (error) {
                     console.error('Student count error:', error); // Debug log
                     setStudentCount(null);
@@ -144,6 +149,7 @@ const MyClassPageSimple = () => {
     useEffect(() => {
         fetchAllData();
         fetchStudyTripCountries();
+        fetchCountryLogos();
     }, []);
 
     // Fetch study trip countries
@@ -153,6 +159,19 @@ const MyClassPageSimple = () => {
             setStudyTripCountries(response.data.data || []);
         } catch (error) {
             console.error('Failed to fetch study trip countries');
+        }
+    };
+
+    // Fetch country logos (library designs for selected country)
+    const fetchCountryLogos = async () => {
+        setCountryLogosLoading(true);
+        try {
+            const res = await getClassRepLibraryDesigns();
+            setCountryLogos(res.data?.data || []);
+        } catch (error) {
+            console.error('Failed to fetch country logos');
+        } finally {
+            setCountryLogosLoading(false);
         }
     };
 
@@ -169,6 +188,7 @@ const MyClassPageSimple = () => {
             message.success('Study trip country updated successfully!');
             setStudyTripModalOpen(false);
             fetchAllData();
+            fetchCountryLogos();
         } catch (error) {
             message.error('Failed to update study trip country');
         } finally {
@@ -505,6 +525,74 @@ const MyClassPageSimple = () => {
 
 
             </Row>
+            {/* Country Logos Section */}
+            {myClass?.country_id && (
+                <Card
+                    title={
+                        <Space>
+                            <GlobalOutlined style={{ color: '#7c3aed' }} />
+                            <span>
+                                {myClass.country?.name
+                                    ? `${myClass.country.name} — Logoer`
+                                    : 'Studietur logoer'}
+                            </span>
+                        </Space>
+                    }
+                    style={{ marginBottom: '24px', borderRadius: 12 }}
+                >
+                    {countryLogosLoading ? (
+                        <div style={{ textAlign: 'center', padding: '32px 0' }}>
+                            <Spin />
+                        </div>
+                    ) : countryLogos.length === 0 ? (
+                        <Empty
+                            description="Ingen logoer tilgængelige for dit land"
+                            image={Empty.PRESENTED_IMAGE_SIMPLE}
+                        />
+                    ) : (
+                        <Row gutter={[16, 16]}>
+                            {countryLogos.map(logo => (
+                                <Col xs={12} sm={8} md={6} lg={4} key={logo.id}>
+                                    <div
+                                        style={{
+                                            textAlign: 'center',
+                                            padding: '16px',
+                                            border: '1px solid #f0f0f0',
+                                            borderRadius: '12px',
+                                            transition: '0.3s',
+                                            cursor: 'default',
+                                            background: '#fafafa',
+                                        }}
+                                        onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                                        onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0px)'}
+                                    >
+                                        <Image
+                                            src={getBackDesignDisplayUrl(logo)}
+                                            alt={logo.name}
+                                            style={{
+                                                width: '80px',
+                                                height: '80px',
+                                                objectFit: 'contain',
+                                                borderRadius: '8px',
+                                            }}
+                                            fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMIAAADDCAYAAADQvc6UAAABRWlDQ1BJQ0MgUHJvZmlsZQAAKJFjYGASSSwoyGFhYGDIzSspCnJ3UoiIjFJgf8LAwSDCIMogwMCcmFxc4BgQ4ANUwgCjUcG3a0C1QHBZF2TwMzFkBBfmALdkclNOQePOuNIoLn8dqS0DIBGf8CdRMBmhJAkAOY6ApBERBQCQxoBMl9BhQsgJBgMQXQCgHQIIByBDRQVBgwEDXFNFgGBYmgABNRBxbmRYFDpBA=="
+                                        />
+                                        <div style={{ marginTop: '10px' }}>
+                                            <Text
+                                                strong
+                                                style={{ fontSize: '12px', display: 'block' }}
+                                                ellipsis={{ tooltip: logo.name }}
+                                            >
+                                                {logo.name}
+                                            </Text>
+                                        </div>
+                                    </div>
+                                </Col>
+                            ))}
+                        </Row>
+                    )}
+                </Card>
+            )}
             {/* All Logos */}
             {logos.length > 1 && (
                 <Card
@@ -679,6 +767,7 @@ const MyClassPageSimple = () => {
                     </Col>
                 </Row>
             </Card>
+
 
 
 
