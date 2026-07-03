@@ -154,7 +154,7 @@ const DesignCanvas = ({
             // Auto-fit white's slot if virgin — use color-specific setter
             const currentLayout = imageLayouts?.white || imageLayout;
             if (originalImg && isVirginLayout(currentLayout)) {
-                const targetW = CANVAS_W * 0.8;
+                const targetW = CANVAS_W * 0.95;
                 const ratio = targetW / originalImg.naturalWidth;
                 const fitted = {
                     x: Math.round((CANVAS_W - targetW) / 2),
@@ -193,7 +193,7 @@ const DesignCanvas = ({
             // Auto-fit black's slot if virgin
             const currentLayout = imageLayouts?.black || imageLayout;
             if (originalImg && isVirginLayout(currentLayout)) {
-                const targetW = CANVAS_W * 0.8;
+                const targetW = CANVAS_W * 0.95;
                 const ratio = targetW / originalImg.naturalWidth;
                 const fitted = {
                     x: Math.round((CANVAS_W - targetW) / 2),

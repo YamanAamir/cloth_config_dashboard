@@ -7,8 +7,9 @@ import {
 import {
     UploadOutlined, FileImageOutlined, PictureOutlined,
     CheckCircleOutlined, ClockCircleOutlined,
-    CloseCircleOutlined, DeleteOutlined, ReloadOutlined, EditOutlined, InboxOutlined,
+    CloseCircleOutlined, DeleteOutlined, ReloadOutlined, EditOutlined, InboxOutlined, EyeOutlined,
 } from '@ant-design/icons';
+import LogoPreviewModal from '../components/LogoPreviewModal';
 import {
     getMyClass,
     uploadLogo,
@@ -57,6 +58,11 @@ const UploadFilesPage = () => {
     const [editBlackFile, setEditBlackFile] = useState(null);
     const [editBlackPreview, setEditBlackPreview] = useState(null);
     const [editUploading, setEditUploading] = useState(false);
+
+    // Logo 3D preview
+    const [logoPreviewOpen, setLogoPreviewOpen] = useState(false);
+    const [previewLogoUrl, setPreviewLogoUrl] = useState(null);
+    const [previewLogoName, setPreviewLogoName] = useState('');
 
     const fetchMyClass = async () => {
         setLoading(true);
@@ -303,9 +309,22 @@ const UploadFilesPage = () => {
                                             <Typography.Text strong ellipsis style={{ display: 'block' }}>{item.name}</Typography.Text>
                                             <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                 {getStatusTag(item.status)}
-                                                <Popconfirm title="Delete this logo?" onConfirm={() => handleDeleteLogo(item.id)} okText="Yes" cancelText="No" okType="danger">
-                                                    <Button type="text" danger size="small" icon={<DeleteOutlined />} />
-                                                </Popconfirm>
+                                                <Space size={0}>
+                                                    <Button
+                                                        type="text"
+                                                        size="small"
+                                                        icon={<EyeOutlined style={{ color: '#1677ff' }} />}
+                                                        title="Preview in 3D"
+                                                        onClick={() => {
+                                                            setPreviewLogoUrl(getBackDesignDisplayUrl(item));
+                                                            setPreviewLogoName(item.name);
+                                                            setLogoPreviewOpen(true);
+                                                        }}
+                                                    />
+                                                    <Popconfirm title="Delete this logo?" onConfirm={() => handleDeleteLogo(item.id)} okText="Yes" cancelText="No" okType="danger">
+                                                        <Button type="text" danger size="small" icon={<DeleteOutlined />} />
+                                                    </Popconfirm>
+                                                </Space>
                                             </div>
                                             {item.status === Status.DELETED && item.admin_comment && (
                                                 <div style={{ marginTop: 6, padding: '6px 8px', background: '#fff2f0', borderRadius: 4, border: '1px solid #ffccc7' }}>
@@ -525,6 +544,14 @@ const UploadFilesPage = () => {
                     </div>
                 </Space>
             </Modal>
+
+            {/* Logo 3D Preview Modal */}
+            <LogoPreviewModal
+                open={logoPreviewOpen}
+                onClose={() => setLogoPreviewOpen(false)}
+                logoUrl={previewLogoUrl}
+                logoName={previewLogoName}
+            />
         </div>
     );
 };
