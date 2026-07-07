@@ -75,7 +75,7 @@ const StudentList = ({ students, loading }) => {
             title: 'Registered',
             dataIndex: 'created_at',
             key: 'created_at',
-            render: d => <Text type="secondary" style={{ fontSize: 12 }}>{new Date(d).toLocaleDateString()}</Text>
+            render: d => <Text type="secondary" style={{ fontSize: 12 }}>{new Date(d).toLocaleDateString('en-GB')}</Text>
         }
     ];
 

@@ -133,7 +133,7 @@ const NameListReviewPage = () => {
                 const d = record.class?.change_deadline;
                 if (!d) return <Typography.Text type="secondary">—</Typography.Text>;
                 const past = new Date() > new Date(d);
-                return <Tag color={past ? 'volcano' : 'blue'}>{new Date(d).toLocaleDateString()}</Tag>;
+                return <Tag color={past ? 'volcano' : 'blue'}>{new Date(d).toLocaleDateString('en-GB')}</Tag>;
             }
         },
         {

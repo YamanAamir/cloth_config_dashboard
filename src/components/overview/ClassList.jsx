@@ -1,5 +1,6 @@
 import React from 'react';
 import { Card, Row, Col, Typography, Tag, Spin, Empty, Space } from 'antd';
+import { formatDate } from '../../utils/dateUtils';
 import { CalendarOutlined, LockOutlined, UnlockOutlined, RightOutlined } from '@ant-design/icons';
 
 const { Text } = Typography;
@@ -35,7 +36,7 @@ const ClassList = ({ classes, loading, selectedId, onSelect }) => {
                                         }
                                         {cls.change_deadline && (
                                             <Tag color={deadlinePast ? 'volcano' : 'blue'} style={{ fontSize: 10 }}>
-                                                {new Date(cls.change_deadline).toLocaleDateString()}
+                                                {formatDate(cls.change_deadline)}
                                             </Tag>
                                         )}
                                     </Space>

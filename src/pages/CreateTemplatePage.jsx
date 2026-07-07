@@ -126,7 +126,7 @@ const CreateTemplatePage = () => {
             title: 'Created',
             dataIndex: 'created_at',
             key: 'created_at',
-            render: (d) => d ? new Date(d).toLocaleDateString() : '—',
+            render: (d) => d ? new Date(d).toLocaleDateString('en-GB') : '—',
         },
         {
             title: 'Actions',

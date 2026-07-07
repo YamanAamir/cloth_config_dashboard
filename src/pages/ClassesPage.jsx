@@ -646,7 +646,7 @@ const ClassesPage = () => {
                             <Space direction="vertical">
                                 <div>
                                     <Typography.Text type="secondary">Created: </Typography.Text>
-                                    <Typography.Text>{new Date(classBackDesign.created_at).toLocaleDateString()}</Typography.Text>
+                                    <Typography.Text>{new Date(classBackDesign.created_at).toLocaleDateString('en-GB')}</Typography.Text>
                                 </div>
                                 <div>
                                     <Typography.Text type="secondary">Type: </Typography.Text>
@@ -684,7 +684,7 @@ const ClassesPage = () => {
                                     <Typography.Text type="secondary">Ordering Deadline</Typography.Text>
                                     {viewingClass.change_deadline ? (
                                         <Tag color={new Date() > new Date(viewingClass.change_deadline) ? 'volcano' : 'blue'}>
-                                            {new Date(viewingClass.change_deadline).toLocaleDateString()}
+                                            {new Date(viewingClass.change_deadline).toLocaleDateString('en-GB')}
                                         </Tag>
                                     ) : <Typography.Text type="secondary">Not set</Typography.Text>}
                                 </div>

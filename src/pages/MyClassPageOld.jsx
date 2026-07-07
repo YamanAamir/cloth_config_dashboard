@@ -539,7 +539,7 @@ const MyClassPage = () => {
                                 </div>
                                 <div>
                                     <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>Created</Typography.Text>
-                                    <Typography.Text>{new Date(currentBackDesign.created_at).toLocaleDateString()}</Typography.Text>
+                                    <Typography.Text>{new Date(currentBackDesign.created_at).toLocaleDateString('en-GB')}</Typography.Text>
                                 </div>
                                 {/* <Button 
                                     type="default"

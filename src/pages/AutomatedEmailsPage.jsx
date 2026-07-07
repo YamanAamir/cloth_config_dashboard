@@ -204,7 +204,7 @@ const AutomatedEmailsPage = () => {
       title: 'Last Modified',
       dataIndex: 'updated_at',
       key: 'updated_at',
-      render: (date) => new Date(date).toLocaleDateString()
+      render: (date) => new Date(date).toLocaleDateString('en-GB')
     },
     {
       title: 'Actions',
