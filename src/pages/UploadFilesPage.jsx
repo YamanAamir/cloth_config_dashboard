@@ -275,27 +275,70 @@ const UploadFilesPage = () => {
                                         <Card
                                             hoverable
                                             cover={
-                                                <div style={{
-                                                    padding: 12,
-                                                    background: item.status === Status.DELETED ? '#fff2f0' : '#fafafa',
-                                                    minHeight: 120,
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    position: 'relative',
-                                                }}>
+                                                <div
+                                                    style={{
+                                                        padding: 12,
+                                                        background: item.status === Status.DELETED ? '#fff2f0' : '#fafafa',
+                                                        minHeight: 120,
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        position: 'relative',
+                                                        cursor: 'pointer',
+                                                    }}
+                                                    onClick={() => {
+                                                        setPreviewLogoUrl(getBackDesignDisplayUrl(item));
+                                                        setPreviewLogoName(item.name);
+                                                        setLogoPreviewOpen(true);
+                                                    }}
+                                                >
                                                     <img
                                                         src={getBackDesignDisplayUrl(item)}
                                                         alt={item.name}
                                                         style={{
-                                                            maxWidth: '100%', maxHeight: 120, objectFit: 'contain',
+                                                            maxWidth: '100%',
+                                                            maxHeight: 120,
+                                                            objectFit: 'contain',
                                                             opacity: item.status === Status.DELETED ? 0.6 : 1,
                                                         }}
                                                     />
+
+                                                    <div
+                                                        style={{
+                                                            position: 'absolute',
+                                                            bottom: 8,
+                                                            left: '50%',
+                                                            transform: 'translateX(-50%)',
+                                                            background: 'rgba(0,0,0,0.45)',
+                                                            color: '#fff',
+                                                            padding: '4px 10px',
+                                                            borderRadius: 20,
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: 6,
+                                                            fontSize: 12,
+                                                            fontWeight: 500,
+                                                            cursor: 'pointer',
+                                                        }}
+                                                    >
+                                                        <EyeOutlined />
+                                                        Live Preview
+                                                    </div>
+
                                                     {item.status === Status.DELETED && (
-                                                        <div style={{
-                                                            position: 'absolute', top: 6, right: 6,
-                                                            background: '#ff4d4f', borderRadius: 4,
-                                                            padding: '2px 6px', fontSize: 10, color: '#fff', fontWeight: 600,
-                                                        }}>
+                                                        <div
+                                                            style={{
+                                                                position: 'absolute',
+                                                                top: 6,
+                                                                right: 6,
+                                                                background: '#ff4d4f',
+                                                                borderRadius: 4,
+                                                                padding: '2px 6px',
+                                                                fontSize: 10,
+                                                                color: '#fff',
+                                                                fontWeight: 600,
+                                                            }}
+                                                        >
                                                             REJECTED
                                                         </div>
                                                     )}
@@ -306,28 +349,49 @@ const UploadFilesPage = () => {
                                                 border: item.status === Status.DELETED ? '1px solid #ffccc7' : undefined,
                                             }}
                                         >
-                                            <Typography.Text strong ellipsis style={{ display: 'block' }}>{item.name}</Typography.Text>
-                                            <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <Typography.Text strong ellipsis style={{ display: 'block' }}>
+                                                {item.name}
+                                            </Typography.Text>
+
+                                            <div
+                                                style={{
+                                                    marginTop: 8,
+                                                    display: 'flex',
+                                                    justifyContent: 'space-between',
+                                                    alignItems: 'center',
+                                                }}
+                                            >
                                                 {getStatusTag(item.status)}
+
                                                 <Space size={0}>
-                                                    <Button
-                                                        type="text"
-                                                        size="small"
-                                                        icon={<EyeOutlined style={{ color: '#1677ff' }} />}
-                                                        title="Preview in 3D"
-                                                        onClick={() => {
-                                                            setPreviewLogoUrl(getBackDesignDisplayUrl(item));
-                                                            setPreviewLogoName(item.name);
-                                                            setLogoPreviewOpen(true);
-                                                        }}
-                                                    />
-                                                    <Popconfirm title="Delete this logo?" onConfirm={() => handleDeleteLogo(item.id)} okText="Yes" cancelText="No" okType="danger">
-                                                        <Button type="text" danger size="small" icon={<DeleteOutlined />} />
+                                                    {/* Delete only (Preview is now on image click) */}
+                                                    <Popconfirm
+                                                        title="Delete this logo?"
+                                                        onConfirm={() => handleDeleteLogo(item.id)}
+                                                        okText="Yes"
+                                                        cancelText="No"
+                                                        okType="danger"
+                                                    >
+                                                        <Button
+                                                            type="text"
+                                                            danger
+                                                            size="small"
+                                                            icon={<DeleteOutlined />}
+                                                        />
                                                     </Popconfirm>
                                                 </Space>
                                             </div>
+
                                             {item.status === Status.DELETED && item.admin_comment && (
-                                                <div style={{ marginTop: 6, padding: '6px 8px', background: '#fff2f0', borderRadius: 4, border: '1px solid #ffccc7' }}>
+                                                <div
+                                                    style={{
+                                                        marginTop: 6,
+                                                        padding: '6px 8px',
+                                                        background: '#fff2f0',
+                                                        borderRadius: 4,
+                                                        border: '1px solid #ffccc7',
+                                                    }}
+                                                >
                                                     <Typography.Text type="danger" style={{ fontSize: 11 }}>
                                                         <CloseCircleOutlined style={{ marginRight: 4 }} />
                                                         {item.admin_comment}
