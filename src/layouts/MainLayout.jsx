@@ -7,8 +7,9 @@ import {
     PictureOutlined, FileImageOutlined, CloudUploadOutlined,
     OrderedListOutlined, FileZipOutlined, ShoppingCartOutlined,
     PrinterOutlined, GlobalOutlined, FontColorsOutlined, MailOutlined,
-    FontSizeOutlined,
+    FontSizeOutlined, QuestionCircleOutlined,
 } from '@ant-design/icons';
+import ClassRepTour from '../pages/ClassRepTour';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { sidebarMenus } from '../api/api';
@@ -159,6 +160,7 @@ const MainLayout = () => {
                     />
                     <Space>
                         {/* <NotificationBell /> */}
+                        <ClassRepTour />
                         <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
                             <Space style={{ cursor: 'pointer' }}>
                                 <Avatar style={{ backgroundColor: '#00b96b' }} icon={<UserOutlined />} />

@@ -621,7 +621,7 @@ const BackDesignConfiguratorPage = () => {
             <Row gutter={[24, 24]}>
                 {/* Left: Gallery + Settings */}
                 <Col xs={24} lg={10}>
-                    <Card>
+                    <Card id="tour-config-gallery">
                         <Title level={5} style={{ marginTop: 0 }}>1. Vælg basisbillede</Title>
                         <DesignGallery
                             backDesigns={backDesigns}
@@ -919,7 +919,7 @@ const BackDesignConfiguratorPage = () => {
 
                 {/* Right: Canvas Editor */}
                 <Col xs={24} lg={14}>
-                    <Card style={{ position: 'sticky', top: 24 }}>
+                    <Card id="tour-config-canvas" style={{ position: 'sticky', top: 24 }}>
                         <DesignCanvas
                             setPreviewOpen={async () => {
                                 const success = await handleSubmit();

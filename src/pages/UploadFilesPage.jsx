@@ -210,7 +210,7 @@ const UploadFilesPage = () => {
 
     return (
         <div className="fade-in">
-            <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div id="tour-upload-header" style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                     <Title level={4} style={{ margin: 0 }}>Upload Files</Title>
                     <Typography.Text type="secondary">
@@ -221,12 +221,12 @@ const UploadFilesPage = () => {
                 </Space>
             </div>
 
-            <Card className="glass-card" style={{ border: 'none' }}>
+            <Card id="tour-upload-tabs-card" className="glass-card" style={{ border: 'none' }}>
                 <Tabs
                     activeKey={activeTab}
                     onChange={setActiveTab}
                     tabBarExtraContent={
-                        <Space>
+                        <Space id="tour-upload-actions">
                             <Button
                                 type="text"
                                 icon={<ReloadOutlined />}
@@ -237,6 +237,7 @@ const UploadFilesPage = () => {
                                 Refresh  {activeTab === 'logos' ? 'Logos' : 'Back Designs'}
                             </Button >
                             <Button
+                                id="tour-add-btn"
                                 type="primary"
                                 icon={<UploadOutlined />}
                                 onClick={() => openUploadModal(activeTab === 'logos' ? 'logo' : 'design')}

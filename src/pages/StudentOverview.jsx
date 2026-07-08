@@ -245,7 +245,7 @@ const StudentOverview = () => {
     return (
         <div className="fade-in">
             {/* Header */}
-            <div style={{ marginBottom: 24 }}>
+            <div id="tour-student-header" style={{ marginBottom: 24 }}>
                 <Title level={4} style={{ margin: 0 }}>Elevers oversigt</Title>
                 <Text type="secondary">
                     Se alle elevers ordrestatus og betalingsoverblik for din klasse
@@ -253,7 +253,7 @@ const StudentOverview = () => {
             </div>
 
             {/* Summary strip */}
-            <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+            <div id="tour-student-summary" style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
                 {summaryCards.map(c => (
                     <Card
                         key={c.label}
@@ -269,7 +269,7 @@ const StudentOverview = () => {
             </div>
 
             {/* Table */}
-            <Card className="glass-card" style={{ border: 'none' }}>
+            <Card id="tour-student-table" className="glass-card" style={{ border: 'none' }}>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
                     <Input
                         placeholder="Søg elevers navn..."

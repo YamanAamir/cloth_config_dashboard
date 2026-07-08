@@ -350,6 +350,7 @@ const MyClassPageSimple = () => {
                 {/* Student Registration */}
                 <Col xs={24} md={12} lg={8}>
                     <Card
+                        id="tour-students-card"
                         style={{
                             height: '100%',
                             borderRadius: 12,
@@ -428,6 +429,7 @@ const MyClassPageSimple = () => {
                 {/* Upload Logo */}
                 <Col xs={24} md={12} lg={8}>
                     <Card
+                        id="tour-upload-logo-card"
                         style={{
                             height: '100%',
                             borderRadius: 12,
@@ -475,6 +477,7 @@ const MyClassPageSimple = () => {
                 </Col>
                 <Col xs={24} md={12} lg={8}>
                     <Card
+                        id="tour-studietur-card"
                         style={{
                             height: '100%',
                             borderRadius: 12,
@@ -646,6 +649,7 @@ const MyClassPageSimple = () => {
             )}
             {/* Current Status */}
             <Card
+                id="tour-status-card"
                 title="Aktuel status"
                 style={{
                     marginBottom: '24px',
