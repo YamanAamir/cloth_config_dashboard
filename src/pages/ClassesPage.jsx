@@ -2,14 +2,15 @@ import React, { useState, useEffect } from 'react';
 import {
     Table, Button, Card, Typography, Space, Modal,
     Form, Input, Switch, message, Popconfirm, Select,
-    Tag, Drawer, Empty, Image, Spin, Dropdown} from 'antd';
+    Tag, Drawer, Empty, Image, Spin, Dropdown, Row, Col
+} from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, TeamOutlined, BankOutlined, CalendarOutlined, EyeOutlined, LockOutlined, UnlockOutlined, FileZipOutlined, FilePdfOutlined, FileExcelOutlined, MoreOutlined, MailOutlined } from '@ant-design/icons';
 import {
     getAllClasses, createClass, updateClass, deleteClass,
     toggleClassStatus, getAllSchools,
     getClassBackDesign, lockClass, unlockClass,
     generateProductionFiles, sendStatusEmail, sendFollowupEmail,
-    updateClassProcessStatus, sendDeadlineReminder
+    updateClassProcessStatus, sendDeadlineReminder, getEducationPrograms
 } from '../api/api';
 import { Status, getUploadsUrl, getBackDesignDisplayUrl } from '../utils/constants';
 import AdminStudentCountModal from '../components/AdminStudentCountModal';
@@ -24,12 +25,16 @@ const ClassesPage = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingClass, setEditingClass] = useState(null);
     const [form] = Form.useForm();
-    
+
     // Back Design Drawer
     const [designDrawerOpen, setDesignDrawerOpen] = useState(false);
     const [selectedClassForDesign, setSelectedClassForDesign] = useState(null);
     const [classBackDesign, setClassBackDesign] = useState(null);
     const [loadingDesign, setLoadingDesign] = useState(false);
+    const [educationPrograms, setEducationPrograms] = useState([]);
+    const [educationLoading, setEducationLoading] = useState(false);
+    const [availablePrograms, setAvailablePrograms] = useState([]);
+    const years = Array.from({ length: 20 }, (_, i) => new Date().getFullYear() + i);
 
     // Production files
     const [generatingFiles, setGeneratingFiles] = useState(false);
@@ -41,11 +46,11 @@ const ClassesPage = () => {
     const [viewingClass, setViewingClass] = useState(null);
     const [viewBackDesign, setViewBackDesign] = useState(null);
     const [loadingViewDesign, setLoadingViewDesign] = useState(false);
-    
+
     // Student Count Modal
     const [studentCountModalOpen, setStudentCountModalOpen] = useState(false);
     const [selectedClassForCount, setSelectedClassForCount] = useState(null);
-    
+
     const [pagination, setPagination] = useState({
         current: 1,
         limit: 10,
@@ -87,12 +92,25 @@ const ClassesPage = () => {
         }
     };
 
+    const fetchEducationPrograms = async () => {
+        setEducationLoading(true);
+        try {
+            const res = await getEducationPrograms({ page: 1, limit: 1000 });
+            setEducationPrograms(res.data?.data?.data || []);
+        } catch {
+            message.error('Failed to load education programs');
+        } finally {
+            setEducationLoading(false);
+        }
+    };
+
     useEffect(() => {
         fetchClasses();
     }, [pagination.current, pagination.limit, pagination.search]);
 
     useEffect(() => {
         fetchDropdowns();
+        fetchEducationPrograms();
     }, []);
 
     const handleAddEdit = async (values) => {
@@ -100,7 +118,8 @@ const ClassesPage = () => {
             const payload = {
                 ...values,
                 change_deadline: values.change_deadline ? new Date(values.change_deadline).toISOString() : null,
-                status: values.status ? Status.ACTIVE : Status.INACTIVE
+                status: values.status ? Status.ACTIVE : Status.INACTIVE,
+                educationProgramId: values.education_program_id
             };
 
             if (editingClass) {
@@ -246,7 +265,7 @@ const ClassesPage = () => {
         setDesignDrawerOpen(true);
         setLoadingDesign(true);
         setClassBackDesign(null);
-        
+
         try {
             const response = await getClassBackDesign(classRecord.id);
             setClassBackDesign(response.data?.data);
@@ -285,33 +304,15 @@ const ClassesPage = () => {
                 );
             },
         },
-
-        // {
-        //     title: 'Graduation Year',
-        //     dataIndex: 'graduation_year',
-        //     key: 'graduation_year',
-        //     render: (year) => (
-        //         <Tag color="cyan">
-        //             <CalendarOutlined style={{ marginRight: 4 }} />
-        //             {year}
-        //         </Tag>
-        //     )
-        // },
-        // {
-        //     title: 'Ordering Deadline',
-        //     dataIndex: 'change_deadline',
-        //     key: 'change_deadline',
-        //     render: (deadline) => {
-        //         if (!deadline) return <span style={{ color: '#bbb', fontSize: 12 }}>Not set</span>;
-        //         const isPast = new Date() > new Date(deadline);
-        //         return (
-        //             <Tag color={isPast ? 'volcano' : 'blue'}>
-        //                 <CalendarOutlined style={{ marginRight: 4 }} />
-        //                 {new Date(deadline).toLocaleDateString()}
-        //             </Tag>
-        //         );
-        //     }
-        // },
+        {
+            title: 'Education Program',
+            key: 'education_program',
+            render: (_, record) => (
+                <Tag color="blue">
+                    {record.education_program?.name || record.education_program?.id || '-'}
+                </Tag>
+            ),
+        },
         {
             title: 'Status',
             dataIndex: 'status',
@@ -385,6 +386,7 @@ const ClassesPage = () => {
                         icon: <EditOutlined />,
                         onClick: () => {
                             setEditingClass(record);
+                            setAvailablePrograms(record.school?.educationPrograms || []);
                             form.setFieldsValue({
                                 ...record,
                                 status: record.status === Status.ACTIVE,
@@ -392,7 +394,8 @@ const ClassesPage = () => {
                                 user_id: record.users?.[0]?.id || record.user_id,
                                 change_deadline: record.change_deadline
                                     ? record.change_deadline.split('T')[0]
-                                    : undefined
+                                    : undefined,
+                                education_program_id: record.education_program?.id || null
                             });
                             setIsModalOpen(true);
                         }
@@ -481,6 +484,7 @@ const ClassesPage = () => {
                     icon={<PlusOutlined />}
                     onClick={() => {
                         setEditingClass(null);
+                        setAvailablePrograms([]);
                         form.resetFields();
                         setIsModalOpen(true);
                     }}
@@ -552,35 +556,67 @@ const ClassesPage = () => {
                         <Input prefix={<TeamOutlined />} placeholder="e.g. Class of 2025 A" />
                     </Form.Item>
 
-                    <Form.Item
-                        name="graduation_year"
-                        label="Graduation Year"
-                        rules={[{ required: true, message: 'Please enter graduation year' }]}
-                    >
-                        <Input type="number" prefix={<CalendarOutlined />} placeholder="e.g. 2025" />
-                    </Form.Item>
-
-                    <Form.Item
-                        name="change_deadline"
-                        label="Ordering Deadline"
-                        tooltip="Students cannot place or edit orders after this date"
-                    >
-                        <Input type="date" prefix={<CalendarOutlined />} />
-                    </Form.Item>
+                    <Row gutter={16}>
+                        <Col span={12}>
+                            <Form.Item
+                                name="graduation_year"
+                                label="Graduation Year"
+                                rules={[{ required: true, message: 'Please select graduation year' }]}
+                            >
+                                <Select placeholder="Select year">
+                                    {years.map(y => (
+                                        <Option key={y} value={y}>{y}</Option>
+                                    ))}
+                                </Select>
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item
+                                name="change_deadline"
+                                label="Ordering Deadline"
+                                tooltip="Students cannot place or edit orders after this date"
+                            >
+                                <Input type="date" prefix={<CalendarOutlined />} />
+                            </Form.Item>
+                        </Col>
+                    </Row>
 
                     <Form.Item
                         name="school_id"
                         label="Assign School"
                         rules={[{ required: true, message: 'Please select a school' }]}
                     >
-                        <Select placeholder="Select a school">
+                        <Select
+                            placeholder="Select a school"
+                            onChange={(value) => {
+                                const school = schools.find(s => s.id === value);
+                                setAvailablePrograms(school?.educationPrograms || []);
+                                form.setFieldsValue({ education_program_id: undefined });
+                            }}
+                        >
                             {schools.map(school => (
                                 <Option key={school.id} value={school.id}>{school.name}</Option>
                             ))}
                         </Select>
                     </Form.Item>
 
-                    <Form.Item name="status" label="Status" valuePropName="checked">
+                    <Form.Item
+                        name="education_program_id"
+                        label="Education Program"
+                        rules={[{ required: true, message: 'Please select an education program' }]}
+                    >
+                        <Select placeholder="Select a program" loading={educationLoading} allowClear>
+                            {availablePrograms.map(p => (
+                                <Option key={p.id} value={p.id}>{p.name}</Option>
+                            ))}
+                        </Select>
+                    </Form.Item>
+
+                    <Form.Item
+                        name="status"
+                        label="Status"
+                        valuePropName="checked"
+                    >
                         <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
                     </Form.Item>
 
@@ -612,8 +648,8 @@ const ClassesPage = () => {
                         <Spin size="large" />
                     </div>
                 ) : !classBackDesign ? (
-                    <Empty 
-                        description="No back design selected for this class yet" 
+                    <Empty
+                        description="No back design selected for this class yet"
                         style={{ padding: 48 }}
                         image={Empty.PRESENTED_IMAGE_SIMPLE}
                     />
@@ -623,13 +659,13 @@ const ClassesPage = () => {
                             <Typography.Title level={5}>Design Name</Typography.Title>
                             <Typography.Text>{classBackDesign.name}</Typography.Text>
                         </Card>
-                        
+
                         <Card>
                             <Typography.Title level={5}>Design Preview</Typography.Title>
-                            <div style={{ 
-                                padding: 16, 
-                                background: '#fafafa', 
-                                borderRadius: 8, 
+                            <div style={{
+                                padding: 16,
+                                background: '#fafafa',
+                                borderRadius: 8,
                                 textAlign: 'center',
                                 border: '1px solid #f0f0f0'
                             }}>
@@ -724,8 +760,8 @@ const ClassesPage = () => {
                                     <Typography.Text strong>{viewingClass.school?.name || '—'}</Typography.Text>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                    <Typography.Text type="secondary">Education Type</Typography.Text>
-                                    <Tag color="blue">{viewingClass.school?.education_type || '—'}</Tag>
+                                    <Typography.Text type="secondary">Education Program</Typography.Text>
+                                    <Tag color="blue">{viewingClass.education_program?.name || '—'}</Tag>
                                 </div>
                             </Space>
                         </Card>

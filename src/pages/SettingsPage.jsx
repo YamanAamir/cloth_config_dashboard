@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import {
-    Card, Typography, Form, Input, Switch, Button,
-    message, Spin, InputNumber, Row, Col, Table, Space, Popconfirm, Modal
+    Card, Tag, Typography, Form, Input, Switch, Button,
+    message, Spin, InputNumber, Row, Col, Table, Space, Popconfirm, Modal, Select
 } from 'antd';
 import { SaveOutlined, SettingOutlined, PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { api } from '../api/index';
+import { Status } from '../utils/constants';
+import { getEducationPrograms, createEducationProgram, updateEducationProgram, deleteEducationProgram } from '../api/api';
 import {
     getShippingRates, createShippingRate,
     updateShippingRate, deleteShippingRate, toggleShippingRateStatus
@@ -24,7 +26,6 @@ const SettingsPage = () => {
     const [editingShipping, setEditingShipping] = useState(null);
     const [shippingForm] = Form.useForm();
     const [savingShipping, setSavingShipping] = useState(false);
-
     // ── Fetch general settings ────────────────────────────────────────────────
     const fetchSettings = async () => {
         setLoading(true);
@@ -56,8 +57,8 @@ const SettingsPage = () => {
             const res = await getShippingRates();
             // handle both { data: [...] } and { data: { data: [...] } }
             const rates = Array.isArray(res.data?.data) ? res.data.data
-                        : Array.isArray(res.data) ? res.data
-                        : [];
+                : Array.isArray(res.data) ? res.data
+                    : [];
             setShippingRates(rates);
         } catch { message.error('Failed to load shipping rates'); }
         finally { setShippingLoading(false); }
@@ -208,6 +209,139 @@ const SettingsPage = () => {
             ),
         },
     ];
+
+    // ── Education CRUD ────────────────────────────────────────────────────────
+    const [educationPrograms, setEducationPrograms] = useState([]);
+    const [educationLoading, setEducationLoading] = useState(false);
+    const [educationModalOpen, setEducationModalOpen] = useState(false);
+    const [editingEducation, setEditingEducation] = useState(null);
+    const [educationForm] = Form.useForm();
+    const [savingEducation, setSavingEducation] = useState(false);
+
+    const fetchEducationPrograms = async () => {
+        setEducationLoading(true);
+        try {
+            const res = await getEducationPrograms();
+            const data = res.data?.data?.data || res.data?.data || [];
+            setEducationPrograms(data);
+        } catch (err) {
+            message.error(err.response?.data?.message || 'Failed to load education programs');
+        } finally {
+            setEducationLoading(false);
+        }
+    };
+
+    const openAddEducation = () => {
+        setEditingEducation(null);
+        educationForm.resetFields();
+        setEducationModalOpen(true);
+    };
+
+    const openEditEducation = (record) => {
+        setEditingEducation(record);
+
+        educationForm.setFieldsValue({
+            name: record.name,
+        });
+
+        setEducationModalOpen(true);
+    };
+
+    const handleDeleteEducation = async (id) => {
+        try {
+            await deleteEducationProgram(id);
+            message.success('Program deleted');
+            fetchEducationPrograms();
+        } catch (err) {
+            message.error(err.response?.data?.message || 'Delete failed');
+        }
+    };
+
+    const handleToggleEducation = async (record) => {
+        try {
+            await updateEducationProgram(record.id, { status: record.status === Status.ACTIVE ? Status.INACTIVE : Status.ACTIVE });
+            message.success('Status updated');
+            fetchEducationPrograms();
+        } catch (err) {
+            message.error('Status update failed');
+        }
+    };
+
+    const handleSaveEducation = async (values) => {
+        setSavingEducation(true);
+
+        try {
+            const payload = {
+                name: values.name,
+            };
+
+            // if (editingEducation) {
+            //     payload.status = editingEducation.status;
+            // }
+
+            if (editingEducation) {
+                await updateEducationProgram(editingEducation.id, payload);
+                message.success("Updated successfully");
+            } else {
+                await createEducationProgram(payload);
+                message.success("Created successfully");
+            }
+
+            setEducationModalOpen(false);
+            educationForm.resetFields();
+            fetchEducationPrograms();
+        } catch (err) {
+            message.error(err.response?.data?.message || "Save failed");
+        } finally {
+            setSavingEducation(false);
+        }
+    };
+
+    const educationColumns = [
+        {
+            title: 'Program Name',
+            dataIndex: 'name',
+            key: 'name',
+        },
+        // {
+        //     title: 'Status',
+        //     dataIndex: 'status',
+        //     key: 'status',
+        //     render: (status, record) => (
+        //         <Switch
+        //             checked={status === 0}
+        //             checkedChildren="Active"
+        //             unCheckedChildren="Inactive"
+        //             onChange={() => handleToggleEducation(record)}
+        //         />
+        //     ),
+        // },
+        {
+            title: 'Action',
+            key: 'action',
+            render: (_, record) => (
+                <Space>
+                    <Button
+                        type="text"
+                        icon={<EditOutlined style={{ color: '#00b96b' }} />}
+                        onClick={() => openEditEducation(record)}
+                    />
+                    <Popconfirm
+                        title="Delete?"
+                        onConfirm={() => handleDeleteEducation(record.id)}
+                    >
+                        <Button type="text" danger icon={<DeleteOutlined />} />
+                    </Popconfirm>
+                </Space>
+            ),
+        },
+    ];
+
+    // Fetch education programs on component mount
+    useEffect(() => {
+        fetchEducationPrograms();
+    }, []);
+
 
     if (loading) return <Spin style={{ display: 'block', margin: '60px auto' }} size="large" />;
 
@@ -377,6 +511,65 @@ const SettingsPage = () => {
                             </Form.Item>
                         </Col>
                     </Row>
+                </Form>
+            </Modal>
+            {/* Education Programs */}
+            <Card className="glass-card" style={{ border: 'none', marginTop: 24 }} title="Education Programs"
+                extra={<Button type="primary" size="small" icon={<PlusOutlined />} onClick={openAddEducation}>Add Program</Button>}
+            >
+                <Text type="secondary" style={{ display: 'block', marginBottom: 16, fontSize: 13 }}>
+                    Manage education programs and their types.
+                </Text>
+                <Table
+                    dataSource={educationPrograms}
+                    columns={educationColumns}
+                    rowKey="id"
+                    loading={educationLoading}
+                    pagination={false}
+                    size="small"
+                    locale={{ emptyText: 'No education programs added yet' }}
+                />
+            </Card>
+
+            {/* Education Modal */}
+            <Modal
+                title={editingEducation ? 'Edit Education Program' : 'Add Education Program'}
+                open={educationModalOpen}
+                onCancel={() => { setEducationModalOpen(false); educationForm.resetFields(); }}
+                footer={null}
+                destroyOnHide
+            >
+                <Form form={educationForm} layout="vertical" onFinish={handleSaveEducation}>
+
+                    <Form.Item
+                        name="name"
+                        label="Program Name"
+                        rules={[
+                            {
+                                required: true,
+                                message: "Enter program name",
+                            },
+                        ]}
+                    >
+                        <Input placeholder="Enter program name" />
+                    </Form.Item>
+
+                    <Form.Item style={{ textAlign: "right", marginBottom: 0 }}>
+                        <Space>
+                            <Button onClick={() => setEducationModalOpen(false)}>
+                                Cancel
+                            </Button>
+
+                            <Button
+                                type="primary"
+                                htmlType="submit"
+                                loading={savingEducation}
+                            >
+                                {editingEducation ? "Update" : "Add"}
+                            </Button>
+                        </Space>
+                    </Form.Item>
+
                 </Form>
             </Modal>
         </div>

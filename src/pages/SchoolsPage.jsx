@@ -15,8 +15,8 @@ import {
     Select
 } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, BankOutlined } from '@ant-design/icons';
-import { getAllSchools, createSchool, updateSchool, deleteSchool, toggleSchoolStatus } from '../api/api';
-import { EducationType, Status } from '../utils/constants';
+import { getAllSchools, createSchool, updateSchool, deleteSchool, toggleSchoolStatus, getEducationPrograms } from '../api/api';
+import { Status } from '../utils/constants';
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -33,6 +33,8 @@ const SchoolsPage = () => {
         total: 0,
         search: '',
     });
+    const [educationPrograms, setEducationPrograms] = useState([]);
+    const [educationLoading, setEducationLoading] = useState(false);
 
 
     const fetchSchools = async () => {
@@ -44,7 +46,6 @@ const SchoolsPage = () => {
                 search: pagination.search
             });
             const { limit, page, total, totalPages } = response.data.pagination || {};
-            // Based on response: { success: true, data: [...] }
             setSchools(response.data.data || []);
             setPagination(prev => ({
                 ...prev,
@@ -60,8 +61,22 @@ const SchoolsPage = () => {
         }
     };
 
+    const fetchEducationPrograms = async () => {
+        setEducationLoading(true);
+        try {
+            const res = await getEducationPrograms({ page: 1, limit: 1000 });
+            const data = res.data?.data?.data || res.data?.data || [];
+            setEducationPrograms(data);
+        } catch (err) {
+            message.error(err.response?.data?.message || 'Failed to load education programs');
+        } finally {
+            setEducationLoading(false);
+        }
+    };
+
     useEffect(() => {
         fetchSchools();
+        fetchEducationPrograms();
     }, [pagination.current, pagination.limit, pagination.search]);
 
     // Refresh when window gets focus (e.g. after creating a class)
@@ -136,10 +151,16 @@ const SchoolsPage = () => {
             ),
         },
         {
-            title: 'Education Type',
-            dataIndex: 'education_type',
-            key: 'education_type',
-            render: (type) => <Tag color="blue">{type}</Tag>
+            title: 'Education Programs',
+            dataIndex: 'educationPrograms',
+            key: 'educationPrograms',
+            render: (programs) => (
+                <Space>
+                    {Array.isArray(programs) && programs.map(p => (
+                        <Tag color="purple" key={p.id}>{p.name}</Tag>
+                    ))}
+                </Space>
+            ),
         },
         {
             title: 'Status',
@@ -169,7 +190,8 @@ const SchoolsPage = () => {
                             setEditingSchool(record);
                             form.setFieldsValue({
                                 ...record,
-                                status: record.status === 0
+                                status: record.status === 0,
+                                education_program_ids: record.educationPrograms ? record.educationPrograms.map(p => p.id) : []
                             });
                             setIsModalOpen(true);
                         }}
@@ -287,13 +309,19 @@ const SchoolsPage = () => {
                     </Form.Item>
 
                     <Form.Item
-                        name="education_type"
-                        label="Education Type"
-                        rules={[{ required: true, message: 'Please select education type' }]}
+                        name="education_program_ids"
+                        label="Education Programs"
+                        rules={[{ required: true, message: 'Select at least one program' }]}
                     >
-                        <Select placeholder="Select education type">
-                            {Object.values(EducationType).map(type => (
-                                <Option key={type} value={type}>{type}</Option>
+                        <Select
+                            mode="multiple"
+                            placeholder="Select education programs"
+                            optionLabelProp="label"
+                        >
+                            {educationPrograms.map(program => (
+                                <Option key={program.id} value={program.id} label={program.name}>
+                                    {program.name}
+                                </Option>
                             ))}
                         </Select>
                     </Form.Item>

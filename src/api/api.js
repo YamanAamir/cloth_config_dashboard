@@ -34,6 +34,11 @@ export const updateClass = (id, data) => api.put(`/admin/class/${id}/update`, da
 export const deleteClass = (id) => api.delete(`/admin/class/${id}/delete`);
 export const toggleClassStatus = (id, data) => api.patch(`/admin/class/${id}/toggle-status`, data);
 export const assignClassRep = (data) => api.post('/admin/class/assign-rep', data);
+// Education Program APIs (admin)
+export const getEducationPrograms = (params = {}) => api.get('/admin/education-programs', params);
+export const createEducationProgram = (data) => api.post('/admin/education-program/create', data);
+export const updateEducationProgram = (id, data) => api.put(`/admin/education-program/${id}/update`, data);
+export const deleteEducationProgram = (id) => api.delete(`/admin/education-program/${id}/delete`);
 
 // Student Count APIs
 export const setExpectedStudentCount = (classId, data) => api.put(`/admin/class/${classId}/expected-students`, data);
