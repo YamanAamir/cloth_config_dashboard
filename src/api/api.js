@@ -45,6 +45,9 @@ export const setExpectedStudentCount = (classId, data) => api.put(`/admin/class/
 export const getClassStudentCount = (classId) => api.get(`/admin/class/${classId}/student-count`);
 export const setClassRepExpectedStudentCount = (classId, data) => api.put(`/class-rep/class/${classId}/expected-students`, data);
 export const getClassRepStudentCount = (classId) => api.get(`/class-rep/class/${classId}/student-count`);
+export const getClassRepDelivery = (classId) => api.get(`/class-rep/class/${classId}/delivery`);
+export const getStudentClassDelivery = (classId) => api.get(`/student/class/${classId}/delivery`);
+export const updateClassRepDelivery = (classId, data) => api.put(`/class-rep/class/${classId}/delivery`, { delivery_details: data });
 export const getAllClassesWithStudentCount = (params = {}) => api.post('/admin/classes-with-student-count', params);
 
 // Logo & Design APIs (admin)
@@ -142,6 +145,7 @@ export const updateShippingRate = (id, data) => api.put(`/admin/shipping-rate/${
 export const deleteShippingRate = (id) => api.delete(`/admin/shipping-rate/${id}/delete`);
 export const toggleShippingRateStatus = (id) => api.put(`/admin/shipping-rate/${id}/toggle-status`);
 
+export const getClassRepShippingRates = () => api.get('/class-rep/shipping-rates');
 // Library Design APIs (Admin)
 export const uploadLibraryDesign = (formData) => apiFormdata.post('/admin/library-design/upload', formData);
 export const getLibraryDesigns = (params = {}) => api.get('/admin/library-designs', { params });

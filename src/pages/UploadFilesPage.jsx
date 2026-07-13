@@ -323,7 +323,7 @@ const UploadFilesPage = () => {
                                                         }}
                                                     >
                                                         <EyeOutlined />
-                                                        Live Preview
+                                                        Preview
                                                     </div>
 
                                                     {item.status === Status.DELETED && (

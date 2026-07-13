@@ -472,63 +472,63 @@ const OrderList = () => {
 
                                 const printRows = isSweatpants
                                     ? [
-                                        renderPrintArea('Left Leg',  { type: d.leftLegType,  text: d.leftLegText,  flag: d.leftLegFlag,  flagUrl: d.leftLegFlagUrl,  logo: d.leftLegLogoCustom  || d.leftLegLogoPredefined }),
+                                        renderPrintArea('Left Leg', { type: d.leftLegType, text: d.leftLegText, flag: d.leftLegFlag, flagUrl: d.leftLegFlagUrl, logo: d.leftLegLogoCustom || d.leftLegLogoPredefined }),
                                         renderPrintArea('Right Leg', { type: d.rightLegType, text: d.rightLegText, flag: d.rightLegFlag, flagUrl: d.rightLegFlagUrl, logo: d.rightLegLogoCustom || d.rightLegLogoPredefined }),
                                     ].filter(Boolean)
                                     : [
-                                        renderPrintArea('Left Chest',   { text: d.leftChestText,   flag: d.leftChestFlag,   flagUrl: d.leftChestFlagUrl,  logo: d.leftChestLogoCustom   || d.leftChestLogoPredefined }),
-                                        renderPrintArea('Right Chest',  { text: d.rightChestText,  flag: d.rightChestFlag,  flagUrl: d.rightChestFlagUrl, logo: d.rightChestLogoCustom  || d.rightChestLogoPredefined }),
-                                        renderPrintArea('Left Sleeve',  { text: d.leftSleeveText,  flag: d.leftSleeveFlag,  flagUrl: d.leftSleeveFlagUrl  || d.leftSleeveFlagUrl2,  logo: d.leftSleeveLogoCustom  || d.leftSleeveLogoPredefined,  logoUrl: d.leftSleeveLogoPredefinedUrl }),
+                                        renderPrintArea('Left Chest', { text: d.leftChestText, flag: d.leftChestFlag, flagUrl: d.leftChestFlagUrl, logo: d.leftChestLogoCustom || d.leftChestLogoPredefined }),
+                                        renderPrintArea('Right Chest', { text: d.rightChestText, flag: d.rightChestFlag, flagUrl: d.rightChestFlagUrl, logo: d.rightChestLogoCustom || d.rightChestLogoPredefined }),
+                                        renderPrintArea('Left Sleeve', { text: d.leftSleeveText, flag: d.leftSleeveFlag, flagUrl: d.leftSleeveFlagUrl || d.leftSleeveFlagUrl2, logo: d.leftSleeveLogoCustom || d.leftSleeveLogoPredefined, logoUrl: d.leftSleeveLogoPredefinedUrl }),
                                         renderPrintArea('Right Sleeve', { text: d.rightSleeveText, flag: d.rightSleeveFlag, flagUrl: d.rightSleeveFlagUrl || d.rightSleeveFlagUrl2, logo: d.rightSleeveLogoCustom || d.rightSleeveLogoPredefined, logoUrl: d.rightSleeveLogoPredefinedUrl }),
                                     ].filter(Boolean);
 
                                 return (
-                                <List.Item>
-                                    <Card
-                                        type="inner"
-                                        title={
-                                            <Space wrap>
-                                                <Tag color="blue">{item.product_type}</Tag>
-                                                <Tag color="default">{item.selectedColor}</Tag>
-                                                {item.selectedSize && <Tag color="cyan">Size: {item.selectedSize}</Tag>}
-                                                <Tag color={item.status === 1 ? 'success' : 'warning'}>
-                                                    {item.status === 1 ? '✓ PAID' : 'UNPAID'}
-                                                </Tag>
-                                            </Space>
-                                        }
-                                        extra={<span style={{ color: '#888', fontSize: 12 }}>#{item.id}</span>}
-                                    >
-                                        <Row gutter={[16, 16]}>
-                                            <Col xs={24} md={d.backDesign?.src ? 16 : 24}>
-                                                {printRows.length > 0 ? (
-                                                    <Descriptions bordered size="small" column={1}>
-                                                        {printRows}
-                                                    </Descriptions>
-                                                ) : (
-                                                    <Descriptions bordered size="small" column={1}>
-                                                        <Descriptions.Item label="Print Areas">
-                                                            <span style={{ color: '#bbb' }}>No print areas configured</span>
-                                                        </Descriptions.Item>
-                                                    </Descriptions>
-                                                )}
-                                            </Col>
-                                            {d.backDesign?.src && (
-                                                <Col xs={24} md={8} style={{ textAlign: 'center' }}>
-                                                    <div style={{ marginBottom: 6, fontWeight: 600, fontSize: 12, color: '#666' }}>Back Design</div>
-                                                    <Image
-                                                        width={120}
-                                                        src={d.backDesign.src}
-                                                        style={{ borderRadius: 6, border: '1px solid #f0f0f0' }}
-                                                        fallback="https://via.placeholder.com/120?text=No+Design"
-                                                    />
-                                                    {d.backDesign.designId && (
-                                                        <div style={{ fontSize: 10, color: '#aaa', marginTop: 4 }}>Design #{d.backDesign.designId}</div>
+                                    <List.Item>
+                                        <Card
+                                            type="inner"
+                                            title={
+                                                <Space wrap>
+                                                    <Tag color="blue">{item.product_type}</Tag>
+                                                    <Tag color="default">{item.selectedColor}</Tag>
+                                                    {item.selectedSize && <Tag color="cyan">Size: {item.selectedSize}</Tag>}
+                                                    <Tag color={item.status === 1 ? 'success' : 'warning'}>
+                                                        {item.status === 1 ? '✓ PAID' : 'UNPAID'}
+                                                    </Tag>
+                                                </Space>
+                                            }
+                                            extra={<span style={{ color: '#888', fontSize: 12 }}>#{item.id}</span>}
+                                        >
+                                            <Row gutter={[16, 16]}>
+                                                <Col xs={24} md={d.backDesign?.src ? 16 : 24}>
+                                                    {printRows.length > 0 ? (
+                                                        <Descriptions bordered size="small" column={1}>
+                                                            {printRows}
+                                                        </Descriptions>
+                                                    ) : (
+                                                        <Descriptions bordered size="small" column={1}>
+                                                            <Descriptions.Item label="Print Areas">
+                                                                <span style={{ color: '#bbb' }}>No print areas configured</span>
+                                                            </Descriptions.Item>
+                                                        </Descriptions>
                                                     )}
                                                 </Col>
-                                            )}
-                                        </Row>
-                                    </Card>
-                                </List.Item>
+                                                {d.backDesign?.src && (
+                                                    <Col xs={24} md={8} style={{ textAlign: 'center' }}>
+                                                        <div style={{ marginBottom: 6, fontWeight: 600, fontSize: 12, color: '#666' }}>Back Design</div>
+                                                        <Image
+                                                            width={120}
+                                                            src={d.backDesign.src}
+                                                            style={{ borderRadius: 6, border: '1px solid #f0f0f0' }}
+                                                            fallback="https://via.placeholder.com/120?text=No+Design"
+                                                        />
+                                                        {d.backDesign.designId && (
+                                                            <div style={{ fontSize: 10, color: '#aaa', marginTop: 4 }}>Design #{d.backDesign.designId}</div>
+                                                        )}
+                                                    </Col>
+                                                )}
+                                            </Row>
+                                        </Card>
+                                    </List.Item>
                                 );
                             }}
                         />

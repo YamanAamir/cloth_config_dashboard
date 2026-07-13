@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     Button,
     Card,
@@ -32,7 +33,9 @@ import {
     EyeOutlined,
     GlobalOutlined,
     EditFilled,
-    EditOutlined
+    EditOutlined,
+    EnvironmentOutlined,
+    PictureOutlined
 } from '@ant-design/icons';
 import {
     getMyClass,
@@ -44,9 +47,14 @@ import {
     setClassRepExpectedStudentCount,
     getStudyTripCountries,
     setStudyTripCountry,
-    getClassRepLibraryDesigns
+    getClassRepLibraryDesigns,
+    getClassRepDelivery,
+    updateClassRepDelivery,
+    getClassRepShippingRates,
+    uploadBackDesign
 } from '../api/api';
 import { getUploadsUrl, getBackDesignDisplayUrl, Status } from '../utils/constants';
+import SimpleUploadModal from '../components/SimpleUploadModal';
 
 const { Title, Text, Paragraph } = Typography;
 const { Dragger } = Upload;
@@ -73,6 +81,7 @@ const STATUS_CONFIG = {
 };
 
 const MyClassPageSimple = () => {
+    const navigate = useNavigate();
     const [myClass, setMyClass] = useState(null);
     const [loading, setLoading] = useState(true);
     const [studentCount, setStudentCount] = useState(null);
@@ -85,10 +94,13 @@ const MyClassPageSimple = () => {
     const [registrationLink, setRegistrationLink] = useState('');
     const [linkLoading, setLinkLoading] = useState(false);
     const [uploadModalOpen, setUploadModalOpen] = useState(false);
+
     const [uploading, setUploading] = useState(false);
     const [selectedFile, setSelectedFile] = useState(null);
     const [logoName, setLogoName] = useState('');
     const [expectedStudentsModalOpen, setExpectedStudentsModalOpen] = useState(false);
+    const [backDesignModalOpen, setBackDesignModalOpen] = useState(false);
+    const [uploadType, setUploadType] = useState('logo');
     const [expectedCount, setExpectedCount] = useState(0);
     const [updatingCount, setUpdatingCount] = useState(false);
 
@@ -102,6 +114,23 @@ const MyClassPageSimple = () => {
     const [countryLogos, setCountryLogos] = useState([]);
     const [countryLogosLoading, setCountryLogosLoading] = useState(false);
 
+    // Delivery Details
+    const [deliveryModalOpen, setDeliveryModalOpen] = useState(false);
+    const [deliveryDetails, setDeliveryDetails] = useState({
+        contactName: '',
+        phone: '',
+        address: '',
+        city: '',
+        zip: '',
+        country: '',
+        shippingOption: 'standard',
+        shippingPrice: null,
+        shippingRateId: null
+    });
+    const [updatingDelivery, setUpdatingDelivery] = useState(false);
+    const [shippingRates, setShippingRates] = useState([]);
+    const [loadingRates, setLoadingRates] = useState(false);
+
     // Fetch all data
     const fetchAllData = async (showMessage = false) => {
         if (showMessage) setRefreshing(true);
@@ -111,6 +140,17 @@ const MyClassPageSimple = () => {
                 getMyClass(),
                 getMyLogos({ page: 1, limit: 10 })
             ]);
+            // Fetch shipping rates for class rep
+            try {
+                setLoadingRates(true);
+                const ratesRes = await getClassRepShippingRates();
+                setShippingRates(ratesRes.data?.data.filter(rate => rate.status == 0) || []);
+            } catch (error) {
+                console.error('Shipping rates fetch error:', error);
+                setShippingRates([]);
+            } finally {
+                setLoadingRates(false);
+            }
 
             const classData = classRes.data.data?.[0];
             setMyClass(classData);
@@ -133,6 +173,31 @@ const MyClassPageSimple = () => {
                 } catch (error) {
                     setBackDesign(null);
                 }
+
+                // Fetch delivery details
+                try {
+                    const deliveryRes = await getClassRepDelivery(classData.id);
+                    if (deliveryRes.data?.success && deliveryRes.data.data) {
+                        setDeliveryDetails({
+                            contactName: deliveryRes.data.data.contactName || '',
+                            phone: deliveryRes.data.data.phone || '',
+                            address: deliveryRes.data.data.address || '',
+                            city: deliveryRes.data.data.city || '',
+                            zip: deliveryRes.data.data.zip || '',
+                            shippingOption: deliveryRes.data.data?.shippingOption || 'standard',
+                            shippingPrice: deliveryRes.data.data?.shippingPrice || null,
+                            country: deliveryRes.data.data.country || classData.country?.name || 'Denmark'
+                        });
+                    } else {
+                        // Fallback country from class if delivery details are not yet set
+                        setDeliveryDetails(prev => ({
+                            ...prev,
+                            country: classData.country?.name || prev.country || 'Denmark'
+                        }));
+                    }
+                } catch (error) {
+                    console.error('Delivery details fetch error:', error);
+                }
             }
 
             if (showMessage) {
@@ -146,6 +211,34 @@ const MyClassPageSimple = () => {
         }
     };
 
+    const handleSimpleUpload = async (formData) => {
+
+        setUploading(true);
+        try {
+            let response;
+            if (uploadType === 'logo') {
+                response = await uploadLogo(formData);
+                message.success('Logo uploaded successfully!');
+            } else {
+                response = await uploadBackDesign(formData);
+                message.success('Back design uploaded successfully!');
+            }
+
+            setUploadModalOpen(false);
+        } catch (error) {
+            console.error('❌ Upload error:', error);
+            console.error('❌ Error details:', {
+                status: error.response?.status,
+                statusText: error.response?.statusText,
+                data: error.response?.data,
+                message: error.message
+            });
+            const errorMessage = error.response?.data?.message || error.message || 'Upload failed';
+            message.error(`Upload failed: ${errorMessage}`);
+        } finally {
+            setUploading(false);
+        }
+    };
     useEffect(() => {
         fetchAllData();
         fetchStudyTripCountries();
@@ -308,6 +401,30 @@ const MyClassPageSimple = () => {
         }
     };
 
+    // Update class delivery details
+    const handleUpdateDeliveryDetails = async () => {
+        if (!deliveryDetails.address.trim()) {
+            message.error('Angiv venligst gadeadresse');
+            return;
+        }
+        if (!myClass?.id) {
+            message.error('Klasse information ikke fundet');
+            return;
+        }
+
+        setUpdatingDelivery(true);
+        try {
+            await updateClassRepDelivery(myClass.id, deliveryDetails);
+            message.success('Leveringsadresse opdateret!');
+            setDeliveryModalOpen(false);
+            fetchAllData();
+        } catch (error) {
+            message.error('Kunne ikke opdatere leveringsadresse');
+        } finally {
+            setUpdatingDelivery(false);
+        }
+    };
+
     if (loading) {
         return (
             <div style={{ textAlign: 'center', padding: '100px 0' }}>
@@ -345,10 +462,9 @@ const MyClassPageSimple = () => {
 
 
 
-            {/* Main Actions */}
-            <Row gutter={[24, 24]} style={{ marginBottom: '40px' }}>
-                {/* Student Registration */}
-                <Col xs={24} md={12} lg={8}>
+
+            <Row gutter={[24, 24]} style={{ marginBottom: '40px' }} justify="center">
+                <Col xs={24} md={16} lg={8}>
                     <Card
                         id="tour-students-card"
                         style={{
@@ -372,8 +488,6 @@ const MyClassPageSimple = () => {
                         </div>
 
                         <Divider />
-
-                        {/* Count */}
                         <div style={{ marginBottom: 16 }}>
                             <Text strong style={{ fontSize: 20 }}>
                                 {studentCount?.registered_students || 0}
@@ -381,20 +495,6 @@ const MyClassPageSimple = () => {
                             <Text type="secondary"> / {studentCount?.expected_students || 'Set target'}</Text>
                         </div>
 
-                        {/* Progress */}
-                        {/* {studentCount?.expected_students && (
-                            <Progress
-                                percent={Math.round(studentCount.completion_percentage || 0)}
-                                strokeColor={{
-                                    '0%': '#ff4d4f',
-                                    '80%': '#faad14',
-                                    '100%': '#52c41a'
-                                }}
-                                style={{ marginBottom: 16 }}
-                            />
-                        )} */}
-
-                        {/* <Divider /> */}
 
                         <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
                             <Button
@@ -426,55 +526,6 @@ const MyClassPageSimple = () => {
                     </Card>
                 </Col>
 
-                {/* Upload Logo */}
-                <Col xs={24} md={12} lg={8}>
-                    <Card
-                        id="tour-upload-logo-card"
-                        style={{
-                            height: '100%',
-                            borderRadius: 12,
-                            transition: '0.3s',
-                            cursor: 'pointer'
-                        }}
-                        bodyStyle={{ padding: '24px' }}
-                        onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
-                        onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0px)'}
-                    >
-                        <div style={{ textAlign: 'center' }}>
-                            <UploadOutlined style={{ fontSize: 42, color: '#1890ff', marginBottom: 12 }} />
-                            <Title level={4} style={{ marginBottom: 4 }}>
-                                Upload logo
-                            </Title>
-                            <Text type="secondary">
-                                Klasselogo til dimissionsgenstande
-                            </Text>
-                        </div>
-
-                        <Divider />
-
-                        {/* Logo Status */}
-                        <div style={{ marginBottom: 16, textAlign: 'center' }}>
-                            {logos.length > 0 ? (
-                                <Tag color="success">
-                                    {logos.length} Logo{logos.length > 1 ? 'er' : ''}
-                                </Tag>
-                            ) : (
-                                <Tag color="default">Ingen logoer endnu</Tag>
-                            )}
-                        </div>
-
-                        <Button
-                            type="primary"
-                            icon={<PlusOutlined />}
-                            onClick={() => setUploadModalOpen(true)}
-                            block
-                        >
-                            Upload logo
-                        </Button>
-
-
-                    </Card>
-                </Col>
                 <Col xs={24} md={12} lg={8}>
                     <Card
                         id="tour-studietur-card"
@@ -525,10 +576,124 @@ const MyClassPageSimple = () => {
                     </Card>
                 </Col>
 
+                <Col xs={24} md={12} lg={8}>
+                    <Card
+                        id="tour-delivery-card"
+                        style={{
+                            height: '100%',
+                            borderRadius: 12,
+                            transition: '0.3s',
+                            cursor: 'pointer'
+                        }}
+                        bodyStyle={{ padding: '24px' }}
+                        onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
+                        onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0px)'}
+                    >
+                        <div style={{ textAlign: 'center' }}>
+                            <EnvironmentOutlined style={{ fontSize: 42, color: '#ff4d4f', marginBottom: 12 }} />
+                            <Title level={4} style={{ marginBottom: 4 }}>
+                                Levering
+                            </Title>
+                            <Text type="secondary">
+                                Fælles leveringsadresse
+                            </Text>
+                        </div>
 
+                        <Divider />
+
+                        {/* Delivery Address Status */}
+                        <div style={{ marginBottom: 16, textAlign: 'center' }}>
+                            {deliveryDetails.address ? (
+                                <Tag color="success" style={{ fontSize: '13px', padding: '2px 8px' }}>
+                                    Adresse angivet
+                                </Tag>
+                            ) : (
+                                <Tag color="warning" style={{ fontSize: '13px', padding: '2px 8px' }}>
+                                    Adresse mangler
+                                </Tag>
+                            )}
+                        </div>
+
+                        <Button
+                            type="primary"
+                            icon={<EnvironmentOutlined />}
+                            onClick={() => setDeliveryModalOpen(true)}
+                            block
+                        >
+                            {deliveryDetails.address ? 'Rediger adresse' : 'Angiv adresse'}
+                        </Button>
+                    </Card>
+                </Col>
+
+                <Col xs={24} md={12} lg={8}>
+                    <Card
+                        id="tour-backdesign-card"
+                        style={{
+                            height: '100%',
+                            borderRadius: 12,
+                            transition: '0.3s',
+                            cursor: 'pointer'
+                        }}
+                        bodyStyle={{ padding: '24px' }}
+                        onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
+                        onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0px)'}
+                    >
+                        <div style={{ textAlign: 'center' }}>
+                            <PictureOutlined style={{ fontSize: 42, color: '#faad14', marginBottom: 12 }} />
+                            <Title level={4} style={{ marginBottom: 4 }}>Backdesign</Title>
+                            <Text type="secondary">Vælg baggrundsdesign til klassen</Text>
+                        </div>
+                        <Divider />
+                        <Button
+                            type="primary"
+                            icon={<EditOutlined />}
+                            onClick={() => { setUploadType('design'); setUploadModalOpen(true); }}
+                            block
+                        >
+                            Vælg design
+                        </Button>
+                    </Card>
+                </Col>
+
+                <Col xs={24} md={12} lg={8}>
+                    <Card
+                        id="tour-upload-logo-card"
+                        style={{
+                            height: '100%',
+                            borderRadius: 12,
+                            transition: '0.3s',
+                            cursor: 'pointer'
+                        }}
+                        bodyStyle={{ padding: '24px' }}
+                        onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
+                        onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0px)'}
+                    >
+                        <div style={{ textAlign: 'center' }}>
+                            <UploadOutlined style={{ fontSize: 42, color: '#1890ff', marginBottom: 12 }} />
+                            <Title level={4} style={{ marginBottom: 4 }}>
+                                Upload logo
+                            </Title>
+                            <Text type="secondary">
+                                Klasselogo til dimissionsgenstande
+                            </Text>
+                        </div>
+
+                        <Divider />
+
+                        <Button
+                            type="primary"
+                            icon={<PlusOutlined />}
+                            onClick={() => { setUploadType('logo'); setUploadModalOpen(true); }}
+                            block
+                        >
+                            Upload logo
+                        </Button>
+
+
+                    </Card>
+                </Col>
 
             </Row>
-            {/* Country Logos Section */}
             {myClass?.country_id && (
                 <Card
                     title={
@@ -808,119 +973,13 @@ const MyClassPageSimple = () => {
             </Modal>
 
             {/* Upload Modal */}
-            <Modal
-                title="Upload klasselogo"
+            <SimpleUploadModal
                 open={uploadModalOpen}
-                onCancel={() => {
-                    setUploadModalOpen(false);
-                    setSelectedFile(null);
-                    setLogoName('');
-                }}
-                footer={null}
-                width={500}
-            >
-                <div style={{ padding: '20px 0' }}>
-                    {/* <div style={{ 
-                        background: '#f6ffed', 
-                        border: '1px solid #b7eb8f', 
-                        borderRadius: 6, 
-                        padding: 12, 
-                        marginBottom: 16 
-                    }}>
-                        <Typography.Text strong style={{ color: '#389e0d', display: 'block', marginBottom: 4 }}>
-                            📏 A3 Size Requirements
-                        </Typography.Text>
-                        <Typography.Text style={{ fontSize: 12, color: '#52c41a' }}>
-                            • Maximum: 4000 × 5600 pixels (A3 at 300 DPI)<br/>
-                            • Recommended: 2480 × 3508 pixels (A3 at 210 DPI)<br/>
-                            • How to check: Right-click image → Properties → Details<br/>
-                            • File size: Maximum 5MB
-                        </Typography.Text>
-                    </div> */}
-
-                    <Paragraph>
-                        Upload et billede i høj kvalitet af dit klasselogo. Vi gennemgår det og godkender det til brug på dimissionsgenstande.
-                    </Paragraph>
-
-                    <div style={{ marginBottom: 16 }}>
-                        <Typography.Text strong style={{ display: 'block', marginBottom: 8 }}>
-                            Logonavn *
-                        </Typography.Text>
-                        <Input
-                            placeholder="Indtast logonavn (f.eks. Skolelogo 2025)"
-                            value={logoName}
-                            onChange={(e) => setLogoName(e.target.value)}
-                            maxLength={100}
-                            showCount
-                            disabled={uploading}
-                        />
-                    </div>
-
-                    <Dragger
-                        accept="image/*"
-                        beforeUpload={handleFileSelect}
-                        showUploadList={false}
-                        disabled={uploading}
-                        style={{
-                            borderColor: selectedFile ? '#52c41a' : '#d9d9d9',
-                            backgroundColor: selectedFile ? '#f6ffed' : '#fafafa'
-                        }}
-                    >
-                        <p className="ant-upload-drag-icon">
-                            <UploadOutlined style={{
-                                fontSize: '48px',
-                                color: selectedFile ? '#52c41a' : '#1890ff'
-                            }} />
-                        </p>
-                        <p className="ant-upload-text" style={{
-                            color: selectedFile ? '#52c41a' : undefined,
-                            fontWeight: selectedFile ? 'bold' : 'normal'
-                        }}>
-                            {selectedFile ? 'Fil valgt – Klik eller træk for at skifte' :
-                                'Klik eller træk billede hertil for at vælge'}
-                        </p>
-                        <p className="ant-upload-hint">
-                            Maks: 5MB • JPG/PNG/GIF
-                        </p>
-                    </Dragger>
-
-                    {/* Upload Button and File Name */}
-                    <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <Upload
-                            accept="image/*"
-                            beforeUpload={handleFileSelect}
-                            showUploadList={false}
-                            disabled={uploading}
-                        >
-                            {/* <Button
-                                icon={<UploadOutlined />}
-                                disabled={uploading}
-                            >
-                                Choose File
-                            </Button> */}
-                        </Upload>
-                        {selectedFile && (
-                            <Text type="success" style={{ fontSize: 14 }}>
-                                📁 {selectedFile.name}
-                            </Text>
-                        )}
-                    </div>
-
-                    {/* Manual Upload Button */}
-                    <div style={{ marginTop: 16, textAlign: 'center' }}>
-                        <Button
-                            type="primary"
-                            size="large"
-                            loading={uploading}
-                            onClick={handleManualUpload}
-                            disabled={!selectedFile || !logoName.trim()}
-                            style={{ minWidth: 120, color: 'white' }}
-                        >
-                            {uploading ? 'Uploader...' : 'Upload logo'}
-                        </Button>
-                    </div>
-                </div>
-            </Modal>
+                onCancel={() => setUploadModalOpen(false)}
+                onUpload={handleSimpleUpload}
+                uploadType={uploadType}
+                loading={uploading}
+            />
 
             {/* Expected Students Modal */}
             <Modal
@@ -1022,6 +1081,184 @@ const MyClassPageSimple = () => {
                     )}
                 </div>
             </Modal>
+
+            {/* Delivery Modal */}
+            <Modal
+                title="Leveringsadresse"
+                open={deliveryModalOpen}
+                onCancel={() => setDeliveryModalOpen(false)}
+                footer={null}
+                width={500}
+            >
+                <Space direction="vertical" style={{ width: '100%' }}>
+                    {/* <Input
+                        placeholder="Kontaktperson"
+                        value={deliveryDetails.contactName}
+                        onChange={e => setDeliveryDetails({ ...deliveryDetails, contactName: e.target.value })}
+                    />
+                    <Input
+                        placeholder="Telefon"
+                        value={deliveryDetails.phone}
+                        onChange={e => setDeliveryDetails({ ...deliveryDetails, phone: e.target.value })}
+                    /> */}
+                    <Row gutter={[12, 12]}>
+                        <Col span={24}>
+                            <Input
+                                placeholder="Adresse"
+                                value={deliveryDetails.address}
+                                onChange={e => setDeliveryDetails({ ...deliveryDetails, address: e.target.value })}
+                            />
+                        </Col>
+                        <Col xs={24} sm={12}>
+                            <Input
+                                placeholder="By"
+                                value={deliveryDetails.city}
+                                onChange={e => setDeliveryDetails({ ...deliveryDetails, city: e.target.value })}
+                            />
+                        </Col>
+                        <Col xs={24} sm={12}>
+                            <Input
+                                placeholder="Postnummer"
+                                value={deliveryDetails.zip}
+                                onChange={e => setDeliveryDetails({ ...deliveryDetails, zip: e.target.value })}
+                            />
+                        </Col>
+                    </Row>
+                    <Select
+                        placeholder="Land"
+                        value={deliveryDetails.country}
+                        onChange={val => {
+                            const rate = shippingRates.find(r => r.country_name === val);
+                            const isExpress = deliveryDetails.shippingOption === 'express';
+                            const price = rate
+                                ? parseFloat(isExpress ? rate.express_delivery_rate : rate.regular_delivery_rate)
+                                : null;
+                            setDeliveryDetails({
+                                ...deliveryDetails,
+                                country: val,
+                                shippingPrice: price,
+                                shippingRateId: rate ? rate.id : null
+                            });
+                        }}
+                        style={{ width: '100%' }}
+                    >
+                        {shippingRates.length > 0 ? (
+                            shippingRates.map(rate => (
+                                <Select.Option key={rate.id} value={rate.country_name}>
+                                    {rate.country_name} — {rate.regular_delivery_rate} {rate.currency}
+                                </Select.Option>
+                            ))
+                        ) : (
+                            <>
+                                <Select.Option value="Denmark">Denmark</Select.Option>
+                                <Select.Option value="Sverige">Sverige</Select.Option>
+                                <Select.Option value="Norway">Norway</Select.Option>
+                            </>
+                        )}
+                    </Select>
+                    {deliveryDetails.country && (
+                        <div style={{ marginTop: '4px', marginBottom: '8px' }}>
+                            <Row gutter={[12, 12]}>
+                                <Col span={24} sm={12}>
+                                    <div
+                                        onClick={() => {
+                                            const rate = shippingRates.find(r => r.country_name.toLowerCase() === (deliveryDetails.country || '').toLowerCase());
+                                            setDeliveryDetails({
+                                                ...deliveryDetails,
+                                                shippingOption: 'standard',
+                                                shippingPrice: rate ? parseFloat(rate.regular_delivery_rate) : null
+                                            });
+                                        }}
+                                        style={{
+                                            padding: '12px',
+                                            borderRadius: '24px',
+                                            border: `2px solid ${deliveryDetails.shippingOption === 'standard' ? '#00b96b' : '#f0f0f0'}`,
+                                            backgroundColor: deliveryDetails.shippingOption === 'standard' ? '#f6ffed' : '#fafafa',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            transition: 'all 0.3s'
+                                        }}
+                                    >
+                                        <div style={{
+                                            width: '20px',
+                                            height: '20px',
+                                            borderRadius: '50%',
+                                            border: `2px solid ${deliveryDetails.shippingOption === 'standard' ? '#00b96b' : '#d9d9d9'}`,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            marginRight: '12px',
+                                            backgroundColor: deliveryDetails.shippingOption === 'standard' ? '#00b96b' : 'white',
+                                            flexShrink: 0
+                                        }}>
+                                            {deliveryDetails.shippingOption === 'standard' && <div style={{ width: '6px', height: '6px', backgroundColor: 'white', borderRadius: '50%' }}></div>}
+                                        </div>
+                                        <div>
+                                            <Typography.Text strong style={{ fontSize: '12px', display: 'block', color: '#1f2937' }}>Regelmæssig levering</Typography.Text>
+                                            <Typography.Text type="secondary" style={{ fontSize: '10px' }}>
+                                                {(() => { const r = shippingRates.find(x => x.country_name.toLowerCase() === (deliveryDetails.country || '').toLowerCase()); return r ? `${r.regular_delivery_rate} ${r.currency} — Est. 6 weeks` : 'Est. 6 weeks'; })()}
+                                            </Typography.Text>
+                                        </div>
+                                    </div>
+                                </Col>
+                                <Col span={24} sm={12}>
+                                    <div
+                                        onClick={() => {
+                                            const rate = shippingRates.find(r => r.country_name.toLowerCase() === (deliveryDetails.country || '').toLowerCase());
+                                            setDeliveryDetails({
+                                                ...deliveryDetails,
+                                                shippingOption: 'express',
+                                                shippingPrice: rate ? parseFloat(rate.express_delivery_rate) : null
+                                            });
+                                        }}
+                                        style={{
+                                            padding: '12px',
+                                            borderRadius: '24px',
+                                            border: `2px solid ${deliveryDetails.shippingOption === 'express' ? '#00b96b' : '#f0f0f0'}`,
+                                            backgroundColor: deliveryDetails.shippingOption === 'express' ? '#f6ffed' : '#fafafa',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            transition: 'all 0.3s'
+                                        }}
+                                    >
+                                        <div style={{
+                                            width: '20px',
+                                            height: '20px',
+                                            borderRadius: '50%',
+                                            border: `2px solid ${deliveryDetails.shippingOption === 'express' ? '#00b96b' : '#d9d9d9'}`,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            marginRight: '12px',
+                                            backgroundColor: deliveryDetails.shippingOption === 'express' ? '#00b96b' : 'white',
+                                            flexShrink: 0
+                                        }}>
+                                            {deliveryDetails.shippingOption === 'express' && <div style={{ width: '6px', height: '6px', backgroundColor: 'white', borderRadius: '50%' }}></div>}
+                                        </div>
+                                        <div>
+                                            <Typography.Text strong style={{ fontSize: '12px', display: 'block', color: '#1f2937' }}>Ekspresprioritet</Typography.Text>
+                                            <Typography.Text type="secondary" style={{ fontSize: '10px' }}>
+                                                {(() => { const r = shippingRates.find(x => x.country_name.toLowerCase() === (deliveryDetails.country || '').toLowerCase()); return r ? `${r.express_delivery_rate} ${r.currency} — Est. 3 weeks` : 'Est. 3 weeks'; })()}
+                                            </Typography.Text>
+                                        </div>
+                                    </div>
+                                </Col>
+                            </Row>
+                        </div>
+                    )}
+                    <Button
+                        type="primary"
+                        loading={updatingDelivery}
+                        onClick={handleUpdateDeliveryDetails}
+                    >
+                        Gem Levering
+                    </Button>
+                </Space>
+            </Modal>
+
+
         </div>
     );
 };

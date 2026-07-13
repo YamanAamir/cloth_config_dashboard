@@ -51,7 +51,7 @@ const SchoolOverviewPage = () => {
             ]);
             setStudents(studRes.data.data || []);
             setClassRepData(repRes.data.data || null);
-        } catch { message.error('Failed to load students'); }
+        } catch(e) { message.error(e.response.data.message || 'Failed to load students'); }
         finally { setStudentsLoading(false); }
     };
 

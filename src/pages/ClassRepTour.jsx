@@ -54,16 +54,28 @@ const ClassRepTour = () => {
           target: () => document.getElementById('tour-students-card'),
         },
         {
-          title: 'Upload logo',
-          description:
-            'Upload et klasselogo i høj kvalitet til brug på dimissionsgenstande. Admin gennemgår og godkender det inden brug.',
-          target: () => document.getElementById('tour-upload-logo-card'),
-        },
-        {
           title: 'Studietur',
           description:
             'Vælg destinationsland for jeres studietur. Dette bruges til at vise relevante landelogoer og designs.',
           target: () => document.getElementById('tour-studietur-card'),
+        },
+        {
+          title: 'Levering',
+          description:
+            'Her kan du vælge at alle skal have levering til en fælles adresse.',
+          target: () => document.getElementById('tour-delivery-card'),
+        },
+        {
+          title: 'Bagdesign',
+          description:
+            'Upload både den sorte og den hvide variant af dit klassebagsidedesign. Admin gennemgår og godkender det inden brug.',
+          target: () => document.getElementById('tour-backdesign-card'),
+        },
+        {
+          title: 'Upload logo',
+          description:
+            'Upload et klasselogo i høj kvalitet til brug på dimissionsgenstande. Admin gennemgår og godkender det inden brug.',
+          target: () => document.getElementById('tour-upload-logo-card'),
         },
         {
           title: 'Aktuel status',
@@ -71,6 +83,7 @@ const ClassRepTour = () => {
             'Se den aktuelle godkendelsesstatus på dit bagdesign og seneste logo – om de er godkendt, under gennemgang eller kræver ændringer.',
           target: () => document.getElementById('tour-status-card'),
         },
+
       ],
     },
 
@@ -153,9 +166,6 @@ const ClassRepTour = () => {
     // Clean up old per-page keys from previous versions
     cleanupOldKeys();
 
-    // Only show on /my-class (first page class reps land on)
-    if (location.pathname !== '/my-class') return;
-
     const alreadySeen = localStorage.getItem(TOUR_SEEN_KEY);
     if (!alreadySeen) {
       const timer = setTimeout(() => setShowPrompt(true), 1000);
@@ -172,10 +182,16 @@ const ClassRepTour = () => {
   // ─── Handlers ─────────────────────────────────────────────────────────────
 
   const handleStartTour = () => {
-    if (currentSteps.length === 0) return;
-    setTourOpen(true);
-  };
+    if (!currentSteps.length) return;
 
+    setTourOpen(false);
+
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        setTourOpen(true);
+      }, 100);
+    });
+  };
   const dismissPrompt = (startTour = false) => {
     localStorage.setItem(TOUR_SEEN_KEY, 'true');
     setShowPrompt(false);

@@ -1,0 +1,108 @@
+/* src/styles/MyClassPage.module.css */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+:root {
+  --primary-color: #19997f; /* teal green */
+  --secondary-color: #722ed1; /* purple for study trip */
+  --background-light: #f5f7fa;
+  --background-card: rgba(255, 255, 255, 0.6);
+  --text-primary: #212529;
+  --text-secondary: #6c757d;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --primary-color: #58d1b9;
+    --background-light: #1e1e1e;
+    --background-card: rgba(30, 30, 30, 0.6);
+    --text-primary: #eaeaea;
+    --text-secondary: #c0c0c0;
+  }
+}
+
+/* Global font */
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: var(--background-light);
+  color: var(--text-primary);
+}
+
+/* Page container */
+.pageContainer {
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Glass‑morphism card */
+.glassCard {
+  background: var(--background-card);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+  height: 100%;
+  padding: 24px;
+}
+
+.glassCard:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+}
+
+/* Gradient primary button */
+.gradientButton {
+  background: linear-gradient(45deg, var(--primary-color), #34c3a2);
+  border: none;
+  color: #fff;
+  font-weight: 600;
+  border-radius: 8px;
+  transition: background 0.3s ease;
+}
+
+.gradientButton:hover {
+  background: linear-gradient(45deg, #34c3a2, var(--primary-color));
+}
+
+/* Glass modal */
+.glassModal {
+  background: var(--background-card) !important;
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
+  border-radius: 16px !important;
+  padding: 24px !important;
+  max-width: 600px;
+}
+
+/* Status tag pill */
+.statusTag {
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+/* Country card */
+.countryCard {
+  border: 1px solid #f0f0f0;
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+  background: #fff;
+}
+
+.countryCardSelected {
+  border-color: var(--primary-color);
+  background: #e6fff5;
+  transform: scale(1.03);
+}
+
+/* Adjust AntD modal title */
+.ant-modal-title {
+  font-weight: 700;
+  font-size: 1.2rem;
+}
