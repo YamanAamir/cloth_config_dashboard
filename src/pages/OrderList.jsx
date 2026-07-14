@@ -419,11 +419,20 @@ const OrderList = () => {
                         {selectedOrderDetails.delivery_details && (
                             <>
                                 <Descriptions title="Delivery Details" bordered column={2}>
-                                    {Object.entries(JSON.parse(selectedOrderDetails.delivery_details)).map(([key, value]) => (
-                                        <Descriptions.Item key={key} label={key.charAt(0).toUpperCase() + key.slice(1)}>
-                                            {value || '-'}
-                                        </Descriptions.Item>
-                                    ))}
+                                    {Object.entries(JSON.parse(selectedOrderDetails.delivery_details)).map(([key, value]) => {
+                                        // Fields not filled in on the delivery form fall back to the
+                                        // linked student/class records instead of showing a blank dash.
+                                        const objectFallbacks = {
+                                            skolenavn: selectedOrderDetails.class?.name,
+                                            email: selectedOrderDetails.student?.email,
+                                        };
+                                        const resolvedValue = value || objectFallbacks[key.toLowerCase()];
+                                        return (
+                                            <Descriptions.Item key={key} label={key.charAt(0).toUpperCase() + key.slice(1)}>
+                                                {resolvedValue || '-'}
+                                            </Descriptions.Item>
+                                        );
+                                    })}
                                 </Descriptions>
                                 <Divider />
                             </>

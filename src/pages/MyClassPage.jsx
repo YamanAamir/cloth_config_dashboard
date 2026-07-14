@@ -123,7 +123,7 @@ const MyClassPageSimple = () => {
         city: '',
         zip: '',
         country: '',
-        shippingOption: 'standard',
+        shippingOption: '',
         shippingPrice: null,
         shippingRateId: null
     });
@@ -1197,7 +1197,7 @@ const MyClassPageSimple = () => {
                                         <div>
                                             <Typography.Text strong style={{ fontSize: '12px', display: 'block', color: '#1f2937' }}>Regelmæssig levering</Typography.Text>
                                             <Typography.Text type="secondary" style={{ fontSize: '10px' }}>
-                                                {(() => { const r = shippingRates.find(x => x.country_name.toLowerCase() === (deliveryDetails.country || '').toLowerCase()); return r ? `${r.regular_delivery_rate} ${r.currency} — Est. 6 weeks` : 'Est. 6 weeks'; })()}
+                                                Est. 6 weeks
                                             </Typography.Text>
                                         </div>
                                     </div>

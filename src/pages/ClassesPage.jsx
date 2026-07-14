@@ -386,7 +386,8 @@ const ClassesPage = () => {
                         icon: <EditOutlined />,
                         onClick: () => {
                             setEditingClass(record);
-                            setAvailablePrograms(record.school?.educationPrograms || []);
+                            const school = schools.find(s => s.id === record.school_id) || record.school;
+                            setAvailablePrograms(school?.educationPrograms || []);
                             form.setFieldsValue({
                                 ...record,
                                 status: record.status === Status.ACTIVE,
