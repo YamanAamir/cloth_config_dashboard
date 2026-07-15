@@ -37,6 +37,7 @@ const SettingsPage = () => {
                 handling_fee_enabled: data.handling_fee_enabled === 'true',
                 handling_fee_threshold: parseFloat(data.handling_fee_threshold) || 0,
                 handling_fee_extra: parseFloat(data.handling_fee_extra) || 0,
+                delivery_fee_threshold: parseFloat(data.delivery_fee_threshold) || 0,
                 vat_percentage: parseFloat(data.vat_percentage) || 0,
                 'price_T-SHIRT': parseFloat(data['price_T-SHIRT']) || 0,
                 'price_SWEATSHIRT': parseFloat(data['price_SWEATSHIRT']) || 0,
@@ -381,6 +382,12 @@ const SettingsPage = () => {
                             <Form.Item name="vat_percentage" label="VAT Percentage"
                                 tooltip="VAT applied to orders">
                                 <InputNumber min={0} max={100} step={0.5} style={{ width: '100%' }} suffix="%" />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} sm={12} md={6}>
+                            <Form.Item name="delivery_fee_threshold" label="Delivery Fee threshold"
+                                tooltip="Delivery fee threshold">
+                                <InputNumber min={0} step={1} style={{ width: '100%' }} suffix="DKK" />
                             </Form.Item>
                         </Col>
                         <Col xs={24} sm={12} md={6}>

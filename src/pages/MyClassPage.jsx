@@ -298,7 +298,7 @@ const MyClassPageSimple = () => {
             setRegistrationLink(link);
             setLinkModalOpen(true);
         } catch (error) {
-            message.error('Failed to generate registration link');
+            message.error(error.response?.data?.message || 'Failed to generate registration link');
         } finally {
             setLinkLoading(false);
         }
