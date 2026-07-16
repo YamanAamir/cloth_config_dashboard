@@ -1,7 +1,7 @@
 ﻿import React, { useState, useEffect, useRef } from 'react';
 import {
     Card, Typography, Button, message, Space, Spin,
-    Select, Row, Col, Divider, Input, Tooltip, Tabs, Badge
+    Select, Row, Col, Divider, Input, Tooltip, Tabs, Badge, Alert
 } from 'antd';
 import {
     PlusOutlined, SaveOutlined, DeleteOutlined,
@@ -423,8 +423,8 @@ const BackDesignConfiguratorPage = () => {
     };
 
     const handleAddText = () => {
+        if (textElements.length >= maxNames) return message.warning(`Expected student count is ${maxNames} — you cannot add more names than that`);
         if (!currentText.trim()) return message.warning('Enter a name');
-        if (textElements.length >= 40) return message.warning('Maximum 40 names allowed');
         // Prevent duplicate names
         if (textElements.some(el => el.text === currentText.trim())) {
             return message.warning('This name is already added');
@@ -602,6 +602,7 @@ const BackDesignConfiguratorPage = () => {
 
     // When order is locked: existing names are read-only, but new names can still be added
     const isOrderLocked = myClass?.order_locked === true;
+    const maxNames = myClass?.expected_students > 0 ? myClass.expected_students : 40;
     const sizes = Array.from({ length: 12 }, (_, i) => 250 + i * 10);
     return (
         <div>
@@ -650,9 +651,18 @@ const BackDesignConfiguratorPage = () => {
                             items={[
                                 {
                                     key: 'manual',
-                                    label: <span>Navne {textElements.length > 0 && <Badge count={textElements.length} color="#00b96b" style={{ marginLeft: 4 }} />}</span>,
+                                    label: <span>Navne {textElements.length > 0 && <Badge count={textElements.length} color={textElements.length > maxNames ? '#ff4d4f' : '#00b96b'} style={{ marginLeft: 4 }} />}</span>,
                                     children: (
                                         <>
+                                            {textElements.length > maxNames && (
+                                                <Alert
+                                                    type="warning"
+                                                    showIcon
+                                                    style={{ marginBottom: 8 }}
+                                                    message={`${textElements.length} names added, but expected student count is only ${maxNames}`}
+                                                    description={`Please remove ${textElements.length - maxNames} name(s) — you cannot add more names than the expected student count.`}
+                                                />
+                                            )}
                                             {textElements.map(el => (
                                                 <Card
                                                     key={el.id}
@@ -777,8 +787,9 @@ const BackDesignConfiguratorPage = () => {
                                             <Select value={currentFontFamily} onChange={setCurrentFontFamily} style={{ width: '100%', marginTop: 8 }} placeholder="Select font" showSearch optionFilterProp="label">
                                                 {fonts.map(f => <Select.Option key={f.id} value={f.name} label={f.name}><span style={{ fontFamily: f.name, fontSize: 15 }}>{f.name}</span></Select.Option>)}
                                             </Select>
-                                            <Button type="primary" icon={<PlusOutlined />} onClick={handleAddText} block style={{ marginTop: 8 }} disabled={textElements.length >= 40}>
-                                                Tilføj navn {textElements.length >= 40 ? '(max 40)' : `(${textElements.length}/40)`}
+                                            <Button type="primary" icon={<PlusOutlined />} onClick={handleAddText} block
+                                                style={{ marginTop: 8, opacity: textElements.length >= maxNames ? 0.6 : 1 }}>
+                                                Tilføj navn {textElements.length >= maxNames ? `(max ${maxNames})` : `(${textElements.length}/${maxNames})`}
                                             </Button>
                                         </>
                                     )
@@ -799,15 +810,15 @@ const BackDesignConfiguratorPage = () => {
                                                         <Space size="small">
                                                             <Button size="small" onClick={() => {
                                                                 const toAdd = students.filter(s => !textElements.some(el => el.text === s.name));
-                                                                const remaining = 40 - textElements.length;
+                                                                const remaining = maxNames - textElements.length;
                                                                 if (toAdd.length > 0) {
                                                                     if (remaining <= 0) {
-                                                                        message.warning('Maximum 40 names already added');
+                                                                        message.warning(`Maximum ${maxNames} names already added`);
                                                                         return;
                                                                     }
                                                                     const limited = toAdd.slice(0, remaining);
                                                                     if (limited.length < toAdd.length) {
-                                                                        message.warning(`Only ${limited.length} name(s) added — max 40 total`);
+                                                                        message.warning(`Only ${limited.length} name(s) added — max ${maxNames} total`);
                                                                     }
                                                                     const newEls = limited.map((s, i) => ({
                                                                         id: Date.now() + i + Math.random(),
@@ -837,8 +848,8 @@ const BackDesignConfiguratorPage = () => {
                                                                     if (isAdded) {
                                                                         setTextElements(prev => prev.filter(el => el.text !== s.name));
                                                                     } else {
-                                                                        if (textElements.length >= 40) {
-                                                                            message.warning('Maximum 40 names allowed');
+                                                                        if (textElements.length >= maxNames) {
+                                                                            message.warning(`Maximum ${maxNames} names allowed`);
                                                                             return;
                                                                         }
                                                                         const newEl = {

@@ -184,8 +184,9 @@ const MyClassPageSimple = () => {
                             address: deliveryRes.data.data.address || '',
                             city: deliveryRes.data.data.city || '',
                             zip: deliveryRes.data.data.zip || '',
-                            shippingOption: deliveryRes.data.data?.shippingOption || 'standard',
+                            shippingOption: deliveryRes.data.data?.shippingOption || 'regular',
                             shippingPrice: deliveryRes.data.data?.shippingPrice || null,
+                            shippingRateId: deliveryRes.data.data?.shippingRateId || null,
                             country: deliveryRes.data.data.country || classData.country?.name || 'Denmark'
                         });
                     } else {
@@ -1165,15 +1166,16 @@ const MyClassPageSimple = () => {
                                             const rate = shippingRates.find(r => r.country_name.toLowerCase() === (deliveryDetails.country || '').toLowerCase());
                                             setDeliveryDetails({
                                                 ...deliveryDetails,
-                                                shippingOption: 'standard',
-                                                shippingPrice: rate ? parseFloat(rate.regular_delivery_rate) : null
+                                                shippingOption: 'regular',
+                                                shippingPrice: rate ? parseFloat(rate.regular_delivery_rate) : null,
+                                                shippingRateId: rate ? rate.id : null
                                             });
                                         }}
                                         style={{
                                             padding: '12px',
                                             borderRadius: '24px',
-                                            border: `2px solid ${deliveryDetails.shippingOption === 'standard' ? '#00b96b' : '#f0f0f0'}`,
-                                            backgroundColor: deliveryDetails.shippingOption === 'standard' ? '#f6ffed' : '#fafafa',
+                                            border: `2px solid ${deliveryDetails.shippingOption === 'regular' ? '#00b96b' : '#f0f0f0'}`,
+                                            backgroundColor: deliveryDetails.shippingOption === 'regular' ? '#f6ffed' : '#fafafa',
                                             cursor: 'pointer',
                                             display: 'flex',
                                             alignItems: 'center',
@@ -1184,15 +1186,15 @@ const MyClassPageSimple = () => {
                                             width: '20px',
                                             height: '20px',
                                             borderRadius: '50%',
-                                            border: `2px solid ${deliveryDetails.shippingOption === 'standard' ? '#00b96b' : '#d9d9d9'}`,
+                                            border: `2px solid ${deliveryDetails.shippingOption === 'regular' ? '#00b96b' : '#d9d9d9'}`,
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
                                             marginRight: '12px',
-                                            backgroundColor: deliveryDetails.shippingOption === 'standard' ? '#00b96b' : 'white',
+                                            backgroundColor: deliveryDetails.shippingOption === 'regular' ? '#00b96b' : 'white',
                                             flexShrink: 0
                                         }}>
-                                            {deliveryDetails.shippingOption === 'standard' && <div style={{ width: '6px', height: '6px', backgroundColor: 'white', borderRadius: '50%' }}></div>}
+                                            {deliveryDetails.shippingOption === 'regular' && <div style={{ width: '6px', height: '6px', backgroundColor: 'white', borderRadius: '50%' }}></div>}
                                         </div>
                                         <div>
                                             <Typography.Text strong style={{ fontSize: '12px', display: 'block', color: '#1f2937' }}>Regelmæssig levering</Typography.Text>
@@ -1209,7 +1211,8 @@ const MyClassPageSimple = () => {
                                             setDeliveryDetails({
                                                 ...deliveryDetails,
                                                 shippingOption: 'express',
-                                                shippingPrice: rate ? parseFloat(rate.express_delivery_rate) : null
+                                                shippingPrice: rate ? parseFloat(rate.express_delivery_rate) : null,
+                                                shippingRateId: rate ? rate.id : null
                                             });
                                         }}
                                         style={{

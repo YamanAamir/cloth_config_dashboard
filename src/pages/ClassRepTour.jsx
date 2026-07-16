@@ -40,50 +40,48 @@ const ClassRepTour = () => {
   const [showPrompt, setShowPrompt] = useState(false);
 
   // ─── Tour steps per route ─────────────────────────────────────────────────
-
   const PAGE_TOURS = {
     '/my-class': {
       promptTitle: 'Velkommen til ClothConfig!',
       promptDesc:
-        'Vi viser dig hurtigt rundt på siden. Du kan altid starte guiden igen via Guide-knappen øverst.',
+        'Vi viser dig, hvordan du opsætter din klasse, uploader design og deler registreringslinket. Du kan altid starte guiden igen via Guide-knappen.',
       steps: [
         {
-          title: 'Elever',
+          title: 'Elevantal & registreringslink',
           description:
-            'Del registreringslinket med dine klassekammerater og hold styr på, hvor mange der har tilmeldt sig. Du kan også angive forventet elevantal.',
+            'Angiv det forventede antal elever i klassen. Fragtomkostningerne fordeles automatisk ligeligt mellem alle elever. Når rygdesignet er godkendt, kan du generere et unikt registreringslink og dele det med dine klassekammerater, så de kan designe deres eget studieturstøj.',
           target: () => document.getElementById('tour-students-card'),
         },
         {
-          title: 'Studietur',
+          title: 'Studietur & rygdesign',
           description:
-            'Vælg destinationsland for jeres studietur. Dette bruges til at vise relevante landelogoer og designs.',
+            'Vælg destinationen for jeres studietur. Du kan vælge et færdigt rygdesign fra biblioteket eller uploade dit eget design for et mere personligt udtryk.',
           target: () => document.getElementById('tour-studietur-card'),
         },
         {
           title: 'Levering',
           description:
-            'Her kan du vælge at alle skal have levering til en fælles adresse.',
+            'Vælg, om hele klassens ordre skal leveres samlet til skolen eller en anden fælles adresse. Du kan vælge mellem Standardlevering og Ekspreslevering, og fragtomkostningerne fordeles automatisk mellem alle elever.',
           target: () => document.getElementById('tour-delivery-card'),
         },
         {
-          title: 'Bagdesign',
+          title: 'Upload rygdesign',
           description:
-            'Upload både den sorte og den hvide variant af dit klassebagsidedesign. Admin gennemgår og godkender det inden brug.',
+            'Upload dit rygdesign i en sort eller hvid variant – eller begge dele. Vores team gennemgår og godkender designet, før det bliver gjort tilgængeligt for klassen.',
           target: () => document.getElementById('tour-backdesign-card'),
         },
         {
-          title: 'Upload logo',
+          title: 'Upload skolelogo',
           description:
-            'Upload et klasselogo i høj kvalitet til brug på dimissionsgenstande. Admin gennemgår og godkender det inden brug.',
+            'Upload et skolelogo i høj kvalitet til brug på klassens studieturstøj. Vores team gennemgår og godkender logoet, før det bliver gjort tilgængeligt for alle elever.',
           target: () => document.getElementById('tour-upload-logo-card'),
         },
         {
-          title: 'Aktuel status',
+          title: 'Godkendelsesstatus',
           description:
-            'Se den aktuelle godkendelsesstatus på dit bagdesign og seneste logo – om de er godkendt, under gennemgang eller kræver ændringer.',
+            'Følg status på jeres rygdesign og skolelogo. Her kan du se, om de er under gennemgang, godkendt eller kræver ændringer, før de kan bruges på klassens studieturstøj.',
           target: () => document.getElementById('tour-status-card'),
         },
-
       ],
     },
 
@@ -92,19 +90,19 @@ const ClassRepTour = () => {
         {
           title: 'Upload-siden',
           description:
-            'Her administrerer du alle dine klasses logoer og bagdesigns. Du kan uploade nye filer og se status på eksisterende.',
+            'Her administrerer du alle dine klasses logoer og rygdesigns. Du kan uploade nye filer og følge deres godkendelsesstatus.',
           target: () => document.getElementById('tour-upload-header'),
         },
         {
-          title: 'Logoer & Bagdesigns faner',
+          title: 'Logoer & rygdesigns',
           description:
-            'Skift mellem "Logos"-fanen for klasselogoer og "Back Designs"-fanen for bagdesigns. Tæller viser antal filer pr. kategori.',
+            'Skift mellem fanerne for skolelogoer og rygdesigns. Her kan du se alle uploadede filer og deres aktuelle status.',
           target: () => document.getElementById('tour-upload-tabs-card'),
         },
         {
-          title: 'Upload-knap',
+          title: 'Upload filer',
           description:
-            'Klik her for at uploade et nyt logo eller bagdesign. Filen gennemgås af admin inden godkendelse. Status vises som Pending, Approved eller Rejected.',
+            'Klik her for at uploade et nyt skolelogo eller rygdesign. Alle filer bliver gennemgået og godkendt, før de bliver tilgængelige for klassen.',
           target: () => document.getElementById('tour-add-btn'),
         },
       ],
@@ -113,21 +111,21 @@ const ClassRepTour = () => {
     '/back-design-configurator': {
       steps: [
         {
-          title: 'Vælg basisbillede',
+          title: 'Vælg rygdesign',
           description:
-            'Vælg et bagdesign fra dine egne uploads eller fra studietur-biblioteket. Klik på et design for at indlæse det på lærredet.',
+            'Vælg et rygdesign fra dine uploads eller fra studietur-biblioteket. Klik på et design for at åbne det i editoren.',
           target: () => document.getElementById('tour-config-gallery'),
         },
         {
-          title: 'Navne panel',
+          title: 'Navne',
           description:
-            'Tilføj elevnavne manuelt eller vælg fra registrerede elever. Navnene vises direkte på lærredet og kan flyttes og skaleres.',
+            'Tilføj elevnavne manuelt eller vælg blandt de registrerede elever. Navnene kan flyttes og tilpasses direkte på designet.',
           target: () => document.getElementById('tour-config-gallery'),
         },
         {
-          title: 'Design-lærred',
+          title: 'Designeditor',
           description:
-            'Det interaktive lærred viser bagdesignet med navne. Du kan skifte mellem lys og mørk trøje-farve. Træk navne for at placere dem præcist.',
+            'Forhåndsvis rygdesignet med navne. Du kan flytte, placere og tilpasse elementerne, så designet ser præcis ud, som du ønsker.',
           target: () => document.getElementById('tour-config-canvas'),
         },
       ],
@@ -136,27 +134,26 @@ const ClassRepTour = () => {
     '/student-overview': {
       steps: [
         {
-          title: 'Elevers oversigt',
+          title: 'Elevoversigt',
           description:
-            'Siden giver dig et komplet overblik over alle elever i din klasse, deres ordrestatus og betalingsstatus.',
+            'Få et komplet overblik over alle elever i klassen samt deres ordre- og betalingsstatus.',
           target: () => document.getElementById('tour-student-header'),
         },
         {
-          title: 'Status-opsummering',
+          title: 'Statusoversigt',
           description:
-            'Disse kort viser en hurtig opsummering: antal elever, gennemførte ordrer, igangværende, der afventer betaling, og elever uden ordre.',
+            'Kortene viser en hurtig oversigt over antal elever, gennemførte ordrer, afventende betalinger og elever uden ordre.',
           target: () => document.getElementById('tour-student-summary'),
         },
         {
-          title: 'Elevtabel',
+          title: 'Elevliste',
           description:
-            'Se alle elever med navn, e-mail, ordrestatus og betalingsoverblik. Brug søgefeltet til at finde en bestemt elev. Klik på øje-ikonet for detaljerede ordreoplysninger.',
+            'Se alle elever med navn, e-mail, ordrestatus og betalingsstatus. Brug søgning til hurtigt at finde en elev, eller klik på øje-ikonet for flere detaljer.',
           target: () => document.getElementById('tour-student-table'),
         },
       ],
     },
   };
-
   const currentTour = PAGE_TOURS[location.pathname];
   const currentSteps = currentTour?.steps ?? [];
 
