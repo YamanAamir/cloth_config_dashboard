@@ -7,13 +7,14 @@ import {
     PictureOutlined, FileImageOutlined, CloudUploadOutlined,
     OrderedListOutlined, FileZipOutlined, ShoppingCartOutlined,
     PrinterOutlined, GlobalOutlined, FontColorsOutlined, MailOutlined,
-    FontSizeOutlined, QuestionCircleOutlined,
+    FontSizeOutlined,  
+    AuditOutlined,
 } from '@ant-design/icons';
 import ClassRepTour from '../pages/ClassRepTour';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { Role } from '../utils/constants';
 import { sidebarMenus } from '../api/api';
-import NotificationBell from '../components/NotificationBell';
 
 const { Header, Sider, Content } = Layout;
 
@@ -40,6 +41,9 @@ const iconMap = {
     'MailIcon': <MailOutlined />,
     'EmailIcon': <MailOutlined />,
     'CampaignIcon': <MailOutlined />,
+    'SupportAgentIcon': <AuditOutlined />,
+    'SupportIcon': <AuditOutlined />,
+    'CustomerServiceIcon': <AuditOutlined />,
     // Compat
     'DashboardOutlined': <DashboardOutlined />,
     'BankOutlined': <BankOutlined />,
@@ -95,12 +99,23 @@ const MainLayout = () => {
         fetchMenus();
     }, []);
 
+    const supportPath = user?.role === Role.ADMIN ? '/support' : '/usersupport';
+
     const userMenuItems = [
         {
             key: 'profile',
             label: 'Profile',
             icon: <SettingOutlined />,
             onClick: () => navigate('/profile'),
+        },
+        {
+            key: 'support',
+            label: 'Support',
+            icon: <AuditOutlined />,
+            onClick: () => navigate(supportPath),
+        },
+        {
+            type: 'divider',
         },
         {
             key: 'logout',

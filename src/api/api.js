@@ -203,3 +203,16 @@ export const getTemplate = (id) => api.get(`/templates/${id}`);
 export const createTemplate = (data) => api.post('/templates/create', data);
 export const updateTemplate = (id, data) => api.put(`/templates/${id}/update`, data);
 export const deleteTemplate = (id) => api.delete(`/templates/${id}/delete`);
+
+// Contact APIs
+export const sendContactInquiry = (data) => api.post('/contact/inquiry', data);
+
+// Support Ticket APIs (Class Rep)
+export const submitSupportTicket = (data) => api.post('/class-rep/support/submit', data);
+export const getMyTickets = () => api.get('/class-rep/support/my-tickets');
+export const getTicketMessages = (ticketId) => api.get(`/class-rep/support/ticket/${ticketId}`);
+
+// Support Ticket APIs (Admin)
+export const adminGetAllTickets = (params = {}) => api.get('/admin/support/tickets', { params });
+export const adminGetTicketMessages = (ticketId) => api.get(`/admin/support/ticket/${ticketId}`);
+export const adminCloseTicket = (ticketId) => api.patch(`/admin/support/${ticketId}/close`);

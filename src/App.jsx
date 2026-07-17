@@ -34,6 +34,8 @@ import CreateTemplatePage from './pages/CreateTemplatePage';
 import AutomatedEmailsPage from './pages/AutomatedEmailsPage';
 import AdminStudentsPage from './pages/AdminStudentsPage';
 import EmailsPage from './pages/EmailsPage';
+import UserSupportPage from './pages/UserSupportPage';
+import AdminSupportPage from './pages/AdminSupportPage';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
@@ -171,6 +173,25 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={[Role.CLASS_REPRESENTATIVE]}>
               <StudentOverview />
+            </ProtectedRoute>
+          }
+        />
+        {/* Class Rep support page */}
+        <Route
+          path="usersupport"
+          element={
+            <ProtectedRoute allowedRoles={[Role.CLASS_REPRESENTATIVE]}>
+              <UserSupportPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Admin support page */}
+        <Route
+          path="support"
+          element={
+            <ProtectedRoute allowedRoles={[Role.ADMIN]}>
+              <AdminSupportPage />
             </ProtectedRoute>
           }
         />
