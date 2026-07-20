@@ -278,6 +278,23 @@ const DesignCanvas = ({
             });
         }
 
+        // Always-visible print-area guide — shows students exactly where the
+        // printable bounds are, instead of only warning after a name is already outside it.
+        ctx.save();
+        const guideInset = Math.max(4, Math.round(CANVAS_W * 0.0015));
+        ctx.strokeStyle = '#ff4d4f';
+        ctx.lineWidth = Math.max(4, Math.round(CANVAS_W * 0.0012));
+        ctx.setLineDash([Math.round(CANVAS_W * 0.008), Math.round(CANVAS_W * 0.004)]);
+        ctx.strokeRect(guideInset, guideInset, CANVAS_W - guideInset * 2, CANVAS_H - guideInset * 2);
+        ctx.setLineDash([]);
+
+        ctx.fillStyle = '#ff4d4f';
+        ctx.font = `bold ${Math.round(CANVAS_W * 0.013)}px sans-serif`;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillText('PRINT AREA — keep names inside this border', guideInset + 24, guideInset + 16);
+        ctx.restore();
+
         // Out-of-bounds check
         const oob = textElements.some(el => {
             ctx.font = `${el.fontSize}px ${el.fontFamily}`;
