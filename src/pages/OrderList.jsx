@@ -18,7 +18,7 @@ import {
     sendDeadlineReminder
 } from '../api/api';
 import { api } from '../api/index';
-import { Status, Role, formatDanishDateTime, formatDanishDate } from '../utils/constants';
+import { Status, Role, formatDanishDateTime, formatDanishDate, getUploadsUrl } from '../utils/constants';
 import { useAuth } from '../context/AuthContext';
 import useSocket from '../hooks/useSocket';
 
@@ -376,11 +376,35 @@ const OrderList = () => {
                 {selectedOrderDetails && (
                     <div style={{ padding: '0 10px' }}>
                         <Descriptions title="Order Info" bordered column={2}>
-                            {/* <Descriptions.Item label="Order ID">{selectedOrderDetails.id}</Descriptions.Item> */}
+                            <Descriptions.Item label="Order ID">#{selectedOrderDetails.id}</Descriptions.Item>
+                            <Descriptions.Item label="Created At">
+                                {formatDanishDateTime(selectedOrderDetails.created_at)}
+                            </Descriptions.Item>
                             <Descriptions.Item label="Status">
                                 <Tag color={selectedOrderDetails.process_status === 'completed' ? 'success' : 'processing'}>
                                     {selectedOrderDetails.process_status.toUpperCase()}
                                 </Tag>
+                            </Descriptions.Item>
+                            <Descriptions.Item label="Payment Status">
+                                {(() => {
+                                    const payColorMap = { unpaid: 'error', partial: 'warning', paid: 'success' };
+                                    return (
+                                        <Tag color={payColorMap[selectedOrderDetails.payment_status] || 'default'}>
+                                            {(selectedOrderDetails.payment_status || 'unpaid').toUpperCase()}
+                                        </Tag>
+                                    );
+                                })()}
+                            </Descriptions.Item>
+                            <Descriptions.Item label="Total Amount">
+                                <strong>{selectedOrderDetails.total_amount} DKK</strong>
+                            </Descriptions.Item>
+                            <Descriptions.Item label="Amount Paid">
+                                {selectedOrderDetails.amount_paid} DKK
+                                {selectedOrderDetails.paid_at && (
+                                    <span style={{ color: '#888', fontSize: 11, marginLeft: 6 }}>
+                                        ({formatDanishDateTime(selectedOrderDetails.paid_at)})
+                                    </span>
+                                )}
                             </Descriptions.Item>
                             <Descriptions.Item label="Locked">
                                 {(() => {
@@ -393,16 +417,13 @@ const OrderList = () => {
                                     );
                                 })()}
                             </Descriptions.Item>
-                            <Descriptions.Item label="Deadline">
+                            <Descriptions.Item label="Change Deadline">
                                 {selectedOrderDetails.class?.change_deadline ? (
                                     <Tag color={new Date() > new Date(selectedOrderDetails.class.change_deadline) ? 'volcano' : 'blue'}>
                                         {formatDanishDateTime(selectedOrderDetails.class.change_deadline)}
                                     </Tag>
                                 ) : '-'}
                             </Descriptions.Item>
-                            {/* <Descriptions.Item label="Created At">
-                                {formatDanishDateTime(selectedOrderDetails.created_at)}
-                            </Descriptions.Item> */}
                         </Descriptions>
 
                         <Divider />
@@ -412,31 +433,60 @@ const OrderList = () => {
                             <Descriptions.Item label="Student Email">{selectedOrderDetails.student?.email}</Descriptions.Item>
                             <Descriptions.Item label="Class Name">{selectedOrderDetails.class?.name}</Descriptions.Item>
                             <Descriptions.Item label="Graduation Year">{selectedOrderDetails.class?.graduation_year}</Descriptions.Item>
+                            
                         </Descriptions>
 
                         <Divider />
 
-                        {selectedOrderDetails.delivery_details && (
-                            <>
-                                <Descriptions title="Delivery Details" bordered column={2}>
-                                    {Object.entries(JSON.parse(selectedOrderDetails.delivery_details)).map(([key, value]) => {
-                                        // Fields not filled in on the delivery form fall back to the
-                                        // linked student/class records instead of showing a blank dash.
-                                        const objectFallbacks = {
-                                            skolenavn: selectedOrderDetails.class?.name,
-                                            email: selectedOrderDetails.student?.email,
-                                        };
-                                        const resolvedValue = value || objectFallbacks[key.toLowerCase()];
-                                        return (
-                                            <Descriptions.Item key={key} label={key.charAt(0).toUpperCase() + key.slice(1)}>
-                                                {resolvedValue || '-'}
+                        {selectedOrderDetails.delivery_details && (() => {
+                            const delivery = JSON.parse(selectedOrderDetails.delivery_details);
+                            const classDelivery = selectedOrderDetails.class?.delivery_details
+                                ? (typeof selectedOrderDetails.class.delivery_details === 'string'
+                                    ? JSON.parse(selectedOrderDetails.class.delivery_details)
+                                    : selectedOrderDetails.class.delivery_details)
+                                : {};
+                            const deliverToSchool = !!delivery.deliverToSchool;
+
+                            const labelMap = {
+                                firstName: 'First Name', lastName: 'Last Name', email: 'Email', phone: 'Phone',
+                                Skolenavn: 'School Name', address: 'Address', city: 'City', postalCode: 'Postal Code',
+                                country: 'Country', deliveryType: 'Delivery Type', notes: 'Notes',
+                            };
+
+                            // Fields left blank on the delivery form (common when shipping to
+                            // school) fall back to the class/student records instead of a dash.
+                            const rows = [
+                                { key: 'firstName', value: delivery.firstName },
+                                { key: 'lastName', value: delivery.lastName },
+                                { key: 'email', value: delivery.email || selectedOrderDetails.student?.email },
+                                { key: 'phone', value: delivery.phone },
+                                { key: 'Skolenavn', value: delivery.Skolenavn || (deliverToSchool ? selectedOrderDetails.class?.name : null) },
+                                { key: 'address', value: delivery.address || (deliverToSchool ? classDelivery.address : null) },
+                                { key: 'city', value: delivery.city || (deliverToSchool ? classDelivery.city : null) },
+                                { key: 'postalCode', value: delivery.postalCode || (deliverToSchool ? classDelivery.zip : null) },
+                                { key: 'country', value: delivery.country || classDelivery.country },
+                                { key: 'deliveryType', value: delivery.deliveryType ? delivery.deliveryType.charAt(0).toUpperCase() + delivery.deliveryType.slice(1) : null },
+                                { key: 'notes', value: delivery.notes },
+                            ].filter(row => row.value);
+
+                            return (
+                                <>
+                                    <Descriptions title="Delivery Details" bordered column={2}>
+                                        <Descriptions.Item label="Deliver To">
+                                            <Tag color={deliverToSchool ? 'blue' : 'default'}>
+                                                {deliverToSchool ? 'SCHOOL' : 'HOME ADDRESS'}
+                                            </Tag>
+                                        </Descriptions.Item>
+                                        {rows.map(row => (
+                                            <Descriptions.Item key={row.key} label={labelMap[row.key] || row.key}>
+                                                {row.value}
                                             </Descriptions.Item>
-                                        );
-                                    })}
-                                </Descriptions>
-                                <Divider />
-                            </>
-                        )}
+                                        ))}
+                                    </Descriptions>
+                                    <Divider />
+                                </>
+                            );
+                        })()}
 
                         <Title level={5}>Order Items ({selectedOrderDetails.order_items?.length || 0})</Title>
                         <List
@@ -446,7 +496,7 @@ const OrderList = () => {
                                 const d = item.design_config || {};
                                 const isSweatpants = item.product_type?.toUpperCase() === 'SWEATPANTS';
 
-                                // Helper to render a print area row with flag image + logo image + text
+                                // Helper to render a print area row with flag image(s) + logo image + text
                                 const renderPrintArea = (label, area) => {
                                     if (!area) return null;
                                     const hasContent = area.text || area.flag || area.flagUrl || area.logoUrl || area.logo;
@@ -459,6 +509,11 @@ const OrderList = () => {
                                                         style={{ width: 30, height: 20, objectFit: 'cover', borderRadius: 2, border: '1px solid #eee', verticalAlign: 'middle' }} />
                                                 )}
                                                 {area.flag && <Tag style={{ margin: 0 }}>{area.flag}</Tag>}
+                                                {area.flag2Url && (
+                                                    <img src={area.flag2Url} alt={area.flag2}
+                                                        style={{ width: 30, height: 20, objectFit: 'cover', borderRadius: 2, border: '1px solid #eee', verticalAlign: 'middle' }} />
+                                                )}
+                                                {area.flag2 && <Tag style={{ margin: 0 }}>{area.flag2}</Tag>}
                                                 {area.logoUrl && (
                                                     <img src={area.logoUrl} alt={area.logo}
                                                         style={{ width: 30, height: 30, objectFit: 'contain', borderRadius: 3, border: '1px solid #eee', background: '#fafafa', verticalAlign: 'middle' }} />
@@ -481,14 +536,14 @@ const OrderList = () => {
 
                                 const printRows = isSweatpants
                                     ? [
-                                        renderPrintArea('Left Leg', { type: d.leftLegType, text: d.leftLegText, flag: d.leftLegFlag, flagUrl: d.leftLegFlagUrl, logo: d.leftLegLogoCustom || d.leftLegLogoPredefined }),
-                                        renderPrintArea('Right Leg', { type: d.rightLegType, text: d.rightLegText, flag: d.rightLegFlag, flagUrl: d.rightLegFlagUrl, logo: d.rightLegLogoCustom || d.rightLegLogoPredefined }),
+                                        renderPrintArea('Left Leg', { type: d.leftLegType, text: d.leftLegText, flag: d.leftLegFlag, flagUrl: d.leftLegFlagUrl, logo: d.leftLegLogoCustom || d.leftLegLogoPredefined, logoUrl: d.leftLegLogoPredefinedUrl }),
+                                        renderPrintArea('Right Leg', { type: d.rightLegType, text: d.rightLegText, flag: d.rightLegFlag, flagUrl: d.rightLegFlagUrl, logo: d.rightLegLogoCustom || d.rightLegLogoPredefined, logoUrl: d.rightLegLogoPredefinedUrl }),
                                     ].filter(Boolean)
                                     : [
-                                        renderPrintArea('Left Chest', { text: d.leftChestText, flag: d.leftChestFlag, flagUrl: d.leftChestFlagUrl, logo: d.leftChestLogoCustom || d.leftChestLogoPredefined }),
-                                        renderPrintArea('Right Chest', { text: d.rightChestText, flag: d.rightChestFlag, flagUrl: d.rightChestFlagUrl, logo: d.rightChestLogoCustom || d.rightChestLogoPredefined }),
-                                        renderPrintArea('Left Sleeve', { text: d.leftSleeveText, flag: d.leftSleeveFlag, flagUrl: d.leftSleeveFlagUrl || d.leftSleeveFlagUrl2, logo: d.leftSleeveLogoCustom || d.leftSleeveLogoPredefined, logoUrl: d.leftSleeveLogoPredefinedUrl }),
-                                        renderPrintArea('Right Sleeve', { text: d.rightSleeveText, flag: d.rightSleeveFlag, flagUrl: d.rightSleeveFlagUrl || d.rightSleeveFlagUrl2, logo: d.rightSleeveLogoCustom || d.rightSleeveLogoPredefined, logoUrl: d.rightSleeveLogoPredefinedUrl }),
+                                        renderPrintArea('Left Chest', { text: d.leftChestText, flag: d.leftChestFlag, flagUrl: d.leftChestFlagUrl, logo: d.leftChestLogoCustom || d.leftChestLogoPredefined, logoUrl: d.leftChestLogoPredefinedUrl }),
+                                        renderPrintArea('Right Chest', { text: d.rightChestText, flag: d.rightChestFlag, flagUrl: d.rightChestFlagUrl, flag2: d.rightChestFlag2, flag2Url: d.rightChestFlag2Url, logo: d.rightChestLogoCustom || d.rightChestLogoPredefined, logoUrl: d.rightChestLogoPredefinedUrl }),
+                                        renderPrintArea('Left Sleeve', { text: d.leftSleeveText, flag: d.leftSleeveFlag, flagUrl: d.leftSleeveFlagUrl, flag2: d.leftSleeveFlag2, flag2Url: d.leftSleeveFlag2Url, logo: d.leftSleeveLogoCustom || d.leftSleeveLogoPredefined, logoUrl: d.leftSleeveLogoPredefinedUrl }),
+                                        renderPrintArea('Right Sleeve', { text: d.rightSleeveText, flag: d.rightSleeveFlag, flagUrl: d.rightSleeveFlagUrl, flag2: d.rightSleeveFlag2, flag2Url: d.rightSleeveFlag2Url, logo: d.rightSleeveLogoCustom || d.rightSleeveLogoPredefined, logoUrl: d.rightSleeveLogoPredefinedUrl }),
                                     ].filter(Boolean);
 
                                 return (
