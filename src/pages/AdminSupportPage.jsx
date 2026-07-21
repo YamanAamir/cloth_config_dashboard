@@ -127,13 +127,25 @@ const AdminSupportPage = () => {
     const [loadingTickets, setLoadingTickets] = useState(true);
     const [statusFilter, setStatusFilter] = useState('');
     const [search, setSearch] = useState('');
-    const [unread, setUnread] = useState({});
+    const [unread, setUnread] = useState(() => {
+        try {
+            return JSON.parse(localStorage.getItem('unreadCounts')) || {};
+        } catch {
+            return {};
+        }
+    });
 
     // Active chat
     const [active, setActive] = useState(null);
     const [msgs, setMsgs] = useState([]);
     const [loadingMsgs, setLoadingMsgs] = useState(false);
     const [text, setText] = useState('');
+    // Persist unread counts to localStorage whenever they change
+    useEffect(() => {
+        try {
+            localStorage.setItem('unreadCounts', JSON.stringify(unread));
+        } catch {}
+    }, [unread]);
     const [sending, setSending] = useState(false);
     const [closing, setClosing] = useState(false);
 
@@ -188,9 +200,10 @@ const AdminSupportPage = () => {
         socket.emit('join_admin_support');
 
         const onNew = (data) => {
+            const ticket = data?.ticket || {};
             notification.info({
                 message: 'New support ticket',
-                description: `${data.userName}: "${data.subject}"`,
+                description: `${ticket.userName || 'User'}: "${ticket.subject || ''}"`,
                 placement: 'topRight',
                 duration: 5,
             });
