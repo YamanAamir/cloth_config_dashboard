@@ -396,7 +396,8 @@ const MyClassPageSimple = () => {
             setExpectedStudentsModalOpen(false);
             fetchAllData();
         } catch (error) {
-            message.error('Failed to update count');
+            const errMsg = error?.response?.data?.message || 'Failed to update count';
+            message.error(errMsg);
         } finally {
             setUpdatingCount(false);
         }

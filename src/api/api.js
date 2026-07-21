@@ -211,8 +211,10 @@ export const sendContactInquiry = (data) => api.post('/contact/inquiry', data);
 export const submitSupportTicket = (data) => api.post('/class-rep/support/submit', data);
 export const getMyTickets = () => api.get('/class-rep/support/my-tickets');
 export const getTicketMessages = (ticketId) => api.get(`/class-rep/support/ticket/${ticketId}`);
+export const rateSupportTicket = (ticketId, rating) => api.patch(`/class-rep/support/ticket/${ticketId}/rating`, { rating });
 
 // Support Ticket APIs (Admin)
 export const adminGetAllTickets = (params = {}) => api.get('/admin/support/tickets', { params });
 export const adminGetTicketMessages = (ticketId) => api.get(`/admin/support/ticket/${ticketId}`);
+export const getRatingSummary = () => api.get('/admin/support/rating-summary');
 export const adminCloseTicket = (ticketId) => api.patch(`/admin/support/${ticketId}/close`);

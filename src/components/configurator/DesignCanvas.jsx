@@ -238,15 +238,6 @@ const DesignCanvas = ({
         const l = imageLayout;
         if (imgRef.current && l) {
             ctx.drawImage(imgRef.current, l.x, l.y, l.w, l.h);
-
-            // Always-visible boundary box around image
-            ctx.save();
-            ctx.strokeStyle = designColor === 'black' ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.15)';
-            ctx.lineWidth = Math.max(2, CANVAS_W * 0.0006);
-            ctx.setLineDash([Math.round(CANVAS_W * 0.006), Math.round(CANVAS_W * 0.003)]);
-            ctx.strokeRect(l.x, l.y, l.w, l.h);
-            ctx.setLineDash([]);
-            ctx.restore();
         }
 
         // Text (centered horizontally on export)
@@ -278,21 +269,47 @@ const DesignCanvas = ({
             });
         }
 
-        // Always-visible print-area guide — shows students exactly where the
-        // printable bounds are, instead of only warning after a name is already outside it.
+        // Always-visible design-area guide. Deliberately neutral (not red) so it
+        // reads as an informational boundary, not an error — and the label is a
+        // pill badge rather than text stamped over the artwork, so it can't be
+        // mistaken for the design itself or for a warning.
         ctx.save();
         const guideInset = Math.max(4, Math.round(CANVAS_W * 0.0015));
-        ctx.strokeStyle = '#ff4d4f';
-        ctx.lineWidth = Math.max(4, Math.round(CANVAS_W * 0.0012));
-        ctx.setLineDash([Math.round(CANVAS_W * 0.008), Math.round(CANVAS_W * 0.004)]);
+        const guideColor = '#009ca1ff';
+        ctx.strokeStyle = guideColor;
+        ctx.lineWidth = Math.max(3, Math.round(CANVAS_W * 0.0008));
+        ctx.setLineDash([Math.round(CANVAS_W * 0.006), Math.round(CANVAS_W * 0.005)]);
         ctx.strokeRect(guideInset, guideInset, CANVAS_W - guideInset * 2, CANVAS_H - guideInset * 2);
         ctx.setLineDash([]);
 
-        ctx.fillStyle = '#ff4d4f';
-        ctx.font = `bold ${Math.round(CANVAS_W * 0.013)}px sans-serif`;
+        const labelText = 'Design area guide — keep names inside';
+        const labelFontSize = Math.round(CANVAS_W * 0.013);
+        ctx.font = `600 ${labelFontSize}px sans-serif`;
+        const labelPaddingX = Math.round(CANVAS_W * 0.007);
+        const labelPaddingY = Math.round(CANVAS_W * 0.0035);
+        const pillW = ctx.measureText(labelText).width + labelPaddingX * 2;
+        const pillH = labelFontSize + labelPaddingY * 2;
+        const pillX = guideInset + Math.round(CANVAS_W * 0.012);
+        const pillY = guideInset + Math.round(CANVAS_W * 0.012);
+        const pillRadius = pillH / 2;
+
+        ctx.beginPath();
+        ctx.moveTo(pillX + pillRadius, pillY);
+        ctx.arcTo(pillX + pillW, pillY, pillX + pillW, pillY + pillH, pillRadius);
+        ctx.arcTo(pillX + pillW, pillY + pillH, pillX, pillY + pillH, pillRadius);
+        ctx.arcTo(pillX, pillY + pillH, pillX, pillY, pillRadius);
+        ctx.arcTo(pillX, pillY, pillX + pillW, pillY, pillRadius);
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(255,255,255,0.92)';
+        ctx.fill();
+        ctx.lineWidth = Math.max(2, Math.round(CANVAS_W * 0.0005));
+        ctx.strokeStyle = guideColor;
+        ctx.stroke();
+
+        ctx.fillStyle = '#009ca1ff';
         ctx.textAlign = 'left';
-        ctx.textBaseline = 'top';
-        ctx.fillText('PRINT AREA — keep names inside this border', guideInset + 24, guideInset + 16);
+        ctx.textBaseline = 'middle';
+        ctx.fillText(labelText, pillX + labelPaddingX, pillY + pillH / 2);
         ctx.restore();
 
         // Out-of-bounds check

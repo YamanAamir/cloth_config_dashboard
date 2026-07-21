@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Card, Row, Col, Statistic, Typography, Tag, Avatar, Spin, Badge } from 'antd';
 import {
     BankOutlined, AppstoreOutlined, TeamOutlined, ShoppingCartOutlined,
-    DollarOutlined, ClockCircleOutlined, UserOutlined, CheckCircleOutlined
+    DollarOutlined, ClockCircleOutlined, UserOutlined, CheckCircleOutlined, StarOutlined
 } from '@ant-design/icons';
 import {
     BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
     XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
-import { adminDashboard } from '../api/api';
+import { adminDashboard, getRatingSummary, adminGetAllTickets } from '../api/api';
 import { formatDanishDate } from '../utils/constants';
 
 const { Title, Text } = Typography;
@@ -33,13 +33,38 @@ const STAT_CARDS = [
 
 const DashboardPage = () => {
     const [data, setData] = useState(null);
+    const [ratingSummary, setRatingSummary] = useState({ average: 0, count: 0 });
+    const [ticketTrend, setTicketTrend] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetch = async () => {
             try {
-                const res = await adminDashboard();
-                setData(res.data.data);
+                const ratingRes = await getRatingSummary();
+                if (ratingRes && ratingRes.data && ratingRes.data.data) {
+                    const { average_rating, rated_count } = ratingRes.data.data;
+                    setRatingSummary({ average: average_rating, count: rated_count });
+                }
+                const [dashboardRes, ticketsRes] = await Promise.all([
+                    adminDashboard(),
+                    adminGetAllTickets()
+                ]);
+                setData(dashboardRes.data.data);
+                // Aggregate tickets by date
+                const counts = {};
+                (ticketsRes.data.data || []).forEach(ticket => {
+                    const d = new Date(ticket.created_at || ticket.time);
+                    if (isNaN(d.getTime())) return;
+                    const dateStr = new Intl.DateTimeFormat('da-DK', {
+                        timeZone: 'Europe/Copenhagen',
+                        day: '2-digit', month: 'short', year: '2-digit'
+                    }).format(d);
+                    counts[dateStr] = (counts[dateStr] || 0) + 1;
+                });
+                const trendArray = Object.entries(counts)
+                    .map(([date, count]) => ({ date, count }))
+                    .sort((a, b) => new Date(a.date) - new Date(b.date));
+                setTicketTrend(trendArray);
             } catch { /* silent */ }
             finally { setLoading(false); }
         };
@@ -141,7 +166,6 @@ const DashboardPage = () => {
 
             {/* Charts Row 2 */}
             <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-                {/* Order Status Pie */}
                 <Col xs={24} md={8}>
                     <Card title="Order Status" style={{ borderRadius: 12, border: 'none' }} className="glass-card">
                         {pieData.length === 0 ? (
@@ -163,7 +187,6 @@ const DashboardPage = () => {
                     </Card>
                 </Col>
 
-                {/* Top Schools Bar */}
                 <Col xs={24} md={16}>
                     <Card title="Top Schools by Students" style={{ borderRadius: 12, border: 'none' }} className="glass-card">
                         <ResponsiveContainer width="100%" height={220}>
@@ -199,6 +222,9 @@ const DashboardPage = () => {
                                         </div>
                                         <div style={{ textAlign: 'right' }}>
                                             <Text strong style={{ color: '#00b96b', fontSize: 13 }}>{order.amount} DKK</Text>
+                                            <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>
+                                                {formatDanishDate(order.created_at || order.time)}
+                                            </Text>
                                             <Tag color={STATUS_COLORS[order.status] ? undefined : 'default'}
                                                 style={{ display: 'block', marginTop: 2, fontSize: 10, background: STATUS_COLORS[order.status] + '20', color: STATUS_COLORS[order.status], border: 'none' }}>
                                                 {order.status.replace(/_/g, ' ')}

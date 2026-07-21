@@ -1,17 +1,19 @@
 import { useState, useEffect, useRef } from 'react';
 import {
     Typography, Input, Button, Space, Tag, Avatar, Badge,
-    Skeleton, Empty, Popconfirm, message, notification, Row, Col, Card
+    Skeleton, Empty, Popconfirm, message, notification, Row, Col, Card, Rate
 } from 'antd';
 import {
      SendOutlined, InboxOutlined,
     ClockCircleOutlined, CheckCircleOutlined, SearchOutlined, LockOutlined,
     UserOutlined,
-    AuditOutlined
+    AuditOutlined,
+    StarOutlined, StarFilled
 } from '@ant-design/icons';
 import { adminGetAllTickets, adminGetTicketMessages, adminCloseTicket } from '../api/api';
 import { getSocket } from '../hooks/useSocket';
 import { useAuth } from '../context/AuthContext';
+import { formatDanishDate, formatDanishTime } from '../utils/constants';
 
 const { Text, Title } = Typography;
 const { TextArea } = Input;
@@ -102,7 +104,7 @@ const Bubble = ({ msg, currentUserId }) => {
 
                 <div style={{ fontSize: 14, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{msg.message}</div>
                 <Text style={{ fontSize: 10, display: 'block', textAlign: 'right', marginTop: 3, color: isMine ? 'rgba(255,255,255,.65)' : '#aaa' }}>
-                    {new Date(msg.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                    {formatDanishTime(msg.created_at)}
                 </Text>
             </div>
             {isMine && (
@@ -138,10 +140,17 @@ const AdminSupportPage = () => {
     const bottomRef = useRef(null);
 
     // ── Derived: stats always from allTickets ──────────────────────────────────
+    const ratedTickets = allTickets.filter(t => t.rating != null && Number(t.rating) > 0);
+    const avgRating = ratedTickets.length > 0
+        ? (ratedTickets.reduce((sum, t) => sum + Number(t.rating), 0) / ratedTickets.length).toFixed(1)
+        : '0.0';
+
     const stats = {
         open: allTickets.filter(t => t.status === 'open').length,
         closed: allTickets.filter(t => t.status === 'closed').length,
         total: allTickets.length,
+        avgRating: avgRating,
+        ratedCount: ratedTickets.length,
     };
 
     // ── Derived: filtered display list ────────────────────────────────────────
@@ -312,13 +321,18 @@ const AdminSupportPage = () => {
                     { key: '', label: 'Total', value: stats.total, color: '#595959', bg: '#fafafa' },
                     { key: 'open', label: 'Open', value: stats.open, color: '#1677ff', bg: '#e6f4ff' },
                     { key: 'closed', label: 'Closed', value: stats.closed, color: '#8c8c8c', bg: '#f5f5f5' },
+                    { key: 'rating', label: 'Avg Rating', value: `${stats.avgRating} ★`, subLabel: `(${stats.ratedCount} rated)`, color: '#faad14', bg: '#fff7e6' },
                 ].map(s => (
-                    <Col xs={12} sm={5} key={s.key}>
+                    <Col xs={12} sm={6} md={6} key={s.key}>
                         <Card
                             size="small"
-                            onClick={() => setStatusFilter(statusFilter === s.key ? '' : s.key)}
+                            onClick={() => {
+                                if (s.key !== 'rating') {
+                                    setStatusFilter(statusFilter === s.key ? '' : s.key);
+                                }
+                            }}
                             style={{
-                                cursor: 'pointer',
+                                cursor: s.key !== 'rating' ? 'pointer' : 'default',
                                 border: statusFilter === s.key ? `1.5px solid ${s.color}` : '1px solid #e8e8e8',
                                 borderRadius: 10,
                                 background: statusFilter === s.key ? s.bg : '#fff',
@@ -327,7 +341,10 @@ const AdminSupportPage = () => {
                             styles={{ body: { padding: '12px 16px' } }}
                         >
                             <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>{s.label}</Text>
-                            <Text style={{ fontSize: 24, fontWeight: 700, color: s.color, lineHeight: 1 }}>{s.value}</Text>
+                            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                                <Text style={{ fontSize: 24, fontWeight: 700, color: s.color, lineHeight: 1 }}>{s.value}</Text>
+                                {s.subLabel && <Text type="secondary" style={{ fontSize: 11 }}>{s.subLabel}</Text>}
+                            </div>
                         </Card>
                     </Col>
                 ))}
@@ -414,9 +431,16 @@ const AdminSupportPage = () => {
                                                 <Text type="secondary" style={{ fontSize: 11 }} ellipsis>
                                                     {ticket._lastMsg || ticket.user?.school?.name || ''}
                                                 </Text>
-                                                <Tag color={cfg.color} style={{ fontSize: 10, margin: 0, lineHeight: '16px', padding: '0 4px' }}>
-                                                    {cfg.label}
-                                                </Tag>
+                                                <Space size={4}>
+                                                    {ticket.rating != null && (
+                                                        <Tag color="gold" style={{ fontSize: 10, margin: 0, lineHeight: '16px', padding: '0 4px' }}>
+                                                            ★ {ticket.rating}
+                                                        </Tag>
+                                                    )}
+                                                    <Tag color={cfg.color} style={{ fontSize: 10, margin: 0, lineHeight: '16px', padding: '0 4px' }}>
+                                                        {cfg.label}
+                                                    </Tag>
+                                                </Space>
                                             </div>
                                         </div>
                                     </div>
@@ -453,6 +477,11 @@ const AdminSupportPage = () => {
                                 </Text>
                             </div>
                             <Space>
+                                {active.rating != null && (
+                                    <Tag color="gold" icon={<StarFilled />} style={{ fontSize: 12, padding: '2px 8px' }}>
+                                        {active.rating} / 5
+                                    </Tag>
+                                )}
                                 <Tag color={statusConfig[active.status]?.color} icon={statusConfig[active.status]?.icon} style={{ marginRight: 0 }}>
                                     {statusConfig[active.status]?.label}
                                 </Tag>
@@ -489,10 +518,21 @@ const AdminSupportPage = () => {
 
                         {/* Input */}
                         {active.status === 'closed' ? (
-                            <div style={{ padding: '14px 20px', borderTop: '1px solid #f0f0f0', background: '#fff', textAlign: 'center', flexShrink: 0 }}>
-                                <Tag icon={<LockOutlined />} color="default" style={{ fontSize: 13, padding: '4px 12px' }}>
+                            <div style={{ padding: '14px 20px', borderTop: '1px solid #f0f0f0', background: '#fff', textAlign: 'center', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
+                                <Tag icon={<LockOutlined />} color="default" style={{ fontSize: 13, padding: '4px 12px', margin: 0 }}>
                                     This ticket is closed
                                 </Tag>
+                                {active.rating != null ? (
+                                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#fffbe6', border: '1px solid #ffe58f', padding: '4px 12px', borderRadius: 6 }}>
+                                        <Text type="secondary" style={{ fontSize: 12, fontWeight: 600 }}>User Rating:</Text>
+                                        <Rate disabled value={active.rating} style={{ fontSize: 14, color: '#faad14' }} />
+                                        <Text strong style={{ color: '#faad14', marginLeft: 4 }}>({active.rating}/5)</Text>
+                                    </div>
+                                ) : (
+                                    <Tag color="orange" style={{ fontSize: 12, padding: '4px 10px', margin: 0 }}>
+                                        No rating given yet
+                                    </Tag>
+                                )}
                             </div>
                         ) : (
                             <div style={{ display: 'flex', gap: 10, padding: '12px 16px', borderTop: '1px solid #f0f0f0', background: '#fff', alignItems: 'flex-end', flexShrink: 0 }}>

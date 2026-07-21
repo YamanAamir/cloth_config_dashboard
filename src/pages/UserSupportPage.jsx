@@ -1,15 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
 import {
     Typography, Input, Button, Space, Tag, Avatar, Badge,
-    Skeleton, Empty, Form, message
+    Skeleton, Empty, Form, message, Rate
 } from 'antd';
 import {
     SendOutlined, InboxOutlined,
     ClockCircleOutlined, CheckCircleOutlined, PlusOutlined,
     ArrowLeftOutlined, UserOutlined,
-    AuditOutlined
+    AuditOutlined, SmileOutlined
 } from '@ant-design/icons';
-import { submitSupportTicket, getMyTickets, getTicketMessages } from '../api/api';
+import { submitSupportTicket, getMyTickets, getTicketMessages, rateSupportTicket } from '../api/api';
 import { getSocket } from '../hooks/useSocket';
 import { useAuth } from '../context/AuthContext';
 
@@ -121,6 +121,7 @@ const UserSupportPage = () => {
     const [text, setText] = useState('');
     const [sending, setSending] = useState(false);
     const [unread, setUnread] = useState({});
+    const [ratings, setRatings] = useState({}); // ticketId -> submitted rating
 
     const bottomRef = useRef(null);
 
@@ -163,6 +164,10 @@ const UserSupportPage = () => {
         try {
             const res = await getTicketMessages(ticket.id);
             const payload = res.data?.data;
+            if (payload && payload.rating != null) {
+                setActive(prev => prev ? { ...prev, rating: payload.rating } : prev);
+                setTickets(prev => prev.map(t => t.id === ticket.id ? { ...t, rating: payload.rating } : t));
+            }
             // Backend may return the ticket object with nested messages, or a flat array
             const msgArray = Array.isArray(payload)
                 ? payload
@@ -230,6 +235,19 @@ const UserSupportPage = () => {
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
     };
 
+    // ── Rate a closed ticket ──────────────────────────────────────────────────
+    const handleRate = async (ticketId, value) => {
+        setRatings(prev => ({ ...prev, [ticketId]: value }));
+        setActive(prev => (prev?.id === ticketId ? { ...prev, rating: value } : prev));
+        setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, rating: value } : t));
+        try {
+            await rateSupportTicket(ticketId, value);
+            message.success('Thank you for rating!');
+        } catch {
+            // Rating is a nice-to-have — don't interrupt the user if it fails to save.
+        }
+    };
+
     // ── Create ticket ─────────────────────────────────────────────────────────
     const handleSubmit = async (values) => {
         setSubmitting(true);
@@ -257,21 +275,17 @@ const UserSupportPage = () => {
         }
     };
 
-    const openCount = tickets.filter(t => t.status === 'open').length;
-    const repliedCount = tickets.filter(t => t.status === 'replied').length;    // ── Render ─────────────────────────────────────────────────────────────────
+    // ── Render ─────────────────────────────────────────────────────────────────
     return (
         <div className="fade-in" style={{ height: 'calc(100vh - 112px)', display: 'flex', flexDirection: 'column' }}>
 
-            {/* Page title */}
-            <div style={{ marginBottom: 16, flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexShrink: 0 }}>
                 <div>
-                    <Title level={4} style={{ margin: 0 }}>
-                        <AuditOutlined style={{ marginRight: 8 }} />
-                        Support
-                    </Title>
+                    <Title level={4} style={{ margin: 0 }}>Support</Title>
                     <Text type="secondary">Send us a message — we'll get back to you shortly</Text>
                 </div>
-                <Button type="primary" icon={<PlusOutlined />} onClick={() => setShowForm(v => !v)}>
+                <Button type="primary" icon={<PlusOutlined />} onClick={() => setShowForm(true)} style={{ borderRadius: 6 }}>
                     New Ticket
                 </Button>
             </div>
@@ -310,17 +324,11 @@ const UserSupportPage = () => {
 
                 {/* ── LEFT: ticket list ── */}
                 <div style={{
-                    width: 300, flexShrink: 0, display: 'flex', flexDirection: 'column',
+                    width: 260, flexShrink: 0, display: 'flex', flexDirection: 'column',
                     borderRight: '1px solid #f0f0f0', background: '#fafafa',
                 }}>
-                    <div style={{ padding: '14px 14px 10px', borderBottom: '1px solid #f0f0f0' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Text strong style={{ fontSize: 14 }}>My Tickets</Text>
-                            {/* <Space size={4}>
-                                {openCount > 0 && <Badge count={openCount} style={{ backgroundColor: '#1677ff' }} />}
-                                {repliedCount > 0 && <Badge count={repliedCount} style={{ backgroundColor: '#00b96b' }} />}
-                            </Space> */}
-                        </div>
+                    <div style={{ padding: '12px 16px', borderBottom: '1px solid #f0f0f0' }}>
+                        <Text strong style={{ fontSize: 14 }}>My Tickets</Text>
                     </div>
 
                     <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -340,7 +348,7 @@ const UserSupportPage = () => {
                                         style={{
                                             display: 'flex', alignItems: 'center', gap: 10,
                                             padding: '12px 14px', cursor: 'pointer',
-                                            background: isActive ? '#E6F7EE' : 'transparent',
+                                            background: isActive ? '#e6f7ee' : 'transparent',
                                             borderLeft: isActive ? '3px solid #00b96b' : '3px solid transparent',
                                             transition: 'background .15s',
                                         }}
@@ -348,26 +356,20 @@ const UserSupportPage = () => {
                                         onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
                                     >
                                         <Badge count={unreadCount} size="small">
-                                            <Avatar
-                                                size={36}
-                                                icon={<AuditOutlined />}
-                                                style={{ background: ticket.status === 'replied' ? '#00b96b' : ticket.status === 'closed' ? '#bbb' : '#00b96b', flexShrink: 0 }}
-                                            />
+                                            <Avatar size={38} style={{ background: '#00b96b', fontSize: 14, flexShrink: 0 }}>
+                                                <AuditOutlined />
+                                            </Avatar>
                                         </Badge>
                                         <div style={{ flex: 1, minWidth: 0 }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                <Text style={{ fontSize: 13, fontWeight: 600 }} ellipsis>
-                                                    {ticket.subject}
-                                                </Text>
-                                                <Text style={{ fontSize: 10, color: '#bbb', flexShrink: 0, marginLeft: 4 }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <Text strong style={{ fontSize: 13 }} ellipsis>{ticket.subject}</Text>
+                                                <Text style={{ fontSize: 10, color: '#bbb', flexShrink: 0 }}>
                                                     {new Date(ticket.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
                                                 </Text>
                                             </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
-                                                <Text type="secondary" style={{ fontSize: 11 }} ellipsis>
-                                                    {ticket._lastMsg || 'Tap to open chat'}
-                                                </Text>
-                                                <Tag color={cfg.color} style={{ fontSize: 10, margin: 0, lineHeight: '16px', padding: '0 4px', flexShrink: 0 }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                                                <Text type="secondary" style={{ fontSize: 11 }}>Tap to open chat</Text>
+                                                <Tag color={cfg.color} style={{ fontSize: 10, margin: 0, lineHeight: '16px', padding: '0 4px' }}>
                                                     {cfg.label}
                                                 </Tag>
                                             </div>
@@ -382,11 +384,8 @@ const UserSupportPage = () => {
                 {/* ── RIGHT: chat ── */}
                 {!active ? (
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#f9fafb' }}>
-                        <AuditOutlined style={{ fontSize: 48, color: '#d9d9d9', marginBottom: 12 }} />
-                        <Text type="secondary" style={{ fontSize: 15 }}>Select a ticket to view the conversation</Text>
-                        <Button type="primary" icon={<PlusOutlined />} style={{ marginTop: 16 }} onClick={() => setShowForm(true)}>
-                            New Ticket
-                        </Button>
+                        <AuditOutlined style={{ fontSize: 48, marginBottom: 12, color: '#d9d9d9' }} />
+                        <Text type="secondary" style={{ fontSize: 15 }}>Select a ticket or create a new one to get help</Text>
                     </div>
                 ) : (
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
@@ -397,15 +396,15 @@ const UserSupportPage = () => {
                             padding: '12px 20px', borderBottom: '1px solid #f0f0f0',
                             background: '#fff', flexShrink: 0,
                         }}>
-                            <Button type="text" icon={<ArrowLeftOutlined />} size="small"
-                                onClick={() => setActive(null)} style={{ flexShrink: 0 }}
-                            />
-                            <Avatar size={36} icon={<AuditOutlined />} style={{ background: '#00b96b', flexShrink: 0 }} />
+                            <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => setActive(null)} style={{ marginRight: -4 }} />
+                            <Avatar size={38} style={{ background: '#00b96b', fontSize: 14, flexShrink: 0 }}>
+                                <AuditOutlined />
+                            </Avatar>
                             <div style={{ flex: 1, minWidth: 0 }}>
-                                <Text strong style={{ display: 'block', fontSize: 14 }} ellipsis>{active.subject}</Text>
+                                <Text strong style={{ display: 'block', fontSize: 14 }}>{active.subject}</Text>
                                 <Text type="secondary" style={{ fontSize: 12 }}>Ticket #{active.id}</Text>
                             </div>
-                            <Tag color={statusConfig[active.status]?.color} icon={statusConfig[active.status]?.icon}>
+                            <Tag color={statusConfig[active.status]?.color} icon={statusConfig[active.status]?.icon} style={{ marginRight: 0 }}>
                                 {statusConfig[active.status]?.label}
                             </Tag>
                         </div>
@@ -428,10 +427,27 @@ const UserSupportPage = () => {
 
                         {/* Input */}
                         {active.status === 'closed' ? (
-                            <div style={{ padding: '14px 20px', borderTop: '1px solid #f0f0f0', background: '#fff', textAlign: 'center', flexShrink: 0 }}>
-                                <Tag icon={<InboxOutlined />} color="default" style={{ fontSize: 13, padding: '4px 12px' }}>
-                                    This ticket is closed
-                                </Tag>
+                            <div style={{ padding: '16px 20px', borderTop: '1px solid #f0f0f0', background: '#fafffa', textAlign: 'center', flexShrink: 0 }}>
+                                {(ratings[active.id] || active.rating) ? (
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                                        <Text style={{ fontSize: 13, color: '#00b96b', fontWeight: 500 }}>
+                                            <SmileOutlined style={{ marginRight: 6 }} />
+                                            Thanks for your feedback! Your rating:
+                                        </Text>
+                                        <Rate disabled value={ratings[active.id] || active.rating} style={{ fontSize: 18, color: '#faad14' }} />
+                                    </div>
+                                ) : (
+                                    <>
+                                        <Text style={{ fontSize: 13, display: 'block', marginBottom: 6 }}>
+                                            <SmileOutlined style={{ marginRight: 6, color: '#00b96b' }} />
+                                            All done here — hope we solved it! How was your support experience?
+                                        </Text>
+                                        <Rate
+                                            value={ratings[active.id] || 0}
+                                            onChange={(value) => handleRate(active.id, value)}
+                                        />
+                                    </>
+                                )}
                             </div>
                         ) : (
                             <div style={{ display: 'flex', gap: 10, padding: '12px 16px', borderTop: '1px solid #f0f0f0', background: '#fff', alignItems: 'flex-end', flexShrink: 0 }}>

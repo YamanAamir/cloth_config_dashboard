@@ -158,33 +158,53 @@ const DK_TZ    = 'Europe/Copenhagen';
  */
 export const formatDanishDateTime = (date) => {
   if (!date) return '—';
-  return new Intl.DateTimeFormat(DK_LOCALE, {
-    timeZone: DK_TZ,
-    day: 'numeric', month: 'short', year: 'numeric',
-    hour: '2-digit', minute: '2-digit', second: '2-digit',
-  }).format(new Date(date));
+  try {
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return '—';
+    return new Intl.DateTimeFormat(DK_LOCALE, {
+      timeZone: DK_TZ,
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+      hour12: false,
+    }).format(d).replace(',', '');
+  } catch {
+    return '—';
+  }
 };
 
 /**
- * Format a timestamp as Danish date only.
- * e.g. "12. jun. 2026"
+ * Format a timestamp as Danish date only (EU format: DD.MM.YYYY).
+ * e.g. "21.07.2026"
  */
 export const formatDanishDate = (date) => {
   if (!date) return '—';
-  return new Intl.DateTimeFormat(DK_LOCALE, {
-    timeZone: DK_TZ,
-    day: 'numeric', month: 'short', year: 'numeric',
-  }).format(new Date(date));
+  try {
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return '—';
+    return new Intl.DateTimeFormat(DK_LOCALE, {
+      timeZone: DK_TZ,
+      day: '2-digit', month: '2-digit', year: 'numeric',
+    }).format(d);
+  } catch {
+    return '—';
+  }
 };
 
 /**
- * Format a timestamp as Danish time only.
- * e.g. "14:35"
+ * Format a timestamp as Danish time only (EU 24h format: HH:mm).
+ * e.g. "16:30"
  */
 export const formatDanishTime = (date) => {
   if (!date) return '—';
-  return new Intl.DateTimeFormat(DK_LOCALE, {
-    timeZone: DK_TZ,
-    hour: '2-digit', minute: '2-digit',
-  }).format(new Date(date));
+  try {
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return '—';
+    return new Intl.DateTimeFormat(DK_LOCALE, {
+      timeZone: DK_TZ,
+      hour: '2-digit', minute: '2-digit',
+      hour12: false,
+    }).format(d);
+  } catch {
+    return '—';
+  }
 };
