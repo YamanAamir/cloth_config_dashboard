@@ -252,6 +252,7 @@ const AdminSupportPage = () => {
     // ── Socket: incoming messages ──────────────────────────────────────────────
     useEffect(() => {
         const onMsg = (data) => {
+            // If the message belongs to the currently active ticket, update the chat without affecting unread count.
             if (data.ticketId === active?.id) {
                 setMsgs(prev => {
                     const idx = prev.findIndex(m => m._optimistic && m.message === data.message?.message);
@@ -259,7 +260,10 @@ const AdminSupportPage = () => {
                     return [...prev, data.message];
                 });
             } else {
-                setUnread(prev => ({ ...prev, [data.ticketId]: (prev[data.ticketId] || 0) + 1 }));
+                // Avoid incrementing unread for messages sent by the admin themselves.
+                if (data.message?.senderId !== user.id && data.message?.sender_id !== user.id) {
+                    setUnread(prev => ({ ...prev, [data.ticketId]: (prev[data.ticketId] || 0) + 1 }));
+                }
                 setAllTickets(prev => prev.map(t =>
                     t.id === data.ticketId ? { ...t, _lastMsg: data.message?.message } : t
                 ));

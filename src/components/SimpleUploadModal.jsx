@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Modal, Upload, Button, Input, message, Typography, Space, Checkbox } from 'antd';
+import { Modal, Upload, Button, Input, message, Typography, Space, Checkbox, Select } from 'antd';
 import { InboxOutlined, GlobalOutlined } from '@ant-design/icons';
 
 const { Dragger } = Upload;
@@ -38,6 +38,8 @@ const FileUploader = ({ label, file, preview, onSelect, maxMB = 5, required = tr
 const SimpleUploadModal = ({ open, onCancel, onUpload, uploadType = 'logo', loading = false }) => {
     const [fileName, setFileName] = useState('');
     const [forAllStudents, setForAllStudents] = useState(false);
+    // Which garment color(s) to upload a back design for
+    const [designDisplayOption, setDesignDisplayOption] = useState('both');
 
     // Logo — single file
     const [logoFile, setLogoFile] = useState(null);
@@ -87,16 +89,16 @@ const SimpleUploadModal = ({ open, onCancel, onUpload, uploadType = 'logo', load
             return;
         }
 
-        // Back design — both required
-        if (!whiteFile) { message.error('Please select the White design file'); return; }
-        if (!blackFile) { message.error('Please select the Black design file'); return; }
+        // Back design — only the file(s) matching the selected display option are required
+        const needWhite = designDisplayOption !== 'black';
+        const needBlack = designDisplayOption !== 'white';
+        if (needWhite && !whiteFile) { message.error('Please select the White design file'); return; }
+        if (needBlack && !blackFile) { message.error('Please select the Black design file'); return; }
 
         const fd = new FormData();
         fd.append('name', fileName.trim());
-        fd.append('backDesign', whiteFile);
-        fd.append('designColor', 'white');
-        fd.append('backDesign_2', blackFile);
-        fd.append('designColor_2', 'black');
+        if (needWhite) { fd.append('backDesign', whiteFile); fd.append('designColor', 'white'); }
+        if (needBlack) { fd.append('backDesign_2', blackFile); fd.append('designColor_2', 'black'); }
         fd.append('forAllStudents', forAllStudents ? 'true' : 'false');
         onUpload(fd);
     };
@@ -108,12 +110,15 @@ const SimpleUploadModal = ({ open, onCancel, onUpload, uploadType = 'logo', load
         setBlackFile(null); setBlackPreview(null);
         setFileName('');
         setForAllStudents(false);
+        setDesignDisplayOption('both');
         onCancel();
     };
 
     const canSubmit = uploadType === 'logo'
         ? !!logoFile && !!fileName.trim()
-        : !!whiteFile && !!blackFile && !!fileName.trim();
+        : (designDisplayOption !== 'black' ? !!whiteFile : true)
+        && (designDisplayOption !== 'white' ? !!blackFile : true)
+        && !!fileName.trim();
 
     return (
         <Modal
@@ -153,21 +158,39 @@ const SimpleUploadModal = ({ open, onCancel, onUpload, uploadType = 'logo', load
                     />
                 ) : (
                     <>
+                        {/* Design Display Option */}
+                        <div>
+                            <Text strong>Design Display Option *</Text>
+                            <Select
+                                value={designDisplayOption}
+                                onChange={setDesignDisplayOption}
+                                style={{ width: '100%', marginTop: 8 }}
+                            >
+                                <Select.Option value="both">Both (White & Black)</Select.Option>
+                                <Select.Option value="white">White Only</Select.Option>
+                                <Select.Option value="black">Black Only</Select.Option>
+                            </Select>
+                        </div>
+
                         {/* White design */}
-                        <FileUploader
-                            label="White Garment Design (Black print)"
-                            file={whiteFile}
-                            preview={whitePreview}
-                            onSelect={handleSelectWhite}
-                        />
+                        {designDisplayOption !== 'black' && (
+                            <FileUploader
+                                label="White Garment Design (Black print)"
+                                file={whiteFile}
+                                preview={whitePreview}
+                                onSelect={handleSelectWhite}
+                            />
+                        )}
 
                         {/* Black design */}
-                        <FileUploader
-                            label="Black Garment Design (White print)"
-                            file={blackFile}
-                            preview={blackPreview}
-                            onSelect={handleSelectBlack}
-                        />
+                        {designDisplayOption !== 'white' && (
+                            <FileUploader
+                                label="Black Garment Design (White print)"
+                                file={blackFile}
+                                preview={blackPreview}
+                                onSelect={handleSelectBlack}
+                            />
+                        )}
 
                         {/* For all students */}
                         <div

@@ -31,6 +31,8 @@ const ReviewUploadsPage = () => {
     const [activeTab, setActiveTab] = useState('1');
     const [designColor, setDesignColor] = useState('white');
     const [adminForAllStudents, setAdminForAllStudents] = useState(false);
+    // New state to control which design preview to show (white, black, both)
+    const [designDisplayOption, setDesignDisplayOption] = useState('both');
 
     // Admin upload state
     const [uploadLogoModal, setUploadLogoModal] = useState(false);
@@ -265,18 +267,22 @@ const ReviewUploadsPage = () => {
     };
 
     const handleAdminUploadDesign = async (values) => {
-        if (!uploadWhiteFile) { message.error('Select the White design file'); return; }
-        if (!uploadBlackFile) { message.error('Select the Black design file'); return; }
+        if (designDisplayOption !== 'black' && !uploadWhiteFile) { message.error('Select the White design file'); return; }
+        if (designDisplayOption !== 'white' && !uploadBlackFile) { message.error('Select the Black design file'); return; }
 
         setUploading(true);
         try {
             const fd = new FormData();
             fd.append('name', values.name);
             if (values.class_id) fd.append('class_id', values.class_id);
-            fd.append('design', uploadWhiteFile);
-            fd.append('designColor', 'white');
-            fd.append('design_2', uploadBlackFile);
-            fd.append('designColor_2', 'black');
+            if (designDisplayOption !== 'black') {
+                fd.append('design', uploadWhiteFile);
+                fd.append('designColor', 'white');
+            }
+            if (designDisplayOption !== 'white') {
+                fd.append('design_2', uploadBlackFile);
+                fd.append('designColor_2', 'black');
+            }
             fd.append('forAllStudents', adminForAllStudents ? 'true' : 'false');
 
             await adminUploadBackDesign(fd);
@@ -427,22 +433,54 @@ const ReviewUploadsPage = () => {
             key: 'preview',
             width: 180,
             render: (_, record) => (
-                <Tabs size="small" defaultActiveKey="white" style={{ width: 160 }} tabBarStyle={{ marginBottom: 4 }}>
-                    <TabPane tab="White" key="white">
+                <>
+                    {designDisplayOption === 'both' && (
+                        <Tabs size="small" defaultActiveKey="white" style={{ width: 160 }} tabBarStyle={{ marginBottom: 4 }}>
+                            <TabPane tab="White" key="white">
+                                <div style={{ background: '#fafafa', borderRadius: 4, padding: 4, textAlign: 'center' }}>
+                                    <Image
+                                        width={80}
+                                        height={70}
+                                        src={getBackDesignDisplayUrl(record)}
+                                        fallback="https://via.placeholder.com/80?text=—"
+                                        style={{ objectFit: 'contain' }}
+                                    />
+                                </div>
+                            </TabPane>
+                            <TabPane tab="Black" key="black">
+                                <div style={{ background: '#1a1a1a', borderRadius: 4, padding: 4, textAlign: 'center' }}>
+                                    {record.file_path_2 ? (
+                                        <Image
+                                            width={80}
+                                            height={70}
+                                            src={getUploadsUrl(record.file_path_2)}
+                                            fallback="https://via.placeholder.com/80?text=—"
+                                            style={{ objectFit: 'contain' }}
+                                        />
+                                    ) : (
+                                        <Typography.Text style={{ color: '#555', fontSize: 10 }}>—</Typography.Text>
+                                    )}
+                                </div>
+                            </TabPane>
+                        </Tabs>
+                    )}
+                    {designDisplayOption === 'white' && (
                         <div style={{ background: '#fafafa', borderRadius: 4, padding: 4, textAlign: 'center' }}>
                             <Image
-                                width={80} height={70}
+                                width={80}
+                                height={70}
                                 src={getBackDesignDisplayUrl(record)}
                                 fallback="https://via.placeholder.com/80?text=—"
                                 style={{ objectFit: 'contain' }}
                             />
                         </div>
-                    </TabPane>
-                    <TabPane tab="Black" key="black">
+                    )}
+                    {designDisplayOption === 'black' && (
                         <div style={{ background: '#1a1a1a', borderRadius: 4, padding: 4, textAlign: 'center' }}>
                             {record.file_path_2 ? (
                                 <Image
-                                    width={80} height={70}
+                                    width={80}
+                                    height={70}
                                     src={getUploadsUrl(record.file_path_2)}
                                     fallback="https://via.placeholder.com/80?text=—"
                                     style={{ objectFit: 'contain' }}
@@ -451,8 +489,8 @@ const ReviewUploadsPage = () => {
                                 <Typography.Text style={{ color: '#555', fontSize: 10 }}>—</Typography.Text>
                             )}
                         </div>
-                    </TabPane>
-                </Tabs>
+                    )}
+                </>
             ),
         },
         {
@@ -557,7 +595,7 @@ const ReviewUploadsPage = () => {
                             </Button>
                         ) : (
                             <Button size="small" icon={<PlusOutlined />}
-                                onClick={() => { setUploadFile(null); setUploadPreview(null); designForm.resetFields(); setAdminForAllStudents(false); setUploadDesignModal(true); }}>
+                                onClick={() => { setUploadFile(null); setUploadPreview(null); designForm.resetFields(); setAdminForAllStudents(false); setDesignDisplayOption('both'); setUploadDesignModal(true); }}>
                                 Upload Back Design
                             </Button>
                         )
@@ -700,6 +738,7 @@ const ReviewUploadsPage = () => {
                     setUploadWhiteFile(null); setUploadWhitePreview(null);
                     setUploadBlackFile(null); setUploadBlackPreview(null);
                     setAdminForAllStudents(false);
+                    setDesignDisplayOption('both');
                 }}
                 footer={null} destroyOnHidden width={620}>
                 <Form form={designForm} layout="vertical" onFinish={handleAdminUploadDesign} style={{ marginTop: 16 }}>
@@ -710,49 +749,60 @@ const ReviewUploadsPage = () => {
                         <Select placeholder="Select class (optional)" allowClear options={classes.map(c => ({ value: c.id, label: `${c.name} — ${c.school?.name || ''}` }))} showSearch optionFilterProp="label" />
                     </Form.Item>
 
-                    {/* White design file */}
-                    <Form.Item label="White Garment Design (Black print) *" required>
-                        <Upload
-                            beforeUpload={(file) => {
-                                setUploadWhiteFile(file);
-                                setUploadWhitePreview(URL.createObjectURL(file));
-                                return false;
-                            }}
-                            showUploadList={false}
-                            accept="image/*"
-                        >
-                            <Button type="dashed" icon={<InboxOutlined />} block style={{ height: 70 }}>
-                                {uploadWhiteFile ? `${uploadWhiteFile.name}` : 'Click to select white version'}
-                            </Button>
-                        </Upload>
-                        {uploadWhitePreview && (
-                            <img src={uploadWhitePreview} alt="white preview"
-                                style={{ marginTop: 8, maxWidth: '100%', maxHeight: 120, objectFit: 'contain', borderRadius: 6, background: '#fafafa', padding: 4 }} />
-                        )}
+                    {/* Design Display Option */}
+                    <Form.Item label="Design Display Option" required>
+                        <Select value={designDisplayOption} onChange={setDesignDisplayOption} style={{ width: '100%' }}>
+                            <Select.Option value="both">Both (White & Black)</Select.Option>
+                            <Select.Option value="white">White Only</Select.Option>
+                            <Select.Option value="black">Black Only</Select.Option>
+                        </Select>
                     </Form.Item>
 
-                    {/* Black design file */}
-                    <Form.Item label="Black Garment Design (White print) *" required>
-                        <Upload
-                            beforeUpload={(file) => {
-                                setUploadBlackFile(file);
-                                setUploadBlackPreview(URL.createObjectURL(file));
-                                return false;
-                            }}
-                            showUploadList={false}
-                            accept="image/*"
-                        >
-                            <Button type="dashed" icon={<InboxOutlined />} block style={{ height: 70 }}>
-                                {uploadBlackFile ? `${uploadBlackFile.name}` : 'Click to select black version'}
-                            </Button>
-                        </Upload>
-                        {uploadBlackPreview && (
-                            <div style={{ marginTop: 8, background: '#1a1a1a', padding: 8, borderRadius: 6, textAlign: 'center' }}>
-                                <img src={uploadBlackPreview} alt="black preview"
-                                    style={{ maxWidth: '100%', maxHeight: 120, objectFit: 'contain' }} />
-                            </div>
-                        )}
-                    </Form.Item>
+                    {/* Conditional file upload fields based on selected option */}
+                    {designDisplayOption !== 'black' && (
+                        <Form.Item label="White Garment Design (Black print) *" required>
+                            <Upload
+                                beforeUpload={(file) => {
+                                    setUploadWhiteFile(file);
+                                    setUploadWhitePreview(URL.createObjectURL(file));
+                                    return false;
+                                }}
+                                showUploadList={false}
+                                accept="image/*"
+                            >
+                                <Button type="dashed" icon={<InboxOutlined />} block style={{ height: 70 }}>
+                                    {uploadWhiteFile ? `${uploadWhiteFile.name}` : 'Click to select white version'}
+                                </Button>
+                            </Upload>
+                            {uploadWhitePreview && (
+                                <img src={uploadWhitePreview} alt="white preview"
+                                    style={{ marginTop: 8, maxWidth: '100%', maxHeight: 120, objectFit: 'contain', borderRadius: 6, background: '#fafafa', padding: 4 }} />
+                            )}
+                        </Form.Item>
+                    )}
+                    {designDisplayOption !== 'white' && (
+                        <Form.Item label="Black Garment Design (White print) *" required>
+                            <Upload
+                                beforeUpload={(file) => {
+                                    setUploadBlackFile(file);
+                                    setUploadBlackPreview(URL.createObjectURL(file));
+                                    return false;
+                                }}
+                                showUploadList={false}
+                                accept="image/*"
+                            >
+                                <Button type="dashed" icon={<InboxOutlined />} block style={{ height: 70 }}>
+                                    {uploadBlackFile ? `${uploadBlackFile.name}` : 'Click to select black version'}
+                                </Button>
+                            </Upload>
+                            {uploadBlackPreview && (
+                                <div style={{ marginTop: 8, background: '#1a1a1a', padding: 8, borderRadius: 6, textAlign: 'center' }}>
+                                    <img src={uploadBlackPreview} alt="black preview"
+                                        style={{ maxWidth: '100%', maxHeight: 120, objectFit: 'contain' }} />
+                                </div>
+                            )}
+                        </Form.Item>
+                    )}
 
                     <Form.Item label="For alle elever (Studietur bibliotek)">
                         <div
@@ -783,7 +833,7 @@ const ReviewUploadsPage = () => {
                         <Space>
                             <Button onClick={() => setUploadDesignModal(false)}>Cancel</Button>
                             <Button style={{ color: 'white' }} type="primary" htmlType="submit" loading={uploading}
-                                disabled={!uploadWhiteFile || !uploadBlackFile}>
+                                disabled={(designDisplayOption === 'both' && (!uploadWhiteFile || !uploadBlackFile)) || (designDisplayOption === 'white' && !uploadWhiteFile) || (designDisplayOption === 'black' && !uploadBlackFile)}>
                                 Upload & Approve
                             </Button>
                         </Space>
@@ -818,45 +868,49 @@ const ReviewUploadsPage = () => {
                     </Form.Item>
 
                     {/* White version */}
-                    <Form.Item label="White Garment Design">
-                        <Typography.Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 6 }}>
-                            Leave empty to keep current file
-                        </Typography.Text>
-                        {editWhitePreview && (
-                            <div style={{ marginBottom: 8, textAlign: 'center', background: '#fafafa', padding: 8, borderRadius: 6 }}>
-                                <img src={editWhitePreview} alt="white" style={{ maxHeight: 100, maxWidth: '100%', objectFit: 'contain' }} />
-                            </div>
-                        )}
-                        <Upload
-                            beforeUpload={(file) => { setEditWhiteFile(file); setEditWhitePreview(URL.createObjectURL(file)); return false; }}
-                            showUploadList={false} accept="image/*"
-                        >
-                            <Button type="dashed" icon={<InboxOutlined />} block style={{ height: 60 }}>
-                                {editWhiteFile ? `${editWhiteFile.name}` : 'Click to replace white version'}
-                            </Button>
-                        </Upload>
-                    </Form.Item>
+                    {(editingDesign?.file_path || editingDesign?.configured_file_path) && (
+                        <Form.Item label="White Garment Design">
+                            <Typography.Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 6 }}>
+                                Leave empty to keep current file
+                            </Typography.Text>
+                            {editWhitePreview && (
+                                <div style={{ marginBottom: 8, textAlign: 'center', background: '#fafafa', padding: 8, borderRadius: 6 }}>
+                                    <img src={editWhitePreview} alt="white" style={{ maxHeight: 100, maxWidth: '100%', objectFit: 'contain' }} />
+                                </div>
+                            )}
+                            <Upload
+                                beforeUpload={(file) => { setEditWhiteFile(file); setEditWhitePreview(URL.createObjectURL(file)); return false; }}
+                                showUploadList={false} accept="image/*"
+                            >
+                                <Button type="dashed" icon={<InboxOutlined />} block style={{ height: 60 }}>
+                                    {editWhiteFile ? `${editWhiteFile.name}` : 'Click to replace white version'}
+                                </Button>
+                            </Upload>
+                        </Form.Item>
+                    )}
 
 
                     {/* Black version */}
-                    <Form.Item label="Black Garment Design">
-                        <Typography.Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 6 }}>
-                            Leave empty to keep current file
-                        </Typography.Text>
-                        {editBlackPreview && (
-                            <div style={{ marginBottom: 8, textAlign: 'center', background: '#1a1a1a', padding: 8, borderRadius: 6 }}>
-                                <img src={editBlackPreview} alt="black" style={{ maxHeight: 100, maxWidth: '100%', objectFit: 'contain' }} />
-                            </div>
-                        )}
-                        <Upload
-                            beforeUpload={(file) => { setEditBlackFile(file); setEditBlackPreview(URL.createObjectURL(file)); return false; }}
-                            showUploadList={false} accept="image/*"
-                        >
-                            <Button type="dashed" icon={<InboxOutlined />} block style={{ height: 60 }}>
-                                {editBlackFile ? `${editBlackFile.name}` : 'Click to replace black version'}
-                            </Button>
-                        </Upload>
-                    </Form.Item>
+                    {(editingDesign?.file_path_2 || editingDesign?.configured_file_path_2) && (
+                        <Form.Item label="Black Garment Design">
+                            <Typography.Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 6 }}>
+                                Leave empty to keep current file
+                            </Typography.Text>
+                            {editBlackPreview && (
+                                <div style={{ marginBottom: 8, textAlign: 'center', background: '#1a1a1a', padding: 8, borderRadius: 6 }}>
+                                    <img src={editBlackPreview} alt="black" style={{ maxHeight: 100, maxWidth: '100%', objectFit: 'contain' }} />
+                                </div>
+                            )}
+                            <Upload
+                                beforeUpload={(file) => { setEditBlackFile(file); setEditBlackPreview(URL.createObjectURL(file)); return false; }}
+                                showUploadList={false} accept="image/*"
+                            >
+                                <Button type="dashed" icon={<InboxOutlined />} block style={{ height: 60 }}>
+                                    {editBlackFile ? `${editBlackFile.name}` : 'Click to replace black version'}
+                                </Button>
+                            </Upload>
+                        </Form.Item>
+                    )}
                     <Form.Item label="For alle elever (Studietur bibliotek)">
                         <div
                             style={{

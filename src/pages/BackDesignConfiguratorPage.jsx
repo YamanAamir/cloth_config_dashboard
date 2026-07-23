@@ -147,7 +147,7 @@ const BackDesignConfiguratorPage = () => {
         // Guard: allBackDesigns khali hai means data abhi load nahi hua (race condition).
         if (allBackDesigns.length === 0) return;
         // Show all approved designs — color filtering removed, toggle handles it on canvas
-        setBackDesigns(allBackDesigns.filter(d => !d.isFromConfigurator && d.process_status === 'approved'));
+        setBackDesigns(allBackDesigns.filter(d => d.status !== 2 && d.process_status === 'approved'));
     }, [allBackDesigns]);
 
     const fetchMyClass = async (silent = false) => {
@@ -165,7 +165,7 @@ const BackDesignConfiguratorPage = () => {
             const res = await getMyBackDesigns({ limit: 100 });
             if (res.data?.success && res.data?.data) {
                 setAllBackDesigns(res.data.data);
-                const approved = res.data.data.filter(d => !d.isFromConfigurator && d.process_status === 'approved');
+                const approved = res.data.data.filter(d => d.status !== 2 && d.process_status === 'approved');
                 setBackDesigns(approved);
                 loadState(approved);
             } else {
@@ -293,7 +293,7 @@ const BackDesignConfiguratorPage = () => {
                 imageLayout: layout,
                 baseDesignId: selectedDesignId,
             }));
-            if (currentImageSource === 'file_path_2') {
+            if (color === 'black') {
                 fd.append('configuredDesign_2', blob, `${fileName}_dark_configured.png`);
                 fd.append('designColor_2', color);
             } else {
@@ -356,22 +356,13 @@ const BackDesignConfiguratorPage = () => {
         } catch { /* no existing design */ }
     };
 
-    // Deterministic image path selection — no wrong fallbacks
+    // Deterministic image path selection — strictly use base design's raw files
     const getImagePath = (design, color) => {
+        if (!design) return null;
         if (color === 'black') {
-            return (
-                design.file_path_2 ??
-                design.file_path ??
-                design.configured_file_path_2 ??
-                design.configured_file_path
-            );
+            return design.file_path_2 || null;
         }
-        return (
-            design.file_path ??
-            design.file_path_2 ??
-            design.configured_file_path ??
-            design.configured_file_path_2
-        );
+        return design.file_path || null;
     };
 
     const loadDesignForEditing = (design, keepLayout = false) => {
@@ -379,8 +370,8 @@ const BackDesignConfiguratorPage = () => {
         const blackPath = getImagePath(design, 'black');
 
         const ts = Date.now();
-        const whiteUrl = `${getUploadsUrl(whitePath)}?t=${ts}`;
-        const blackUrl = `${getUploadsUrl(blackPath)}?t=${ts}`;
+        const whiteUrl = whitePath ? `${getUploadsUrl(whitePath)}?t=${ts}` : null;
+        const blackUrl = blackPath ? `${getUploadsUrl(blackPath)}?t=${ts}` : null;
 
         setSelectedDesign(design);
         setSelectedDesignId(design.id);
@@ -392,28 +383,38 @@ const BackDesignConfiguratorPage = () => {
             });
         }
 
+        if (!whitePath && blackPath) {
+            setDesignColor('black');
+        } else if (whitePath && !blackPath) {
+            setDesignColor('white');
+        }
+
         setImagePreviewWhite(whiteUrl);
         setImagePreviewBlack(blackUrl);
 
-        // Fetch white version to keep selectedImage for A3 validation
-        fetch(whiteUrl)
-            .then(r => { if (!r.ok) throw new Error(r.statusText); return r.blob(); })
-            .then(blob => {
-                const file = new File([blob], design.name, { type: 'image/png' });
-                setSelectedImage(file);
-                const img = new Image();
-                img.onload = () => {
-                    const { width, height } = img;
-                    if (width > 4000 || height > 5600) {
-                        message.warning({
-                            content: `Selected design (${width}×${height}px) exceeds A3 size limit.`,
-                            duration: 8,
-                        });
-                    }
-                };
-                img.src = whiteUrl;
-            })
-            .catch(err => message.error(`Failed to load: ${err.message}`));
+        const validUrl = whiteUrl || blackUrl;
+        if (validUrl) {
+            fetch(validUrl)
+                .then(r => { if (!r.ok) throw new Error(r.statusText); return r.blob(); })
+                .then(blob => {
+                    const file = new File([blob], design.name, { type: 'image/png' });
+                    setSelectedImage(file);
+                    const img = new Image();
+                    img.onload = () => {
+                        const { width, height } = img;
+                        if (width > 4000 || height > 5600) {
+                            message.warning({
+                                content: `Selected design (${width}×${height}px) exceeds A3 size limit.`,
+                                duration: 8,
+                            });
+                        }
+                    };
+                    img.src = validUrl;
+                })
+                .catch(err => message.error(`Failed to load: ${err.message}`));
+        } else {
+            setSelectedImage(null);
+        }
     };
 
     // Toggle: instant in-memory switch — no fetch, no reload
@@ -499,7 +500,7 @@ const BackDesignConfiguratorPage = () => {
         let imageSrc = null;
         if (selectedDesign) {
             const path = getImagePath(selectedDesign, color);
-            imageSrc = `${getUploadsUrl(path)}?t=${Date.now()}`;
+            imageSrc = path ? `${getUploadsUrl(path)}?t=${Date.now()}` : null;
         }
 
         const exportCanvas = document.createElement('canvas');
@@ -541,37 +542,33 @@ const BackDesignConfiguratorPage = () => {
     const performUpload = async () => {
         setUploading(true);
         try {
-            let designId = existingConfiguratorDesign?.id;
-
+            const designId = selectedDesignId;
             if (!designId) {
-                const draftRes = await saveConfiguratorState({
-                    configurator_state: {
-                        textElements,
-                        designColor,
-                        imageLayout,
-                        baseDesignId: selectedDesignId,
-                    },
-                    designColor,
-                    name: `configurator_draft_${Date.now()}`,
-                });
-
-                designId = draftRes.data?.data?.id;
-                if (!designId) throw new Error('Failed to create design draft');
+                message.error("Please select a design first");
+                setUploading(false);
+                return;
             }
 
+            const whiteExists = !!getImagePath(selectedDesign, 'white');
+            const blackExists = !!getImagePath(selectedDesign, 'black');
+
             const [lightBlob, darkBlob] = await Promise.all([
-                renderCanvasForColor('white'),
-                renderCanvasForColor('black'),
+                whiteExists ? renderCanvasForColor('white') : Promise.resolve(null),
+                blackExists ? renderCanvasForColor('black') : Promise.resolve(null),
             ]);
 
             const formData = new FormData();
-            const fileName = selectedImage.name.replace(/\.[^/.]+$/, '');
+            const fileName = selectedImage ? selectedImage.name.replace(/\.[^/.]+$/, '') : `design_${Date.now()}`;
 
             formData.append('name', `${fileName}_configured`);
-            formData.append('configuredDesign', lightBlob, `${fileName}_light_configured.png`);
-            formData.append('designColor', 'white');
-            formData.append('configuredDesign_2', darkBlob, `${fileName}_dark_configured.png`);
-            formData.append('designColor_2', 'black');
+            if (whiteExists && lightBlob) {
+                formData.append('configuredDesign', lightBlob, `${fileName}_light_configured.png`);
+                formData.append('designColor', 'white');
+            }
+            if (blackExists && darkBlob) {
+                formData.append('configuredDesign_2', darkBlob, `${fileName}_dark_configured.png`);
+                formData.append('designColor_2', 'black');
+            }
 
             formData.append('configurator_state', JSON.stringify({
                 textElements,
@@ -955,13 +952,13 @@ const BackDesignConfiguratorPage = () => {
                             setImageLayoutForColor={setImageLayoutForColor}
                             isLocked={isOrderLocked}
                             onCanvasUpdate={() => { /* Auto-save removed as per request */ }}
-                            colorToggle={imagePreviewWhite ? (
+                            colorToggle={selectedDesign ? (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                     <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: '1px solid #d9d9d9' }}>
                                         {[
-                                            { value: 'white', label: 'Light Garment', sub: 'Sort tryk' },
-                                            { value: 'black', label: 'Dark Garment', sub: 'Hvidt tryk' },
-                                        ].map(opt => (
+                                            { value: 'white', label: 'Light Garment', sub: 'Sort tryk', condition: !!getImagePath(selectedDesign, 'white') },
+                                            { value: 'black', label: 'Dark Garment', sub: 'Hvidt tryk', condition: !!getImagePath(selectedDesign, 'black') },
+                                        ].filter(opt => opt.condition).map((opt, index, arr) => (
                                             <div
                                                 key={opt.value}
                                                 onClick={() => !isOrderLocked && handleDesignColorToggle(opt.value)}
@@ -972,7 +969,7 @@ const BackDesignConfiguratorPage = () => {
                                                     color: designColor === opt.value ? '#fff' : '#333',
                                                     textAlign: 'center',
                                                     transition: 'all 0.15s',
-                                                    borderRight: opt.value === 'white' ? '1px solid #d9d9d9' : 'none',
+                                                    borderRight: index < arr.length - 1 ? '1px solid #d9d9d9' : 'none',
                                                 }}
                                             >
                                                 <div style={{ fontSize: 11, fontWeight: 600 }}>{opt.label}</div>

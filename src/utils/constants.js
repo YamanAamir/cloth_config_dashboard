@@ -139,9 +139,12 @@ export const getUploadsUrl = (filePath) => {
 /** Preview path for a back design record (configured export vs raw upload). */
 export const getBackDesignDisplayPath = (design, color = 'white') => {
   if (!design) return '';
-  if (design.configured_file_path) return design.configured_file_path;
-  if (color === 'black' && design.file_path_2) return design.file_path_2;
-  return design.file_path || '';
+  
+  if (color === 'black') {
+    return design.configured_file_path_2 || design.file_path_2 || design.configured_file_path || design.file_path || '';
+  }
+  
+  return design.configured_file_path || design.file_path || design.configured_file_path_2 || design.file_path_2 || '';
 };
 
 export const getBackDesignDisplayUrl = (design, color = 'white') =>
