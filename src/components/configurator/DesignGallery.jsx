@@ -133,6 +133,7 @@ const DesignGallery = ({
                                                 style={{
                                                     border: selectedDesignId === d.id ? '2px solid #00b96b' : '1px solid #f0f0f0',
                                                     cursor: onSelectDesign ? 'pointer' : 'default',
+                                                    background: d.file_path_2 ? '#000' : '#fff',
                                                 }}
                                                 bodyStyle={{ padding: 8 }}
                                             >

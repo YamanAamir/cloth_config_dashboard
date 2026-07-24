@@ -456,14 +456,20 @@ const UploadFilesPage = () => {
                                                     >
                                                         <TabPane tab="White" key="white">
                                                             <div style={{ minHeight: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px 4px 8px' }}>
-                                                                <img
-                                                                    src={getBackDesignDisplayUrl(item)}
-                                                                    alt={item.name}
-                                                                    style={{
-                                                                        maxWidth: '100%', maxHeight: 100, objectFit: 'contain',
-                                                                        opacity: item.status === Status.DELETED ? 0.6 : 1,
-                                                                    }}
-                                                                />
+                                                                {item.file_path ? (
+                                                                    <img
+                                                                        src={getBackDesignDisplayUrl(item)}
+                                                                        alt={item.name}
+                                                                        style={{
+                                                                            maxWidth: '100%', maxHeight: 100, objectFit: 'contain',
+                                                                            opacity: item.status === Status.DELETED ? 0.6 : 1,
+                                                                        }}
+                                                                    />
+                                                                ) : (
+                                                                    <Typography.Text type="secondary" style={{ fontSize: 11, color: '#888' }}>
+                                                                        No white version
+                                                                    </Typography.Text>
+                                                                )}
                                                             </div>
                                                         </TabPane>
                                                         <TabPane tab="Black" key="black">

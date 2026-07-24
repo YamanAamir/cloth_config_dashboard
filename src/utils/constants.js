@@ -124,7 +124,7 @@ export const TEMPLATE_CATEGORIES = {
 /**
  * Base URL for API (without /api). Used to build uploads URL.
  */
-export const getApiBase = () => 
+export const getApiBase = () =>
   (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace(/\/api\/?$/, '');
 
 /**
@@ -139,12 +139,12 @@ export const getUploadsUrl = (filePath) => {
 /** Preview path for a back design record (configured export vs raw upload). */
 export const getBackDesignDisplayPath = (design, color = 'white') => {
   if (!design) return '';
-  
+
   if (color === 'black') {
-    return design.configured_file_path_2 || design.file_path_2 || design.configured_file_path || design.file_path || '';
+    return design.file_path_2 || design.file_path || '';
   }
-  
-  return design.configured_file_path || design.file_path || design.configured_file_path_2 || design.file_path_2 || '';
+
+  return design.file_path || design.file_path_2 || '';
 };
 
 export const getBackDesignDisplayUrl = (design, color = 'white') =>
@@ -153,7 +153,7 @@ export const getBackDesignDisplayUrl = (design, color = 'white') =>
 // ─── Danish Time Formatting (Europe/Copenhagen, UTC+1/UTC+2 DST) ─────────────
 
 const DK_LOCALE = 'da-DK';
-const DK_TZ    = 'Europe/Copenhagen';
+const DK_TZ = 'Europe/Copenhagen';
 
 /**
  * Format a timestamp as full Danish date + time.
