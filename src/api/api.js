@@ -146,6 +146,10 @@ export const deleteShippingRate = (id) => api.delete(`/admin/shipping-rate/${id}
 export const toggleShippingRateStatus = (id) => api.put(`/admin/shipping-rate/${id}/toggle-status`);
 
 export const getClassRepShippingRates = () => api.get('/class-rep/shipping-rates');
+
+// Ready for Production (Class Rep)
+export const markClassReadyForProduction = (classId, data = {}) => api.post(`/class-rep/class/${classId}/ready-for-production`, data);
+export const unmarkClassReadyForProduction = (classId) => api.delete(`/class-rep/class/${classId}/ready-for-production`);
 // Library Design APIs (Admin)
 export const uploadLibraryDesign = (formData) => apiFormdata.post('/admin/library-design/upload', formData);
 export const getLibraryDesigns = (params = {}) => api.get('/admin/library-designs', { params });

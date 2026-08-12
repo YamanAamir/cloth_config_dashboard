@@ -8,15 +8,16 @@ import {
     MailOutlined, FileTextOutlined, CheckCircleOutlined, ClockCircleOutlined, EyeOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { getAllSchools, getAllClasses, getTemplates, createTemplate, updateTemplate, deleteTemplate, getCampaigns, createCampaign, updateCampaign, deleteCampaign, sendCampaign } from '../api/api';
+import { getAllSchools, getAllClasses, getTemplates, createTemplate, updateTemplate, deleteTemplate, getCampaigns, createCampaign, updateCampaign, deleteCampaign, sendCampaign, getEducationPrograms } from '../api/api';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
 
 const TARGET_OPTIONS = [
-    { value: 'all', label: 'All Students (consent given)' },
-    { value: 'school', label: 'By School' },
-    { value: 'class', label: 'By Class' },
+    { value: 'all',               label: 'All Students (consent given)' },
+    { value: 'school',            label: 'By School' },
+    { value: 'class',             label: 'By Class' },
+    { value: 'education_program', label: 'By Education Program' },
 ];
 
 const STATUS_MAP = {
@@ -33,6 +34,7 @@ const MarketingPage = () => {
     const [sending, setSending] = useState({}); // { [id]: 'send' | 'force' | false }
     const [schools, setSchools] = useState([]);
     const [classes, setClasses] = useState([]);
+    const [educationPrograms, setEducationPrograms] = useState([]);
 
     // Template preview only (no create/edit modal - use editor page)
     const [previewTemplate, setPreviewTemplate] = useState(null);
@@ -46,17 +48,14 @@ const MarketingPage = () => {
     // Helper function to display target information
     const getTargetDisplay = (campaign) => {
         if (campaign.target_object) {
-            if (campaign.target_type === 'school') {
-                return `School: ${campaign.target_object.name}`;
-            } else if (campaign.target_type === 'class') {
-                return `Class: ${campaign.target_object.name} (${campaign.target_object.school?.name || 'Unknown School'})`;
-            }
+            if (campaign.target_type === 'school') return `School: ${campaign.target_object.name}`;
+            if (campaign.target_type === 'class') return `Class: ${campaign.target_object.name} (${campaign.target_object.school?.name || 'Unknown School'})`;
+            if (campaign.target_type === 'education_program') return `Program: ${campaign.target_object.name}`;
         }
-
-        // Fallback for 'all' or when no target_object
         if (campaign.target_type === 'all') return 'All Students';
         if (campaign.target_type === 'school') return `School ID: ${campaign.target_id}`;
         if (campaign.target_type === 'class') return `Class ID: ${campaign.target_id}`;
+        if (campaign.target_type === 'education_program') return `Program ID: ${campaign.target_id}`;
         return campaign.target_type || 'Unknown';
     };
 
@@ -81,17 +80,19 @@ const MarketingPage = () => {
     const fetchAll = async () => {
         setLoading(true);
         try {
-            const [tRes, cRes, sRes, clRes] = await Promise.all([
+            const [tRes, cRes, sRes, clRes, epRes] = await Promise.all([
                 getTemplates(),
                 getCampaigns(),
                 getAllSchools({ limit: 100 }),
-                getAllClasses({ limit: 100 })
+                getAllClasses({ limit: 100 }),
+                getEducationPrograms(),
             ]);
 
             setTemplates(tRes?.data?.data?.templates || []);
             setCampaigns(cRes?.data?.data || []);
             setSchools(sRes?.data?.data || []);
             setClasses(clRes?.data?.data || []);
+            setEducationPrograms(epRes?.data?.data?.data || epRes?.data?.data || []);
 
         } catch (error) {
             console.error('Failed to load marketing data:', error);
@@ -141,7 +142,7 @@ const MarketingPage = () => {
                 template_id: values.template_id || null,
                 body: values.body || "",
                 target_type: values.target || 'all',
-                target_id: values.target_value || null,
+                target_id: values.target_value ? parseInt(values.target_value) : null,
             };
             if (editingCampaign) {
                 await updateCampaign(editingCampaign.id, payload);
@@ -161,7 +162,7 @@ const MarketingPage = () => {
         setSending(prev => ({ ...prev, [id]: force ? 'force' : 'send' }));
         try {
             const res = await sendCampaign(id, { force });
-            message.success(`Campaign "${name}" sent to ${res.data?.sent_count || 0} recipients`);
+            message.success(res.data?.message || `Campaign "${name}" sent successfully`);
             fetchAll();
         } catch (err) { message.error(err.response?.data?.message || 'Send failed'); }
         finally { setSending(prev => ({ ...prev, [id]: false })); }
@@ -206,34 +207,17 @@ const MarketingPage = () => {
                 </Space>
             )
         },
-        // {
-        //     title: 'Target', dataIndex: 'target', key: 'target',
-        //     render: (t, r) => (
-        //         <Space direction="vertical" size={0}>
-        //             <Tag color="blue">{r.target_type}</Tag>
-        //             <Text type="secondary" style={{ fontSize: 11 }}>
-        //                 {r.target_object ? (
-        //                     <>
-        //                         {r.target_type === 'school' && r.target_object.name}
-        //                         {r.target_type === 'class' && `${r.target_object.name}`}
-        //                         {r.target_type === 'all' && 'All consented students'}
-        //                     </>
-        //                 ) : (
-        //                     <>
-        //                         {r.target_type === 'all' && 'All consented students'}
-        //                         {r.target_type === 'school' && `School ID: ${r.target_id}`}
-        //                         {r.target_type === 'class' && `Class ID: ${r.target_id}`}
-        //                     </>
-        //                 )}
-        //             </Text>
-        //             {r.target_object?.school && (
-        //                 <Text type="secondary" style={{ fontSize: 10, fontStyle: 'italic' }}>
-        //                     {r.target_object.school.name}
-        //                 </Text>
-        //             )}
-        //         </Space>
-        //     )
-        // },
+        {
+            title: 'Target Audience', dataIndex: 'target', key: 'target',
+            render: (_, r) => (
+                <Space direction="vertical" size={0}>
+                    <Tag color="blue">{r.target_type === 'education_program' ? 'Education Program' : (r.target_type || 'all').toUpperCase()}</Tag>
+                    <Text type="secondary" style={{ fontSize: 11 }}>
+                        {getTargetDisplay(r)}
+                    </Text>
+                </Space>
+            )
+        },
         {
             title: 'Status', dataIndex: 'status', key: 'status',
             render: s => {
@@ -251,8 +235,8 @@ const MarketingPage = () => {
                             <>
                                 <Tooltip title="Send to consented students only">
                                     <Popconfirm
-                                        title={`Send "${r.title}" to all eligible students?`}
-                                        description="Only students with marketing consent will receive this."
+                                        title={`Send "${r.title}" to eligible recipients?`}
+                                        description="Only recipients with marketing consent will receive this."
                                         onConfirm={() => handleSendCampaign(r.id, r.title, false)}
                                         okText="Send" cancelText="Cancel"
                                     >
@@ -265,7 +249,7 @@ const MarketingPage = () => {
                                 <Tooltip title="Force send to ALL students (ignore consent)">
                                     <Popconfirm
                                         title={`Force send "${r.title}"?`}
-                                        description="This will send to ALL students, ignoring marketing consent."
+                                        description="This will send to ALL targeted students, ignoring marketing consent."
                                         onConfirm={() => handleSendCampaign(r.id, r.title, true)}
                                         okText="Force Send" cancelText="Cancel"
                                         okButtonProps={{ danger: true }}
@@ -290,14 +274,15 @@ const MarketingPage = () => {
                                 <Button type="text" icon={<EditOutlined style={{ color: '#00b96b' }} />}
                                     onClick={() => {
                                         setEditingCampaign(r);
-                                        setTargetType(r.target_type || r.target || 'all');
+                                        const tType = r.target_type || r.target || 'all';
+                                        setTargetType(tType);
                                         campaignForm.setFieldsValue({
                                             title: r.title || r.name,
                                             subject: r.subject,
-                                            body: r.body || r.html_body,
+                                            body: r.html_body || r.body || '',
                                             template_id: r.template_id,
-                                            target: r.target_type || r.target || 'all',
-                                            target_value: r.target_id || r.target_value,
+                                            target: tType,
+                                            target_value: r.target_id ? String(r.target_id) : (r.target_value ? String(r.target_value) : undefined),
                                         });
                                         setCampaignModal(true);
                                     }} />
@@ -366,9 +351,9 @@ const MarketingPage = () => {
             <Modal title={editingCampaign ? 'Edit Campaign' : 'New Campaign'}
                 open={campaignModal}
                 onCancel={() => { setCampaignModal(false); campaignForm.resetFields(); setEditingCampaign(null); }}
-                footer={null} width={600} destroyOnHidden>
+                footer={null} width={650} destroyOnHidden>
                 <Form form={campaignForm} layout="vertical" onFinish={handleSaveCampaign} style={{ marginTop: 16 }}>
-                    <Form.Item name="title" label="Campaign Title" rules={[{ required: true }]}>
+                    <Form.Item name="title" label="Campaign Title" rules={[{ required: true, message: 'Campaign Title is required' }]}>
                         <Input placeholder="e.g. Spring Graduation Cap Campaign" />
                     </Form.Item>
 
@@ -379,34 +364,53 @@ const MarketingPage = () => {
                             onChange={(id) => {
                                 if (id && Array.isArray(templates)) {
                                     const tpl = templates.find(t => t.id === id);
-                                    if (tpl) campaignForm.setFieldsValue({ subject: tpl.subject });
+                                    if (tpl) {
+                                        campaignForm.setFieldsValue({
+                                            subject: tpl.subject,
+                                            body: tpl.html_body || tpl.body || ""
+                                        });
+                                    }
                                 }
                             }}
                         />
                     </Form.Item>
 
-                    <Form.Item name="subject" label="Email Subject" rules={[{ required: true }]}>
+                    <Form.Item name="subject" label="Email Subject" rules={[{ required: true, message: 'Email Subject is required' }]}>
                         <Input placeholder="Auto-filled from template, editable" />
+                    </Form.Item>
+
+                    <Form.Item name="body" label="Email Body (HTML / Text)" rules={[{ required: true, message: 'Email content is required' }]}>
+                        <TextArea rows={6} placeholder="Email content HTML or plain text. Auto-filled when selecting a template." />
                     </Form.Item>
 
                     <Form.Item name="target" label="Target Audience" initialValue="all">
                         <Select options={TARGET_OPTIONS} onChange={setTargetType} />
                     </Form.Item>
                     {targetType === 'school' && (
-                        <Form.Item name="target_value" label="Select School" rules={[{ required: true }]}>
+                        <Form.Item name="target_value" label="Select School" rules={[{ required: true, message: 'Please select a school' }]}>
                             <Select
                                 showSearch optionFilterProp="label"
                                 placeholder="Select school"
-                                options={schools.map(s => ({ value: s.id, label: s.name }))}
+                                options={schools.map(s => ({ value: String(s.id), label: s.name }))}
                             />
                         </Form.Item>
                     )}
                     {targetType === 'class' && (
-                        <Form.Item name="target_value" label="Select Class" rules={[{ required: true }]}>
+                        <Form.Item name="target_value" label="Select Class" rules={[{ required: true, message: 'Please select a class' }]}>
                             <Select
                                 showSearch optionFilterProp="label"
                                 placeholder="Select class"
                                 options={classes.map(c => ({ value: String(c.id), label: `${c.name} — ${c.school?.name || ''}` }))}
+                            />
+                        </Form.Item>
+                    )}
+                    {targetType === 'education_program' && (
+                        <Form.Item name="target_value" label="Select Education Program" rules={[{ required: true, message: 'Please select an education program' }]}>
+                            <Select
+                                showSearch
+                                optionFilterProp="label"
+                                placeholder="Select program (e.g. STX, HTX, HHX)"
+                                options={educationPrograms.map(p => ({ value: String(p.id), label: p.name }))}
                             />
                         </Form.Item>
                     )}

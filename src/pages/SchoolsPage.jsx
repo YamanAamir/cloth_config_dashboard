@@ -66,7 +66,7 @@ const SchoolsPage = () => {
         try {
             const res = await getEducationPrograms({ page: 1, limit: 1000 });
             const data = res.data?.data?.data || res.data?.data || [];
-            setEducationPrograms(data);
+            setEducationPrograms(data.filter(i => i.status == 0));
         } catch (err) {
             message.error(err.response?.data?.message || 'Failed to load education programs');
         } finally {

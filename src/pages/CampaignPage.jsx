@@ -11,7 +11,8 @@ import {
 } from '@ant-design/icons';
 import {
     getCampaigns, createCampaign, updateCampaign,
-    deleteCampaign, sendCampaign, getAllClasses, getAllSchools, getEmailTemplates
+    deleteCampaign, sendCampaign, getAllClasses, getAllSchools,
+    getEmailTemplates, getEducationPrograms
 } from '../api/api';
 import { TEMPLATE_CATEGORIES, formatDanishDateTime, formatDanishDate } from '../utils/constants';
 
@@ -19,10 +20,11 @@ const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
 
 const TARGET_TYPES = [
-    { value: 'all', label: 'All Users', icon: <GlobalOutlined /> },
-    { value: 'class', label: 'Specific Class', icon: <TeamOutlined /> },
-    { value: 'school', label: 'Specific School', icon: <TeamOutlined /> },
-    { value: 'role', label: 'By Role', icon: <TeamOutlined /> },
+    { value: 'all',               label: 'All Users',                icon: <GlobalOutlined /> },
+    { value: 'class',             label: 'By Class',                 icon: <TeamOutlined /> },
+    { value: 'school',            label: 'By School',                icon: <TeamOutlined /> },
+    { value: 'role',              label: 'By Role',                  icon: <TeamOutlined /> },
+    { value: 'education_program', label: 'By Education Program',     icon: <UserAddOutlined /> },
 ];
 
 const ROLES = [
