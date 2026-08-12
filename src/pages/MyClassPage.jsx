@@ -18,7 +18,9 @@ import {
     Progress,
     Alert,
     Divider,
-    Select
+    Select,
+    Popconfirm,
+    Tooltip
 } from 'antd';
 import {
     TeamOutlined,
@@ -35,7 +37,8 @@ import {
     EditFilled,
     EditOutlined,
     EnvironmentOutlined,
-    PictureOutlined
+    PictureOutlined,
+    RocketOutlined
 } from '@ant-design/icons';
 import {
     getMyClass,
@@ -51,7 +54,9 @@ import {
     getClassRepDelivery,
     updateClassRepDelivery,
     getClassRepShippingRates,
-    uploadBackDesign
+    uploadBackDesign,
+    markClassReadyForProduction,
+    unmarkClassReadyForProduction,
 } from '../api/api';
 import { getUploadsUrl, getBackDesignDisplayUrl, Status } from '../utils/constants';
 import SimpleUploadModal from '../components/SimpleUploadModal';
@@ -116,7 +121,12 @@ const MyClassPageSimple = () => {
 
     // Delivery Details
     const [deliveryModalOpen, setDeliveryModalOpen] = useState(false);
-    const [deliveryDetails, setDeliveryDetails] = useState({
+
+    // Ready for Production
+    const [readyModalOpen, setReadyModalOpen] = useState(false);
+    const [readyNote, setReadyNote] = useState('');
+    const [markingReady, setMarkingReady] = useState(false);
+    const [unmarkingReady, setUnmarkingReady] = useState(false); const [deliveryDetails, setDeliveryDetails] = useState({
         contactName: '',
         phone: '',
         address: '',
@@ -427,6 +437,37 @@ const MyClassPageSimple = () => {
         }
     };
 
+    // ── Mark Ready for Production ─────────────────────────────────────────────
+    const handleMarkReady = async () => {
+        if (!myClass?.id) return;
+        setMarkingReady(true);
+        try {
+            await markClassReadyForProduction(myClass.id, { note: readyNote.trim() || undefined });
+            message.success('Klassen er markeret som klar til produktion! Admin er notificeret.');
+            setReadyModalOpen(false);
+            setReadyNote('');
+            fetchAllData();
+        } catch (err) {
+            message.error(err?.response?.data?.message || 'Kunne ikke markere klassen som klar');
+        } finally {
+            setMarkingReady(false);
+        }
+    };
+
+    const handleUnmarkReady = async () => {
+        if (!myClass?.id) return;
+        setUnmarkingReady(true);
+        try {
+            await unmarkClassReadyForProduction(myClass.id);
+            message.success('Markering fjernet.');
+            fetchAllData();
+        } catch (err) {
+            message.error(err?.response?.data?.message || 'Kunne ikke fjerne markering');
+        } finally {
+            setUnmarkingReady(false);
+        }
+    };
+
     if (loading) {
         return (
             <div style={{ textAlign: 'center', padding: '100px 0' }}>
@@ -692,6 +733,69 @@ const MyClassPageSimple = () => {
                         </Button>
 
 
+                    </Card>
+                </Col>
+
+                {/* ── Ready for Production card ── */}
+                <Col xs={24} md={12} lg={8}>
+                    <Card
+                        style={{
+                            height: '100%',
+                            borderRadius: 12,
+                            transition: '0.3s',
+                            border: myClass?.ready_for_production ? '2px solid #00b96b' : '1px solid #f0f0f0',
+                            background: myClass?.ready_for_production ? '#f0fdf4' : '#fff',
+                        }}
+                        bodyStyle={{ padding: '24px' }}
+                        onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
+                        onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0px)'}
+                    >
+                        <div style={{ textAlign: 'center' }}>
+                            <RocketOutlined style={{ fontSize: 42, color: myClass?.ready_for_production ? '#00b96b' : '#fa8c16', marginBottom: 12 }} />
+                            <Title level={4} style={{ marginBottom: 4 }}>
+                                Klar til produktion
+                            </Title>
+                            <Text type="secondary">
+                                Giv admin besked om at klassen er klar
+                            </Text>
+                        </div>
+
+                        <Divider />
+
+                        {/* <div style={{ textAlign: 'center', marginBottom: 12 }}>
+                            {myClass?.ready_for_production ? (
+                                <Tag color="success" icon={<CheckCircleOutlined />} style={{ fontSize: 13, padding: '4px 10px' }}>
+                                    Markeret som klar
+                                </Tag>
+                            ) : (
+                                <Tag color="default" icon={<ClockCircleOutlined />} style={{ fontSize: 13, padding: '4px 10px' }}>
+                                    Ikke klar endnu
+                                </Tag>
+                            )}
+                        </div> */}
+
+                        {myClass?.ready_for_production ? (
+                            <Popconfirm
+                                title="Fjern klar-markering?"
+                                description="Admin vil blive informeret om, at klassen ikke længere er klar."
+                                onConfirm={handleUnmarkReady}
+                                okText="Fjern" cancelText="Annuller" okType="danger"
+                            >
+                                <Button danger block loading={unmarkingReady} icon={<CloseCircleOutlined />}>
+                                    Fjern markering
+                                </Button>
+                            </Popconfirm>
+                        ) : (
+                            <Button
+                                type="primary"
+                                block
+                                icon={<RocketOutlined />}
+                                onClick={() => setReadyModalOpen(true)}
+                                style={{ background: '#fa8c16', borderColor: '#fa8c16' }}
+                            >
+                                Marker som klar
+                            </Button>
+                        )}
                     </Card>
                 </Col>
 
@@ -1260,6 +1364,44 @@ const MyClassPageSimple = () => {
                         Gem Levering
                     </Button>
                 </Space>
+            </Modal>
+
+
+            {/* Ready for Production Modal */}
+            <Modal
+                title={
+                    <Space>
+                        <RocketOutlined style={{ color: '#fa8c16' }} />
+                        <span>Marker klassen som klar til produktion</span>
+                    </Space>
+                }
+                open={readyModalOpen}
+                onCancel={() => { setReadyModalOpen(false); setReadyNote(''); }}
+                onOk={handleMarkReady}
+                confirmLoading={markingReady}
+                okText="Send til admin"
+                cancelText="Annuller"
+                okButtonProps={{ style: { background: '#fa8c16', borderColor: '#fa8c16' } }}
+            >
+                <div style={{ padding: '8px 0' }}>
+                    <Alert
+                        type="info"
+                        showIcon
+                        message="Admin vil modtage en e-mail med besked om, at klassen er klar til produktion."
+                        style={{ marginBottom: 16 }}
+                    />
+                    <Text strong style={{ display: 'block', marginBottom: 8 }}>
+                        Tilføj en note (valgfrit)
+                    </Text>
+                    <Input.TextArea
+                        value={readyNote}
+                        onChange={e => setReadyNote(e.target.value)}
+                        placeholder="F.eks. 'Alle elever har betalt og bekræftet deres bestilling'"
+                        rows={3}
+                        maxLength={500}
+                        showCount
+                    />
+                </div>
             </Modal>
 
 
