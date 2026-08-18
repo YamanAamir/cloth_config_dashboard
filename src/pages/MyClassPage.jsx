@@ -492,13 +492,13 @@ const MyClassPageSimple = () => {
     const rejectedLogos = logos.filter(logo => logo.status === Status.DELETED);
 
     return (
-        <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
+        <div style={{ padding: 'clamp(12px, 3vw, 24px)', maxWidth: '1200px', margin: '0 auto' }}>
             {/* Header */}
-            <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-                <Title level={2} style={{ marginBottom: 0 }}>
+            <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                <Title level={2} style={{ marginBottom: 0, wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                     {myClass.name}
                 </Title>
-                <Text type="secondary">
+                <Text type="secondary" style={{ wordBreak: 'break-word' }}>
                     {myClass.school?.name} • Klasse af {myClass.graduation_year}
                 </Text>
             </div>
@@ -506,7 +506,7 @@ const MyClassPageSimple = () => {
 
 
 
-            <Row gutter={[24, 24]} style={{ marginBottom: '40px' }} justify="center">
+            <Row gutter={[{ xs: 12, sm: 16, md: 24 }, { xs: 12, sm: 16, md: 24 }]} style={{ marginBottom: '24px' }} justify="center">
                 <Col xs={24} md={16} lg={8}>
                     <Card
                         id="tour-students-card"
@@ -739,6 +739,7 @@ const MyClassPageSimple = () => {
                 {/* ── Ready for Production card ── */}
                 <Col xs={24} md={12} lg={8}>
                     <Card
+                        id="tour-ready-for-production-card"
                         style={{
                             height: '100%',
                             borderRadius: 12,

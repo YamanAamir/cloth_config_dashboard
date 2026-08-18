@@ -53,7 +53,8 @@ const iconMap = {
 };
 
 const MainLayout = () => {
-    const [collapsed, setCollapsed] = useState(false);
+    const [collapsed, setCollapsed] = useState(window.innerWidth < 768);
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     const [menuItems, setMenuItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
@@ -61,6 +62,19 @@ const MainLayout = () => {
     const { logout, user } = useAuth();
 
     const { token: { colorBgContainer, borderRadiusLG } } = theme.useToken();
+
+    useEffect(() => {
+        const handleResize = () => {
+            const mobile = window.innerWidth < 768;
+            setIsMobile(mobile);
+            if (mobile) {
+                setCollapsed(true);
+            }
+        };
+        handleResize();
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     useEffect(() => {
         const fetchMenus = async () => {
@@ -127,21 +141,53 @@ const MainLayout = () => {
 
     return (
         <Layout style={{ minHeight: '100vh' }}>
-            <Sider trigger={null} collapsible collapsed={collapsed} theme="light" width={220}>
+            {/* Mobile backdrop */}
+            {isMobile && !collapsed && (
+                <div
+                    onClick={() => setCollapsed(true)}
+                    style={{
+                        position: 'fixed',
+                        inset: 0,
+                        backgroundColor: 'rgba(0, 0, 0, 0.45)',
+                        zIndex: 999,
+                        transition: 'opacity 0.3s'
+                    }}
+                />
+            )}
+
+            <Sider
+                trigger={null}
+                collapsible
+                collapsed={collapsed}
+                collapsedWidth={isMobile ? 0 : 80}
+                theme="light"
+                width={220}
+                style={{
+                    overflow: 'auto',
+                    height: '100vh',
+                    position: isMobile ? 'fixed' : 'relative',
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    zIndex: isMobile ? 1000 : 1,
+                    boxShadow: isMobile && !collapsed ? '4px 0 16px rgba(0,0,0,0.15)' : 'none',
+                    transition: 'all 0.2s'
+                }}
+            >
                 <div style={{
                     height: 64, display: 'flex', alignItems: 'center',
                     justifyContent: 'center', padding: '0 16px',
                     borderBottom: '1px solid #f0f0f0'
                 }}>
                     <h2 style={{
-                        fontSize: collapsed ? '1.2rem' : '1.4rem',
+                        fontSize: collapsed && !isMobile ? '1.2rem' : '1.4rem',
                         fontWeight: 'bold',
                         background: 'linear-gradient(135deg, #00b96b 0%, #006d75 100%)',
                         WebkitBackgroundClip: 'text',
                         WebkitTextFillColor: 'transparent',
                         margin: 0, transition: '0.3s'
                     }}>
-                        {collapsed ? 'CC' : 'ClothConfig'}
+                        {collapsed && !isMobile ? 'CC' : 'ClothConfig'}
                     </h2>
                 </div>
 
@@ -155,7 +201,10 @@ const MainLayout = () => {
                         mode="inline"
                         selectedKeys={[location.pathname]}
                         items={menuItems}
-                        onClick={({ key }) => navigate(key)}
+                        onClick={({ key }) => {
+                            navigate(key);
+                            if (isMobile) setCollapsed(true);
+                        }}
                         style={{ padding: '8px 0', borderRight: 0 }}
                     />
                 )}
@@ -163,34 +212,40 @@ const MainLayout = () => {
 
             <Layout>
                 <Header style={{
-                    padding: '0 24px', background: colorBgContainer,
+                    padding: isMobile ? '0 12px' : '0 24px', background: colorBgContainer,
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.05)', zIndex: 1
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.05)', zIndex: 10
                 }}>
                     <Button
                         type="text"
                         icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
                         onClick={() => setCollapsed(!collapsed)}
-                        style={{ fontSize: '16px', width: 64, height: 64 }}
+                        style={{ fontSize: '18px', width: isMobile ? 48 : 64, height: isMobile ? 48 : 64 }}
                     />
-                    <Space>
-                        {/* <NotificationBell /> */}
+                    <Space size={isMobile ? 8 : 16}>
                         <ClassRepTour />
                         <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
                             <Space style={{ cursor: 'pointer' }}>
                                 <Avatar style={{ backgroundColor: '#00b96b' }} icon={<UserOutlined />} />
-                                <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
-                                    <span style={{ fontWeight: 600 }}>{user?.name || 'User'}</span>
-                                    <Tag color="cyan" style={{ fontSize: '10px', margin: 0, border: 'none' }}>
-                                        {user?.role?.replace(/_/g, ' ').toUpperCase() || 'NO ROLE'}
-                                    </Tag>
-                                </div>
+                                {!isMobile && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
+                                        <span style={{ fontWeight: 600 }}>{user?.name || 'User'}</span>
+                                        <Tag color="cyan" style={{ fontSize: '10px', margin: 0, border: 'none' }}>
+                                            {user?.role?.replace(/_/g, ' ').toUpperCase() || 'NO ROLE'}
+                                        </Tag>
+                                    </div>
+                                )}
                             </Space>
                         </Dropdown>
                     </Space>
                 </Header>
 
-                <Content style={{ margin: '24px', minHeight: 280, borderRadius: borderRadiusLG, overflow: 'initial' }}>
+                <Content style={{
+                    margin: isMobile ? '12px 8px' : '24px',
+                    minHeight: 280,
+                    borderRadius: borderRadiusLG,
+                    overflow: 'initial'
+                }}>
                     <div className="fade-in">
                         <Outlet />
                     </div>

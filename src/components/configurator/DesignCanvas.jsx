@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback, memo } from 'react';
-import { EyeOutlined, InboxOutlined, WarningOutlined } from '@ant-design/icons';
+import { EyeOutlined, InboxOutlined, WarningOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { Button, Typography } from 'antd';
 
 const getTextColor = (garmentColor) => (garmentColor === 'black' ? '#ffffff' : '#000000');
@@ -269,48 +269,7 @@ const DesignCanvas = ({
             });
         }
 
-        // Always-visible design-area guide. Deliberately neutral (not red) so it
-        // reads as an informational boundary, not an error — and the label is a
-        // pill badge rather than text stamped over the artwork, so it can't be
-        // mistaken for the design itself or for a warning.
-        ctx.save();
-        const guideInset = Math.max(4, Math.round(CANVAS_W * 0.0015));
-        const guideColor = '#009ca1ff';
-        ctx.strokeStyle = guideColor;
-        ctx.lineWidth = Math.max(3, Math.round(CANVAS_W * 0.0008));
-        ctx.setLineDash([Math.round(CANVAS_W * 0.006), Math.round(CANVAS_W * 0.005)]);
-        ctx.strokeRect(guideInset, guideInset, CANVAS_W - guideInset * 2, CANVAS_H - guideInset * 2);
-        ctx.setLineDash([]);
 
-        const labelText = 'Design area guide — keep names inside';
-        const labelFontSize = Math.round(CANVAS_W * 0.013);
-        ctx.font = `600 ${labelFontSize}px sans-serif`;
-        const labelPaddingX = Math.round(CANVAS_W * 0.007);
-        const labelPaddingY = Math.round(CANVAS_W * 0.0035);
-        const pillW = ctx.measureText(labelText).width + labelPaddingX * 2;
-        const pillH = labelFontSize + labelPaddingY * 2;
-        const pillX = guideInset + Math.round(CANVAS_W * 0.012);
-        const pillY = guideInset + Math.round(CANVAS_W * 0.012);
-        const pillRadius = pillH / 2;
-
-        ctx.beginPath();
-        ctx.moveTo(pillX + pillRadius, pillY);
-        ctx.arcTo(pillX + pillW, pillY, pillX + pillW, pillY + pillH, pillRadius);
-        ctx.arcTo(pillX + pillW, pillY + pillH, pillX, pillY + pillH, pillRadius);
-        ctx.arcTo(pillX, pillY + pillH, pillX, pillY, pillRadius);
-        ctx.arcTo(pillX, pillY, pillX + pillW, pillY, pillRadius);
-        ctx.closePath();
-        ctx.fillStyle = 'rgba(255,255,255,0.92)';
-        ctx.fill();
-        ctx.lineWidth = Math.max(2, Math.round(CANVAS_W * 0.0005));
-        ctx.strokeStyle = guideColor;
-        ctx.stroke();
-
-        ctx.fillStyle = '#009ca1ff';
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(labelText, pillX + labelPaddingX, pillY + pillH / 2);
-        ctx.restore();
 
         // Out-of-bounds check
         const oob = textElements.some(el => {
@@ -548,6 +507,21 @@ const DesignCanvas = ({
                 <Button type="default" icon={<EyeOutlined />} disabled={!imagePreviewWhite && !imagePreviewBlack} onClick={() => setPreviewOpen(true)}>
                     {loading ? "Gemmer..." : "Preview in 3D"}
                 </Button>
+            </div>
+            <div style={{
+                padding: '3px 12px',
+                marginBottom: 10,
+                color: '#000000ff',
+                fontSize: 10,
+                lineHeight: 1,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8
+            }}>
+                <InfoCircleOutlined style={{ color: '#177ddc', fontSize: 14, flexShrink: 0 }} />
+                <span>
+                    Note: The white area represents the maximum printable area. The design must not extend beyond the boundaries of the white area.
+                </span>
             </div>
             <canvas
                 ref={canvasRef}

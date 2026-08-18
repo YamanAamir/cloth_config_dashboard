@@ -93,3 +93,24 @@ body {
   background: #f0f2f5 !important;
   font-weight: 600 !important;
 }
+
+/* Responsive adjustments for mobile viewports */
+@media (max-width: 768px) {
+  .ant-layout-header {
+    height: 56px !important;
+    line-height: 56px !important;
+  }
+
+  .ant-card-body {
+    padding: 16px !important;
+  }
+
+  h1, h2, h3, h4, .ant-typography {
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+
+  .ant-space {
+    max-width: 100%;
+  }
+}

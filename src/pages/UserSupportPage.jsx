@@ -108,24 +108,29 @@ const UserSupportPage = () => {
     const { user } = useAuth();
     const socket = getSocket();
 
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     const [tickets, setTickets] = useState([]);
     const [loadingTickets, setLoadingTickets] = useState(true);
     const [showForm, setShowForm] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [form] = Form.useForm();
 
-    // Active chat
     const [active, setActive] = useState(null);
     const [msgs, setMsgs] = useState([]);
     const [loadingMsgs, setLoadingMsgs] = useState(false);
     const [text, setText] = useState('');
     const [sending, setSending] = useState(false);
     const [unread, setUnread] = useState({});
-    const [ratings, setRatings] = useState({}); // ticketId -> submitted rating
+    const [ratings, setRatings] = useState({});
 
     const bottomRef = useRef(null);
 
-    // ── Fetch ticket list ──────────────────────────────────────────────────────
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
     const fetchTickets = async () => {
         setLoadingTickets(true);
         try {
@@ -140,8 +145,6 @@ const UserSupportPage = () => {
 
     useEffect(() => {
         fetchTickets();
-
-        // Global status updates (e.g. admin closes a ticket)
         const onStatus = ({ ticketId, status }) => {
             setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, status } : t));
             setActive(prev => prev?.id === ticketId ? { ...prev, status } : prev);
@@ -150,7 +153,6 @@ const UserSupportPage = () => {
         return () => socket.off('ticket_status_changed', onStatus);
     }, []);
 
-    // ── Open chat ──────────────────────────────────────────────────────────────
     const openChat = async (ticket) => {
         if (active?.id === ticket.id) return;
         if (active) socket.emit('leave_support_ticket', { ticketId: active.id });
@@ -168,12 +170,7 @@ const UserSupportPage = () => {
                 setActive(prev => prev ? { ...prev, rating: payload.rating } : prev);
                 setTickets(prev => prev.map(t => t.id === ticket.id ? { ...t, rating: payload.rating } : t));
             }
-            // Backend may return the ticket object with nested messages, or a flat array
-            const msgArray = Array.isArray(payload)
-                ? payload
-                : Array.isArray(payload?.messages)
-                    ? payload.messages
-                    : [];
+            const msgArray = Array.isArray(payload) ? payload : (Array.isArray(payload?.messages) ? payload.messages : []);
             setMsgs(msgArray);
         } catch {
             message.error('Failed to load messages');
@@ -182,7 +179,6 @@ const UserSupportPage = () => {
         }
     };
 
-    // ── Incoming socket messages ───────────────────────────────────────────────
     useEffect(() => {
         const onMsg = (data) => {
             if (data.ticketId === active?.id) {
@@ -191,7 +187,6 @@ const UserSupportPage = () => {
                     if (idx !== -1) { const u = [...prev]; u[idx] = data.message; return u; }
                     return [...prev, data.message];
                 });
-                // Update status to replied if admin sent it
                 if (data.message?.sender_id !== user.id) {
                     setActive(prev => prev ? { ...prev, status: 'replied' } : prev);
                     setTickets(prev => prev.map(t => t.id === data.ticketId ? { ...t, status: 'replied', _lastMsg: data.message?.message } : t));
@@ -205,12 +200,10 @@ const UserSupportPage = () => {
         return () => socket.off('support_message', onMsg);
     }, [active, user.id]);
 
-    // ── Auto scroll ───────────────────────────────────────────────────────────
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [msgs]);
 
-    // ── Send message ──────────────────────────────────────────────────────────
     const send = () => {
         const trimmed = text.trim();
         if (!trimmed || active?.status === 'closed') return;
@@ -235,7 +228,6 @@ const UserSupportPage = () => {
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
     };
 
-    // ── Rate a closed ticket ──────────────────────────────────────────────────
     const handleRate = async (ticketId, value) => {
         setRatings(prev => ({ ...prev, [ticketId]: value }));
         setActive(prev => (prev?.id === ticketId ? { ...prev, rating: value } : prev));
@@ -243,12 +235,9 @@ const UserSupportPage = () => {
         try {
             await rateSupportTicket(ticketId, value);
             message.success('Thank you for rating!');
-        } catch {
-            // Rating is a nice-to-have — don't interrupt the user if it fails to save.
-        }
+        } catch {}
     };
 
-    // ── Create ticket ─────────────────────────────────────────────────────────
     const handleSubmit = async (values) => {
         setSubmitting(true);
         try {
@@ -262,7 +251,6 @@ const UserSupportPage = () => {
             const refreshed = await getMyTickets();
             const all = refreshed.data?.data || [];
             setTickets(all);
-            // Auto-open the new ticket
             const newId = res.data?.data?.ticket_id;
             if (newId) {
                 const found = all.find(t => t.id === newId);
@@ -275,22 +263,21 @@ const UserSupportPage = () => {
         }
     };
 
-    // ── Render ─────────────────────────────────────────────────────────────────
     return (
-        <div className="fade-in" style={{ height: 'calc(100vh - 112px)', display: 'flex', flexDirection: 'column' }}>
+        <div className="fade-in" style={{ height: isMobile ? 'calc(100vh - 80px)' : 'calc(100vh - 112px)', display: 'flex', flexDirection: 'column' }}>
 
-            {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexShrink: 0 }}>
-                <div>
-                    <Title level={4} style={{ margin: 0 }}>Support</Title>
-                    <Text type="secondary">Send us a message — we'll get back to you shortly</Text>
+            {(!isMobile || !active) && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexShrink: 0 }}>
+                    <div>
+                        <Title level={4} style={{ margin: 0 }}>Support</Title>
+                        <Text type="secondary">Send us a message — we'll get back to you shortly</Text>
+                    </div>
+                    <Button type="primary" icon={<PlusOutlined />} onClick={() => setShowForm(true)} style={{ borderRadius: 6 }}>
+                        New Ticket
+                    </Button>
                 </div>
-                <Button type="primary" icon={<PlusOutlined />} onClick={() => setShowForm(true)} style={{ borderRadius: 6 }}>
-                    New Ticket
-                </Button>
-            </div>
+            )}
 
-            {/* New ticket form (inline, collapsible) */}
             {showForm && (
                 <div style={{
                     background: '#fff', border: '1px solid #e8e8e8', borderRadius: 10,
@@ -315,163 +302,158 @@ const UserSupportPage = () => {
                 </div>
             )}
 
-            {/* Chat shell */}
             <div style={{
                 flex: 1, display: 'flex', border: '1px solid #e8e8e8',
                 borderRadius: 12, overflow: 'hidden', background: '#fff',
                 boxShadow: '0 2px 12px rgba(0,0,0,.06)', minHeight: 0,
             }}>
 
-                {/* ── LEFT: ticket list ── */}
-                <div style={{
-                    width: 260, flexShrink: 0, display: 'flex', flexDirection: 'column',
-                    borderRight: '1px solid #f0f0f0', background: '#fafafa',
-                }}>
-                    <div style={{ padding: '12px 16px', borderBottom: '1px solid #f0f0f0' }}>
-                        <Text strong style={{ fontSize: 14 }}>My Tickets</Text>
-                    </div>
+                {(!isMobile || !active) && (
+                    <div style={{
+                        width: isMobile ? '100%' : 260, flexShrink: 0, display: 'flex', flexDirection: 'column',
+                        borderRight: '1px solid #f0f0f0', background: '#fafafa',
+                    }}>
+                        <div style={{ padding: '12px 16px', borderBottom: '1px solid #f0f0f0' }}>
+                            <Text strong style={{ fontSize: 14 }}>My Tickets</Text>
+                        </div>
 
-                    <div style={{ flex: 1, overflowY: 'auto' }}>
-                        {loadingTickets ? (
-                            <TicketListSkeleton />
-                        ) : tickets.length === 0 ? (
-                            <Empty description="No tickets yet" image={Empty.PRESENTED_IMAGE_SIMPLE} style={{ marginTop: 40 }} />
-                        ) : (
-                            tickets.map(ticket => {
-                                const isActive = active?.id === ticket.id;
-                                const cfg = statusConfig[ticket.status] || statusConfig.open;
-                                const unreadCount = unread[ticket.id] || 0;
-                                return (
-                                    <div
-                                        key={ticket.id}
-                                        onClick={() => openChat(ticket)}
-                                        style={{
-                                            display: 'flex', alignItems: 'center', gap: 10,
-                                            padding: '12px 14px', cursor: 'pointer',
-                                            background: isActive ? '#e6f7ee' : 'transparent',
-                                            borderLeft: isActive ? '3px solid #00b96b' : '3px solid transparent',
-                                            transition: 'background .15s',
-                                        }}
-                                        onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = '#f0f0f0'; }}
-                                        onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
-                                    >
-                                        <Badge count={unreadCount} size="small">
-                                            <Avatar size={38} style={{ background: '#00b96b', fontSize: 14, flexShrink: 0 }}>
-                                                <AuditOutlined />
-                                            </Avatar>
-                                        </Badge>
-                                        <div style={{ flex: 1, minWidth: 0 }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <Text strong style={{ fontSize: 13 }} ellipsis>{ticket.subject}</Text>
-                                                <Text style={{ fontSize: 10, color: '#bbb', flexShrink: 0 }}>
-                                                    {new Date(ticket.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
-                                                </Text>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
-                                                <Text type="secondary" style={{ fontSize: 11 }}>Tap to open chat</Text>
-                                                <Tag color={cfg.color} style={{ fontSize: 10, margin: 0, lineHeight: '16px', padding: '0 4px' }}>
-                                                    {cfg.label}
-                                                </Tag>
+                        <div style={{ flex: 1, overflowY: 'auto' }}>
+                            {loadingTickets ? (
+                                <TicketListSkeleton />
+                            ) : tickets.length === 0 ? (
+                                <Empty description="No tickets yet" image={Empty.PRESENTED_IMAGE_SIMPLE} style={{ marginTop: 40 }} />
+                            ) : (
+                                tickets.map(ticket => {
+                                    const isActive = active?.id === ticket.id;
+                                    const cfg = statusConfig[ticket.status] || statusConfig.open;
+                                    const unreadCount = unread[ticket.id] || 0;
+                                    return (
+                                        <div
+                                            key={ticket.id}
+                                            onClick={() => openChat(ticket)}
+                                            style={{
+                                                display: 'flex', alignItems: 'center', gap: 10,
+                                                padding: '12px 14px', cursor: 'pointer',
+                                                background: isActive ? '#e6f7ee' : 'transparent',
+                                                borderLeft: isActive ? '3px solid #00b96b' : '3px solid transparent',
+                                                transition: 'background .15s',
+                                            }}
+                                        >
+                                            <Badge count={unreadCount} size="small">
+                                                <Avatar size={38} style={{ background: '#00b96b', fontSize: 14, flexShrink: 0 }}>
+                                                    <AuditOutlined />
+                                                </Avatar>
+                                            </Badge>
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    <Text strong style={{ fontSize: 13 }} ellipsis>{ticket.subject}</Text>
+                                                    <Text style={{ fontSize: 10, color: '#bbb', flexShrink: 0 }}>
+                                                        {new Date(ticket.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                                                    </Text>
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                                                    <Text type="secondary" style={{ fontSize: 11 }}>Tap to open chat</Text>
+                                                    <Tag color={cfg.color} style={{ fontSize: 10, margin: 0, lineHeight: '16px', padding: '0 4px' }}>
+                                                        {cfg.label}
+                                                    </Tag>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                );
-                            })
-                        )}
-                    </div>
-                </div>
-
-                {/* ── RIGHT: chat ── */}
-                {!active ? (
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#f9fafb' }}>
-                        <AuditOutlined style={{ fontSize: 48, marginBottom: 12, color: '#d9d9d9' }} />
-                        <Text type="secondary" style={{ fontSize: 15 }}>Select a ticket or create a new one to get help</Text>
-                    </div>
-                ) : (
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-
-                        {/* Chat header */}
-                        <div style={{
-                            display: 'flex', alignItems: 'center', gap: 12,
-                            padding: '12px 20px', borderBottom: '1px solid #f0f0f0',
-                            background: '#fff', flexShrink: 0,
-                        }}>
-                            <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => setActive(null)} style={{ marginRight: -4 }} />
-                            <Avatar size={38} style={{ background: '#00b96b', fontSize: 14, flexShrink: 0 }}>
-                                <AuditOutlined />
-                            </Avatar>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                                <Text strong style={{ display: 'block', fontSize: 14 }}>{active.subject}</Text>
-                                <Text type="secondary" style={{ fontSize: 12 }}>Ticket #{active.id}</Text>
-                            </div>
-                            <Tag color={statusConfig[active.status]?.color} icon={statusConfig[active.status]?.icon} style={{ marginRight: 0 }}>
-                                {statusConfig[active.status]?.label}
-                            </Tag>
-                        </div>
-
-                        {/* Messages */}
-                        <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', background: '#f6f7f9', minHeight: 0 }}>
-                            {loadingMsgs ? (
-                                <ChatSkeleton />
-                            ) : msgs.length === 0 ? (
-                                <div style={{ textAlign: 'center', marginTop: 60 }}>
-                                    <Empty description="No messages yet" image={Empty.PRESENTED_IMAGE_SIMPLE} />
-                                </div>
-                            ) : (
-                                <>
-                                    {(Array.isArray(msgs) ? msgs : []).map((m, i) => <Bubble key={m.id ?? i} msg={m} currentUserId={user.id} />)}
-                                    <div ref={bottomRef} />
-                                </>
+                                    );
+                                })
                             )}
                         </div>
+                    </div>
+                )}
 
-                        {/* Input */}
-                        {active.status === 'closed' ? (
-                            <div style={{ padding: '16px 20px', borderTop: '1px solid #f0f0f0', background: '#fafffa', textAlign: 'center', flexShrink: 0 }}>
-                                {(ratings[active.id] || active.rating) ? (
-                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-                                        <Text style={{ fontSize: 13, color: '#00b96b', fontWeight: 500 }}>
-                                            <SmileOutlined style={{ marginRight: 6 }} />
-                                            Thanks for your feedback! Your rating:
-                                        </Text>
-                                        <Rate disabled value={ratings[active.id] || active.rating} style={{ fontSize: 18, color: '#faad14' }} />
+                {(!isMobile || active) && (
+                    !active ? (
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#f9fafb' }}>
+                            <AuditOutlined style={{ fontSize: 48, marginBottom: 12, color: '#d9d9d9' }} />
+                            <Text type="secondary" style={{ fontSize: 15 }}>Select a ticket to get help</Text>
+                        </div>
+                    ) : (
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                            <div style={{
+                                display: 'flex', alignItems: 'center', gap: 12,
+                                padding: '12px 20px', borderBottom: '1px solid #f0f0f0',
+                                background: '#fff', flexShrink: 0,
+                            }}>
+                                <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => setActive(null)} style={{ marginRight: -4 }} />
+                                <Avatar size={38} style={{ background: '#00b96b', fontSize: 14, flexShrink: 0 }}>
+                                    <AuditOutlined />
+                                </Avatar>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <Text strong style={{ display: 'block', fontSize: 14 }}>{active.subject}</Text>
+                                    <Text type="secondary" style={{ fontSize: 12 }}>Ticket #{active.id}</Text>
+                                </div>
+                                <Tag color={statusConfig[active.status]?.color} icon={statusConfig[active.status]?.icon} style={{ marginRight: 0 }}>
+                                    {statusConfig[active.status]?.label}
+                                </Tag>
+                            </div>
+
+                            <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', background: '#f6f7f9', minHeight: 0 }}>
+                                {loadingMsgs ? (
+                                    <ChatSkeleton />
+                                ) : msgs.length === 0 ? (
+                                    <div style={{ textAlign: 'center', marginTop: 60 }}>
+                                        <Empty description="No messages yet" image={Empty.PRESENTED_IMAGE_SIMPLE} />
                                     </div>
                                 ) : (
                                     <>
-                                        <Text style={{ fontSize: 13, display: 'block', marginBottom: 6 }}>
-                                            <SmileOutlined style={{ marginRight: 6, color: '#00b96b' }} />
-                                            All done here — hope we solved it! How was your support experience?
-                                        </Text>
-                                        <Rate
-                                            value={ratings[active.id] || 0}
-                                            onChange={(value) => handleRate(active.id, value)}
-                                        />
+                                        {(Array.isArray(msgs) ? msgs : []).map((m, i) => <Bubble key={m.id ?? i} msg={m} currentUserId={user.id} />)}
+                                        <div ref={bottomRef} />
                                     </>
                                 )}
                             </div>
-                        ) : (
-                            <div style={{ display: 'flex', gap: 10, padding: '12px 16px', borderTop: '1px solid #f0f0f0', background: '#fff', alignItems: 'flex-end', flexShrink: 0 }}>
-                                <TextArea
-                                    value={text}
-                                    onChange={e => setText(e.target.value)}
-                                    onKeyDown={handleKeyDown}
-                                    placeholder="Type your message… (Enter to send)"
-                                    autoSize={{ minRows: 1, maxRows: 5 }}
-                                    style={{ flex: 1, borderRadius: 22, resize: 'none', paddingTop: 8, paddingBottom: 8 }}
-                                />
-                                <Button
-                                    type="primary"
-                                    shape="circle"
-                                    icon={<SendOutlined />}
-                                    onClick={send}
-                                    loading={sending}
-                                    disabled={!text.trim()}
-                                    style={{ flexShrink: 0, width: 40, height: 40 }}
-                                />
-                            </div>
-                        )}
+
+                            {/* Input / Rating */}
+                            {active.status === 'closed' ? (
+                                <div style={{ padding: '16px 20px', borderTop: '1px solid #f0f0f0', background: '#fafffa', textAlign: 'center', flexShrink: 0 }}>
+                                    {(ratings[active.id] || active.rating) ? (
+                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                                            <Text style={{ fontSize: 13, color: '#00b96b', fontWeight: 500 }}>
+                                                <SmileOutlined style={{ marginRight: 6 }} />
+                                                Thanks for your feedback! Your rating:
+                                            </Text>
+                                            <Rate disabled value={ratings[active.id] || active.rating} style={{ fontSize: 18, color: '#faad14' }} />
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <Text style={{ fontSize: 13, display: 'block', marginBottom: 6 }}>
+                                                <SmileOutlined style={{ marginRight: 6, color: '#00b96b' }} />
+                                                All done here — hope we solved it! How was your support experience?
+                                            </Text>
+                                            <Rate
+                                                value={ratings[active.id] || 0}
+                                                onChange={(value) => handleRate(active.id, value)}
+                                            />
+                                        </>
+                                    )}
+                                </div>
+                            ) : (
+                                <div style={{ display: 'flex', gap: 10, padding: '12px 16px', borderTop: '1px solid #f0f0f0', background: '#fff', alignItems: 'flex-end', flexShrink: 0 }}>
+                                    <TextArea
+                                        value={text}
+                                        onChange={e => setText(e.target.value)}
+                                        onKeyDown={handleKeyDown}
+                                        placeholder="Type your message… (Enter to send)"
+                                        autoSize={{ minRows: 1, maxRows: 5 }}
+                                        style={{ flex: 1, borderRadius: 22, resize: 'none', paddingTop: 8, paddingBottom: 8 }}
+                                    />
+                                    <Button
+                                        type="primary"
+                                        shape="circle"
+                                        icon={<SendOutlined />}
+                                        onClick={send}
+                                        loading={sending}
+                                        disabled={!text.trim()}
+                                        style={{ flexShrink: 0, width: 40, height: 40 }}
+                                    />
+                                </div>
+                            )}
                     </div>
-                )}
+                ))}
             </div>
         </div>
     );

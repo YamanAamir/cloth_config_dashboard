@@ -77,6 +77,12 @@ const ClassRepTour = () => {
           target: () => document.getElementById('tour-upload-logo-card'),
         },
         {
+          title: 'Ready for production',
+          description:
+            'Klik på denne knap for at markere klassen som klar til produktion. Dette betyder, at alle designs er godkendt, og klassen er klar til at bestille.',
+          target: () => document.getElementById('tour-ready-for-production-card'),
+        },
+        {
           title: 'Godkendelsesstatus',
           description:
             'Følg status på jeres rygdesign og skolelogo. Her kan du se, om de er under gennemgang, godkendt eller kræver ændringer, før de kan bruges på klassens studieturstøj.',

@@ -6,7 +6,7 @@ import {
 import {
      SendOutlined, InboxOutlined,
     ClockCircleOutlined, CheckCircleOutlined, SearchOutlined, LockOutlined,
-    UserOutlined,
+    UserOutlined, ArrowLeftOutlined,
     AuditOutlined,
     StarOutlined, StarFilled
 } from '@ant-design/icons';
@@ -121,6 +121,14 @@ const Bubble = ({ msg, currentUserId }) => {
 const AdminSupportPage = () => {
     const { user } = useAuth();
     const socket = getSocket();
+
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     // All tickets (unfiltered) — source of truth for stats
     const [allTickets, setAllTickets] = useState([]);
@@ -321,51 +329,55 @@ const AdminSupportPage = () => {
 
     // ── Render ─────────────────────────────────────────────────────────────────
     return (
-        <div className="fade-in" style={{ height: 'calc(100vh - 112px)', display: 'flex', flexDirection: 'column' }}>
+        <div className="fade-in" style={{ height: isMobile ? 'calc(100vh - 80px)' : 'calc(100vh - 112px)', display: 'flex', flexDirection: 'column' }}>
 
             {/* Header */}
-            <div style={{ marginBottom: 16, flexShrink: 0 }}>
-                <Title level={4} style={{ margin: 0 }}>
-                    <AuditOutlined style={{ marginRight: 8 }} />
-                    Support
-                </Title>
-                <Text type="secondary">Manage and reply to class rep support tickets</Text>
-            </div>
+            {(!isMobile || !active) && (
+                <div style={{ marginBottom: 16, flexShrink: 0 }}>
+                    <Title level={4} style={{ margin: 0 }}>
+                        <AuditOutlined style={{ marginRight: 8 }} />
+                        Support
+                    </Title>
+                    <Text type="secondary">Manage and reply to class rep support tickets</Text>
+                </div>
+            )}
 
             {/* ── Stat cards ── */}
-            <Row gutter={12} style={{ marginBottom: 16, flexShrink: 0 }}>
-                {[
-                    { key: '', label: 'Total', value: stats.total, color: '#595959', bg: '#fafafa' },
-                    { key: 'open', label: 'Open', value: stats.open, color: '#1677ff', bg: '#e6f4ff' },
-                    { key: 'closed', label: 'Closed', value: stats.closed, color: '#8c8c8c', bg: '#f5f5f5' },
-                    { key: 'rating', label: 'Avg Rating', value: `${stats.avgRating} ★`, subLabel: `(${stats.ratedCount} rated)`, color: '#faad14', bg: '#fff7e6' },
-                ].map(s => (
-                    <Col xs={12} sm={6} md={6} key={s.key}>
-                        <Card
-                            size="small"
-                            onClick={() => {
-                                if (s.key !== 'rating') {
-                                    setStatusFilter(statusFilter === s.key ? '' : s.key);
-                                }
-                            }}
-                            style={{
-                                cursor: s.key !== 'rating' ? 'pointer' : 'default',
-                                border: statusFilter === s.key ? `1.5px solid ${s.color}` : '1px solid #e8e8e8',
-                                borderRadius: 10,
-                                background: statusFilter === s.key ? s.bg : '#fff',
-                                transition: 'all .15s',
-                            }}
-                            styles={{ body: { padding: '12px 16px' } }}
-                        >
-                            <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>{s.label}</Text>
-                            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                                <Text style={{ fontSize: 24, fontWeight: 700, color: s.color, lineHeight: 1 }}>{s.value}</Text>
-                                {s.subLabel && <Text type="secondary" style={{ fontSize: 11 }}>{s.subLabel}</Text>}
-                            </div>
-                        </Card>
-                    </Col>
-                ))}
-            </Row>
+            {(!isMobile || !active) && (
+                <Row gutter={12} style={{ marginBottom: 16, flexShrink: 0 }}>
+                    {[
+                        { key: '', label: 'Total', value: stats.total, color: '#595959', bg: '#fafafa' },
+                        { key: 'open', label: 'Open', value: stats.open, color: '#1677ff', bg: '#e6f4ff' },
+                        { key: 'closed', label: 'Closed', value: stats.closed, color: '#8c8c8c', bg: '#f5f5f5' },
+                        { key: 'rating', label: 'Avg Rating', value: `${stats.avgRating} ★`, subLabel: `(${stats.ratedCount} rated)`, color: '#faad14', bg: '#fff7e6' },
+                    ].map(s => (
+                        <Col xs={12} sm={6} md={6} key={s.key}>
+                            <Card
+                                size="small"
+                                onClick={() => {
+                                    if (s.key !== 'rating') {
+                                        setStatusFilter(statusFilter === s.key ? '' : s.key);
+                                    }
+                                }}
+                                style={{
+                                    cursor: s.key !== 'rating' ? 'pointer' : 'default',
+                                    border: statusFilter === s.key ? `1.5px solid ${s.color}` : '1px solid #e8e8e8',
+                                    borderRadius: 10,
+                                    background: statusFilter === s.key ? s.bg : '#fff',
+                                    transition: 'all .15s',
+                                }}
+                                styles={{ body: { padding: '12px 16px' } }}
+                            >
+                                <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>{s.label}</Text>
+                                <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                                    <Text style={{ fontSize: 24, fontWeight: 700, color: s.color, lineHeight: 1 }}>{s.value}</Text>
+                                    {s.subLabel && <Text type="secondary" style={{ fontSize: 11 }}>{s.subLabel}</Text>}
+                                </div>
+                            </Card>
+                        </Col>
+                    ))}
+                </Row>
+            )}
 
             {/* Chat shell */}
             <div style={{
@@ -375,145 +387,144 @@ const AdminSupportPage = () => {
             }}>
 
                 {/* ── LEFT: ticket list ── */}
-                <div style={{
-                    width: 300, flexShrink: 0, display: 'flex', flexDirection: 'column',
-                    borderRight: '1px solid #f0f0f0', background: '#fafafa',
-                }}>
-                    <div style={{ padding: '12px 12px 10px', borderBottom: '1px solid #f0f0f0' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                            <Text strong style={{ fontSize: 14 }}>
-                                Tickets
-                                {statusFilter && (
-                                    <Tag
-                                        closable
-                                        onClose={() => setStatusFilter('')}
-                                        color={statusConfig[statusFilter]?.color}
-                                        style={{ marginLeft: 8, fontSize: 11 }}
-                                    >
-                                        {statusConfig[statusFilter]?.label}
-                                    </Tag>
-                                )}
-                            </Text>
-                            <Text type="secondary" style={{ fontSize: 12 }}>{displayTickets.length} shown</Text>
+                {(!isMobile || !active) && (
+                    <div style={{
+                        width: isMobile ? '100%' : 300, flexShrink: 0, display: 'flex', flexDirection: 'column',
+                        borderRight: isMobile ? 'none' : '1px solid #f0f0f0', background: '#fafafa',
+                    }}>
+                        <div style={{ padding: '12px 12px 10px', borderBottom: '1px solid #f0f0f0' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                <Text strong style={{ fontSize: 14 }}>
+                                    Tickets
+                                    {statusFilter && (
+                                        <Tag
+                                            closable
+                                            onClose={() => setStatusFilter('')}
+                                            color={statusConfig[statusFilter]?.color}
+                                            style={{ marginLeft: 8, fontSize: 11 }}
+                                        >
+                                            {statusConfig[statusFilter]?.label}
+                                        </Tag>
+                                    )}
+                                </Text>
+                                <Text type="secondary" style={{ fontSize: 12 }}>{displayTickets.length} shown</Text>
+                            </div>
+                            <Input
+                                prefix={<SearchOutlined style={{ color: '#bbb' }} />}
+                                placeholder="Search..."
+                                size="small"
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                                style={{ borderRadius: 20 }}
+                                allowClear
+                            />
                         </div>
-                        <Input
-                            prefix={<SearchOutlined style={{ color: '#bbb' }} />}
-                            placeholder="Search..."
-                            size="small"
-                            value={search}
-                            onChange={e => setSearch(e.target.value)}
-                            style={{ borderRadius: 20 }}
-                            allowClear
-                        />
-                    </div>
 
-                    <div style={{ flex: 1, overflowY: 'auto' }}>
-                        {loadingTickets ? (
-                            <TicketListSkeleton />
-                        ) : displayTickets.length === 0 ? (
-                            <Empty description="No tickets" image={Empty.PRESENTED_IMAGE_SIMPLE} style={{ marginTop: 40 }} />
-                        ) : (
-                            displayTickets.map(ticket => {
-                                const isActive = active?.id === ticket.id;
-                                const cfg = statusConfig[ticket.status] || statusConfig.open;
-                                const unreadCount = unread[ticket.id] || 0;
-                                return (
-                                    <div
-                                        key={ticket.id}
-                                        onClick={() => openChat(ticket)}
-                                        style={{
-                                            display: 'flex', alignItems: 'center', gap: 10,
-                                            padding: '12px 14px', cursor: 'pointer',
-                                            background: isActive ? '#e6f7ee' : 'transparent',
-                                            borderLeft: isActive ? '3px solid #00b96b' : '3px solid transparent',
-                                            transition: 'background .15s',
-                                        }}
-                                        onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = '#f0f0f0'; }}
-                                        onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
-                                    >
-                                        <Badge count={unreadCount} size="small">
-                                            <Avatar size={38} style={{ background: avatarColor(ticket.user?.id), fontSize: 14, flexShrink: 0 }}>
-                                                {getInitials(ticket.user?.name)}
-                                            </Avatar>
-                                        </Badge>
-                                        <div style={{ flex: 1, minWidth: 0 }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <Text strong style={{ fontSize: 13 }} ellipsis>{ticket.user?.name || '—'}</Text>
-                                                <Text style={{ fontSize: 10, color: '#bbb', flexShrink: 0 }}>
-                                                    {new Date(ticket.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
-                                                </Text>
-                                            </div>
-                                            <Text style={{ fontSize: 12, color: '#555', display: 'block' }} ellipsis>{ticket.subject}</Text>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
-                                                <Text type="secondary" style={{ fontSize: 11 }} ellipsis>
-                                                    {ticket._lastMsg || ticket.user?.school?.name || ''}
-                                                </Text>
-                                                <Space size={4}>
-                                                    {ticket.rating != null && (
-                                                        <Tag color="gold" style={{ fontSize: 10, margin: 0, lineHeight: '16px', padding: '0 4px' }}>
-                                                            ★ {ticket.rating}
+                        <div style={{ flex: 1, overflowY: 'auto' }}>
+                            {loadingTickets ? (
+                                <TicketListSkeleton />
+                            ) : displayTickets.length === 0 ? (
+                                <Empty description="No tickets" image={Empty.PRESENTED_IMAGE_SIMPLE} style={{ marginTop: 40 }} />
+                            ) : (
+                                displayTickets.map(ticket => {
+                                    const isActive = active?.id === ticket.id;
+                                    const cfg = statusConfig[ticket.status] || statusConfig.open;
+                                    const unreadCount = unread[ticket.id] || 0;
+                                    return (
+                                        <div
+                                            key={ticket.id}
+                                            onClick={() => openChat(ticket)}
+                                            style={{
+                                                display: 'flex', alignItems: 'center', gap: 10,
+                                                padding: '12px 14px', cursor: 'pointer',
+                                                background: isActive ? '#e6f7ee' : 'transparent',
+                                                borderLeft: isActive ? '3px solid #00b96b' : '3px solid transparent',
+                                                transition: 'background .15s',
+                                            }}
+                                            onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = '#f0f0f0'; }}
+                                            onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
+                                        >
+                                            <Badge count={unreadCount} size="small">
+                                                <Avatar size={38} style={{ background: avatarColor(ticket.user?.id), fontSize: 14, flexShrink: 0 }}>
+                                                    {getInitials(ticket.user?.name)}
+                                                </Avatar>
+                                            </Badge>
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    <Text strong style={{ fontSize: 13 }} ellipsis>{ticket.user?.name || '—'}</Text>
+                                                    <Text style={{ fontSize: 10, color: '#bbb', flexShrink: 0 }}>
+                                                        {new Date(ticket.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                                                    </Text>
+                                                </div>
+                                                <Text style={{ fontSize: 12, color: '#555', display: 'block' }} ellipsis>{ticket.subject}</Text>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
+                                                    <Text type="secondary" style={{ fontSize: 11 }} ellipsis>
+                                                        {ticket._lastMsg || ticket.user?.school?.name || ''}
+                                                    </Text>
+                                                    <Space size={4}>
+                                                        {ticket.rating != null && (
+                                                            <Tag color="gold" style={{ fontSize: 10, margin: 0, lineHeight: '16px', padding: '0 4px' }}>
+                                                                ★ {ticket.rating}
+                                                            </Tag>
+                                                        )}
+                                                        <Tag color={cfg.color} style={{ fontSize: 10, margin: 0, lineHeight: '16px', padding: '0 4px' }}>
+                                                            {cfg.label}
                                                         </Tag>
-                                                    )}
-                                                    <Tag color={cfg.color} style={{ fontSize: 10, margin: 0, lineHeight: '16px', padding: '0 4px' }}>
-                                                        {cfg.label}
-                                                    </Tag>
-                                                </Space>
+                                                    </Space>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                );
-                            })
-                        )}
+                                    );
+                                })
+                            )}
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {/* ── RIGHT: chat ── */}
-                {!active ? (
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#f9fafb' }}>
-                        <AuditOutlined style={{ fontSize: 48, marginBottom: 12, color: '#d9d9d9' }} />
-                        <Text type="secondary" style={{ fontSize: 15 }}>Select a ticket to start chatting</Text>
-                    </div>
-                ) : (
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-
-                        {/* Chat header */}
-                        <div style={{
-                            display: 'flex', alignItems: 'center', gap: 12,
-                            padding: '12px 20px', borderBottom: '1px solid #f0f0f0',
-                            background: '#fff', flexShrink: 0,
-                        }}>
-                            <Avatar size={38} style={{ background: avatarColor(active.user?.id), fontSize: 14, flexShrink: 0 }}>
-                                {getInitials(active.user?.name)}
-                            </Avatar>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                                <Text strong style={{ display: 'block', fontSize: 14 }}>{active.user?.name}</Text>
-                                <Text type="secondary" style={{ fontSize: 12 }}>
-                                    {active.subject}
-                                    {active.user?.school?.name ? ` · ${active.user.school.name}` : ''}
-                                    {active.user?.class?.name ? ` · ${active.user.class.name}` : ''}
-                                </Text>
-                            </div>
-                            <Space>
-                                {active.rating != null && (
-                                    <Tag color="gold" icon={<StarFilled />} style={{ fontSize: 12, padding: '2px 8px' }}>
-                                        {active.rating} / 5
-                                    </Tag>
-                                )}
-                                <Tag color={statusConfig[active.status]?.color} icon={statusConfig[active.status]?.icon} style={{ marginRight: 0 }}>
-                                    {statusConfig[active.status]?.label}
-                                </Tag>
-                                {active.status !== 'closed' && (
-                                    <Popconfirm
-                                        title="Close this ticket?"
-                                        description="The conversation will be marked as closed."
-                                        onConfirm={handleClose}
-                                        okText="Close" cancelText="Cancel" okType="danger"
-                                    >
-                                        <Button size="small" danger icon={<LockOutlined />} loading={closing}>Close</Button>
-                                    </Popconfirm>
-                                )}
-                            </Space>
+                {(!isMobile || active) && (
+                    !active ? (
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#f9fafb' }}>
+                            <AuditOutlined style={{ fontSize: 48, marginBottom: 12, color: '#d9d9d9' }} />
+                            <Text type="secondary" style={{ fontSize: 15 }}>Select a ticket to start chatting</Text>
                         </div>
+                    ) : (
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                            {/* Chat header */}
+                            <div style={{
+                                display: 'flex', alignItems: 'center', gap: 10,
+                                padding: '10px 14px', borderBottom: '1px solid #f0f0f0',
+                                background: '#fff', flexShrink: 0,
+                            }}>
+                                <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => setActive(null)} style={{ marginRight: -4 }} />
+                                <Avatar size={34} style={{ background: avatarColor(active.user?.id), fontSize: 14, flexShrink: 0 }}>
+                                    {getInitials(active.user?.name)}
+                                </Avatar>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <Text strong style={{ display: 'block', fontSize: 13 }} ellipsis>{active.user?.name}</Text>
+                                    <Text type="secondary" style={{ fontSize: 11 }} ellipsis>{active.subject}</Text>
+                                </div>
+                                <Space size={4}>
+                                    {active.rating != null && (
+                                        <Tag color="gold" icon={<StarFilled />} style={{ fontSize: 11, padding: '0 6px', margin: 0 }}>
+                                            {active.rating}
+                                        </Tag>
+                                    )}
+                                    <Tag color={statusConfig[active.status]?.color} icon={statusConfig[active.status]?.icon} style={{ margin: 0, fontSize: 11, padding: '0 4px' }}>
+                                        {statusConfig[active.status]?.label}
+                                    </Tag>
+                                    {active.status !== 'closed' && (
+                                        <Popconfirm
+                                            title="Close this ticket?"
+                                            description="The conversation will be marked as closed."
+                                            onConfirm={handleClose}
+                                            okText="Close" cancelText="Cancel" okType="danger"
+                                        >
+                                            <Button size="small" danger icon={<LockOutlined />} loading={closing}>Close</Button>
+                                        </Popconfirm>
+                                    )}
+                                </Space>
+                            </div>
 
                         {/* Messages */}
                         <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', background: '#f6f7f9', minHeight: 0 }}>
@@ -569,7 +580,7 @@ const AdminSupportPage = () => {
                             </div>
                         )}
                     </div>
-                )}
+                ))}
             </div>
         </div>
     );
